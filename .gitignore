@@ -3,3 +3,5 @@ data/raw/*.json
 data/raw/*.xml
 __pycache__/
 *.pyc
+app/node_modules/
+app/dist/

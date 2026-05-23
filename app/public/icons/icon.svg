@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Shelter Signal">
+  <rect width="192" height="192" rx="42" fill="#254c4a"/>
+  <path d="M47 104c0-31 20-55 49-55s49 24 49 55v31c0 5-4 9-9 9H56c-5 0-9-4-9-9v-31Z" fill="#f7f5ef"/>
+  <path d="M65 91c9-13 19-20 31-20s22 7 31 20" fill="none" stroke="#d98152" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="78" cy="112" r="6" fill="#254c4a"/>
+  <circle cx="114" cy="112" r="6" fill="#254c4a"/>
+  <path d="M83 132h26" stroke="#254c4a" stroke-width="8" stroke-linecap="round"/>
+</svg>
