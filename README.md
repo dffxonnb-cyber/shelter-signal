@@ -1,57 +1,110 @@
 # Shelter Signal
 
-Shelter Signal은 현재 **API 스모크 테스트만 준비된 저장소**입니다. 아직 전체 앱, 자동화 파이프라인, 데이터베이스, 프론트엔드는 구현하지 않았습니다.
+Shelter Signal은 구조/유기동물 공고를 모니터링하고, 공고 종료까지 남은 시간을 기준으로 먼저 확인해야 할 대상을 정리하기 위한 프로젝트입니다.
 
-이 단계의 목적은 공공데이터포털의 `농림축산식품부 농림축산검역본부_국가동물보호정보시스템 구조동물 조회 서비스`를 아주 작은 요청으로 호출해 보고, 실제 응답 필드와 형식을 확인하는 것입니다.
+현재 저장소는 **Phase 1 데이터 파이프라인 스캐폴드** 단계입니다. 전체 앱, 프론트엔드, 알림 기능, n8n 자동화, 운영용 배포는 아직 구현하지 않았습니다.
+
+## Phase 1 범위
+
+이번 단계에서 준비한 것은 다음 항목입니다.
+
+- 공공데이터 구조동물 조회 API 응답을 담는 PostgreSQL raw 테이블
+- API camelCase 필드를 DB snake_case 필드로 정규화하는 ingestion 스크립트
+- 중복 적재를 막는 `source + desertion_no` 기준 upsert 구조
+- Rescue Window Score를 계산하는 SQL clean 모델
+- 지역, 보호소, 품종, 구조 윈도우별 요약 SQL 모델
+- SQL 품질 테스트
+- Docker Compose 기반 로컬 PostgreSQL
+- mock 데이터로 전체 파이프라인을 검증하는 `scripts/validate_pipeline.py`
 
 ## API 키 관리
 
-실제 API 키는 로컬 `.env` 파일에만 둡니다. `.env` 파일은 Git에 커밋하지 않습니다.
+실제 API 키는 로컬 `.env` 파일에만 둡니다. `.env`는 Git에 커밋하지 않습니다.
 
 ```text
 ANIMAL_API_KEY=발급받은_실제_키
 ```
 
-저장소에는 예시 파일인 `.env.example`만 포함합니다.
+저장소에는 예시 파일인 `.env.example`만 포함합니다. 스크립트는 API 키를 출력하지 않으며, README나 코드에도 실제 키를 넣지 않습니다.
 
-## 실행 방법
+## Mock / Live 분리
+
+Phase 1 검증은 기본적으로 mock 데이터를 사용합니다.
+
+- mock 데이터: `data/sample/rescued_animals_mock.json`
+- live API 호출: `ANIMAL_API_KEY`가 있는 로컬 `.env` 필요
+- DB 적재: `--load-db`를 명시한 경우에만 실행
+- 기본 ingestion 동작: dry-run, DB write 없음
+
+예시:
 
 ```powershell
-python -m py_compile scripts/test_animal_api.py
-python scripts/test_animal_api.py
+python ingestion/run_animal_ingestion.py --mock
+python ingestion/run_animal_ingestion.py --mock --load-db
+python ingestion/run_animal_ingestion.py --num-of-rows 10
+python ingestion/run_animal_ingestion.py --num-of-rows 10 --load-db
 ```
 
-스크립트는 기본적으로 1회만 요청하며, `numOfRows`는 5로 제한되어 있습니다. JSON 응답을 먼저 요청하고, JSON 파싱에 실패하면 원본 XML 또는 텍스트 응답을 `data/raw/animal_api_sample.xml`에 저장합니다.
+live API 호출은 한 번에 최대 10건만 요청하도록 제한했습니다. 대량 수집은 아직 이 단계의 범위가 아닙니다.
 
-현재 검증 환경에서는 저장소 루트에 실제 `.env` 파일이 없어 API 요청을 실행하지 못했습니다. 이 경우 스크립트는 `ANIMAL_API_KEY was not found` 메시지를 출력하고 종료합니다. 실제 키를 로컬 `.env`에 넣은 뒤 다시 실행하면 됩니다.
+## Rescue Window Score
 
-저장되는 원본 샘플은 다음 경로를 사용합니다.
+Shelter Signal의 핵심은 단순 목록이 아니라 **Rescue Window Score**입니다.
+
+현재 SQL 모델은 다음 신호를 사용해 우선순위를 계산합니다.
+
+- 공고 종료일까지 남은 일수
+- 공고가 아직 진행 중인지 여부
+- 사진 유무
+- 보호소 전화번호 유무
+- 특이사항 존재 여부
+
+결과 라벨은 다음 중 하나로 분류됩니다.
+
+- `긴급 확인`
+- `곧 종료`
+- `확인 필요`
+- `여유 있음`
+- `종료/확인 필요`
+
+점수와 라벨은 `sql/models/001_animals_clean.sql`에서 계산합니다. 아직 운영 기준이 확정된 것은 아니며, 실제 응답 필드와 사용자 시나리오를 더 확인하면서 조정할 예정입니다.
+
+## 로컬 검증
+
+Docker가 실행 중인 상태에서 다음 명령을 실행합니다.
+
+```powershell
+python scripts/validate_pipeline.py
+```
+
+검증 스크립트는 다음 작업을 자동으로 수행합니다.
+
+- Docker 및 PostgreSQL 사용 가능 여부 확인
+- migration 적용
+- mock 데이터 적재
+- SQL 모델 생성
+- SQL 테스트 실행
+- analytics view 미리보기 출력
+- PASS/FAIL 요약 출력
+
+수동으로 `psql`을 실행할 필요가 없도록 구성했습니다.
+
+## 주요 경로
 
 ```text
-data/raw/animal_api_sample.json
-data/raw/animal_api_sample.xml
+ingestion/run_animal_ingestion.py
+scripts/test_animal_api.py
+scripts/validate_pipeline.py
+sql/migrations/001_create_raw_rescued_animals.sql
+sql/models/
+sql/tests/
+data/sample/rescued_animals_mock.json
+data/raw/
+docs/
 ```
 
-이 단계에서는 `data/raw`의 응답 샘플 파일을 Git에서 무시합니다. 실제 필드 구조를 확인하기 위한 로컬 점검용 파일입니다.
-
-## 조정 가능한 값
-
-API 세부 경로와 파라미터는 공식 문서를 확인한 뒤 쉽게 바꿀 수 있도록 `scripts/test_animal_api.py` 상단의 상수로 분리했습니다.
-
-```python
-BASE_URL
-PAGE_NO
-NUM_OF_ROWS
-RESPONSE_TYPE
-```
-
-호출이 실패하면 다음 항목을 먼저 확인합니다.
-
-- `.env` 파일이 저장소 루트에 있는지
-- `.env` 안에 `ANIMAL_API_KEY`가 있는지
-- 공공데이터포털에서 발급된 키가 활성화되었는지
-- 공식 문서의 서비스 URL 또는 파라미터명이 변경되었는지
+`data/raw`의 실제 API 응답 샘플은 현재 Git에서 무시합니다. 로컬 점검용 원본 파일을 실수로 커밋하지 않기 위한 설정입니다.
 
 ## 다음 단계
 
-다음 작업은 로컬 응답 샘플의 필드 구조를 확인하고, Shelter Signal 앱의 기획 문서를 작성하는 것입니다. 이 저장소는 아직 완성된 앱이 아니라 API 연결 가능성을 검증하는 출발점입니다.
+다음 단계는 실제 API 응답을 더 확인하면서 Rescue Window Score 기준을 다듬고, 앱 기획 문서와 최소 화면 흐름을 정리하는 것입니다. 현재 저장소는 운영 가능한 서비스가 아니라 Phase 1 데이터 기반을 검증하기 위한 준비 단계입니다.
