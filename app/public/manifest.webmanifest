@@ -1,18 +1,24 @@
 {
   "name": "Shelter Signal",
-  "short_name": "Shelter",
-  "description": "구조동물 공고의 Rescue Window Score를 확인하는 PWA 스타일 MVP",
+  "short_name": "Signal",
+  "description": "보호 종료가 가까운 구조동물 공고를 Rescue Window Score로 먼저 확인하는 PWA",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7f5ef",
-  "theme_color": "#254c4a",
+  "background_color": "#f5f1e8",
+  "theme_color": "#2f594e",
   "lang": "ko-KR",
   "icons": [
     {
-      "src": "/icons/icon.svg",
-      "sizes": "192x192",
+      "src": "/icon.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

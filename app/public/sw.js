@@ -1,5 +1,5 @@
-const CACHE_NAME = "shelter-signal-mvp-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE_NAME = "shelter-signal-brand-v1";
+const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg", "/logo.svg", "/og-image.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -218,9 +218,20 @@ function AppHeader({
 }) {
   return (
     <header className="app-header">
-      <div>
-        <p className="eyebrow">공공데이터 구조동물 신호</p>
-        <h1>Shelter Signal</h1>
+      <div className="brand-lockup">
+        <img
+          className="brand-logo"
+          src="/logo.svg"
+          alt="Shelter Signal 로고"
+          width="48"
+          height="48"
+          data-testid="brand-logo"
+        />
+        <div className="brand-copy">
+          <p className="eyebrow">공공데이터 구조동물 신호</p>
+          <h1>Shelter Signal</h1>
+          <p className="brand-tagline">보호 종료가 가까운 공고를 먼저 확인합니다.</p>
+        </div>
       </div>
       <DataSourceNote source={dataSource} errorMessage={errorMessage} animalCount={animalCount} />
     </header>
