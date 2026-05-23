@@ -1,0 +1,5 @@
+.env
+data/raw/*.json
+data/raw/*.xml
+__pycache__/
+*.pyc
