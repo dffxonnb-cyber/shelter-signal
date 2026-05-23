@@ -5,8 +5,6 @@ export type RescueWindowLabel =
   | "여유 있음"
   | "종료/확인 필요";
 
-export type ProcessState = "보호중" | "종료(입양)" | "종료(반환)";
-
 export interface MockAnimal {
   id: string;
   desertionNo: string;
@@ -28,7 +26,7 @@ export interface MockAnimal {
   weight: string;
   sex: string;
   neuterYn: string;
-  processState: ProcessState;
+  processState: string;
   region: string;
   shelterName: string;
   shelterTel: string | null;

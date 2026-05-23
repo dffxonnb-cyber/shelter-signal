@@ -1,0 +1,79 @@
+[
+  {
+    "animal_count": 1,
+    "deadline_bucket": "0-1일",
+    "with_photo_count": 1,
+    "active_notice_count": 1,
+    "rescue_window_label": "긴급 확인",
+    "with_care_tel_count": 1,
+    "avg_rescue_window_score": 80.0,
+    "max_days_until_notice_end": 1,
+    "min_days_until_notice_end": 1
+  },
+  {
+    "animal_count": 2,
+    "deadline_bucket": "2-3일",
+    "with_photo_count": 1,
+    "active_notice_count": 2,
+    "rescue_window_label": "곧 종료",
+    "with_care_tel_count": 2,
+    "avg_rescue_window_score": 70.0,
+    "max_days_until_notice_end": 3,
+    "min_days_until_notice_end": 2
+  },
+  {
+    "animal_count": 3,
+    "deadline_bucket": "4-7일",
+    "with_photo_count": 3,
+    "active_notice_count": 3,
+    "rescue_window_label": "확인 필요",
+    "with_care_tel_count": 2,
+    "avg_rescue_window_score": 46.7,
+    "max_days_until_notice_end": 7,
+    "min_days_until_notice_end": 4
+  },
+  {
+    "animal_count": 3,
+    "deadline_bucket": "8일 이상",
+    "with_photo_count": 1,
+    "active_notice_count": 3,
+    "rescue_window_label": "확인 필요",
+    "with_care_tel_count": 2,
+    "avg_rescue_window_score": 35.0,
+    "max_days_until_notice_end": 15,
+    "min_days_until_notice_end": 11
+  },
+  {
+    "animal_count": 9,
+    "deadline_bucket": "8일 이상",
+    "with_photo_count": 8,
+    "active_notice_count": 9,
+    "rescue_window_label": "여유 있음",
+    "with_care_tel_count": 9,
+    "avg_rescue_window_score": 25.0,
+    "max_days_until_notice_end": 26,
+    "min_days_until_notice_end": 8
+  },
+  {
+    "animal_count": 1,
+    "deadline_bucket": "0-1일",
+    "with_photo_count": 1,
+    "active_notice_count": 0,
+    "rescue_window_label": "종료/확인 필요",
+    "with_care_tel_count": 1,
+    "avg_rescue_window_score": 20.0,
+    "max_days_until_notice_end": 0,
+    "min_days_until_notice_end": 0
+  },
+  {
+    "animal_count": 1,
+    "deadline_bucket": "8일 이상",
+    "with_photo_count": 1,
+    "active_notice_count": 0,
+    "rescue_window_label": "종료/확인 필요",
+    "with_care_tel_count": 1,
+    "avg_rescue_window_score": 20.0,
+    "max_days_until_notice_end": 16,
+    "min_days_until_notice_end": 16
+  }
+]

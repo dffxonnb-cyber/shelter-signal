@@ -183,7 +183,9 @@ select:focus-visible {
 .saved-placeholder,
 .filters,
 .filter-summary,
-.signal-note {
+.signal-note,
+.data-state,
+.window-summary-strip {
   border: 1px solid #ddd6c9;
   border-radius: 8px;
   background: #fffdf8;
@@ -275,6 +277,31 @@ select:focus-visible {
   gap: 10px;
 }
 
+.window-summary-strip {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.window-summary-strip article {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f8f4eb;
+}
+
+.window-summary-strip strong {
+  color: #254c4a;
+}
+
+.window-summary-strip span:last-child {
+  color: #67736f;
+  font-size: 0.84rem;
+}
+
 .metric-card {
   display: grid;
   gap: 8px;
@@ -306,6 +333,36 @@ select:focus-visible {
 .signal-note {
   padding: 14px 16px;
   background: #f2efe6;
+}
+
+.data-state {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.data-state strong {
+  color: #254c4a;
+}
+
+.data-state p {
+  margin: 0;
+  color: #60706c;
+  line-height: 1.5;
+}
+
+.data-state.is-loading {
+  background: #f8f4eb;
+}
+
+.data-state.is-exported {
+  border-color: #cddcce;
+  background: #eef4ed;
+}
+
+.data-state.is-fallback {
+  border-color: #e2cda9;
+  background: #fff7e8;
 }
 
 .filters {

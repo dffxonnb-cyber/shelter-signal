@@ -1,11 +1,17 @@
-import { type CSSProperties, type ReactNode, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   MOCK_REFERENCE_DATE,
   MockAnimal,
   RescueWindowLabel,
-  mockAnimals,
   rescueWindowLabels,
 } from "./data/mockAnimals";
+import {
+  ExportedAppData,
+  RegionSummaryRecord,
+  RescueWindowSummaryRecord,
+  fallbackAppData,
+  loadExportedAppData,
+} from "./data/exportedData";
 
 type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
 
@@ -27,23 +33,61 @@ const labelOrder: Record<RescueWindowLabel, number> = {
   "종료/확인 필요": 5,
 };
 
+type DataSourceState = "loading" | "exported" | "fallback";
+
+interface RuntimeAppData extends ExportedAppData {
+  source: DataSourceState;
+  errorMessage?: string;
+}
+
 function App() {
   const [activeView, setActiveView] = useState<ViewKey>("overview");
   const [labelFilter, setLabelFilter] = useState(ALL_FILTER);
   const [typeFilter, setTypeFilter] = useState(ALL_FILTER);
   const [regionFilter, setRegionFilter] = useState(ALL_FILTER);
-  const [selectedAnimalId, setSelectedAnimalId] = useState(mockAnimals[0]?.id ?? "");
+  const [selectedAnimalId, setSelectedAnimalId] = useState("");
+  const [runtimeData, setRuntimeData] = useState<RuntimeAppData>({
+    ...fallbackAppData,
+    source: "loading",
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    loadExportedAppData()
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+        setRuntimeData({ ...data, source: "exported" });
+        setSelectedAnimalId(data.animals[0]?.id ?? "");
+      })
+      .catch((error: unknown) => {
+        if (!isMounted) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "exported JSON load failed";
+        setRuntimeData({ ...fallbackAppData, source: "fallback", errorMessage: message });
+        setSelectedAnimalId(fallbackAppData.animals[0]?.id ?? "");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const animals = runtimeData.animals;
 
   const animalTypes = useMemo(
-    () => Array.from(new Set(mockAnimals.map((animal) => animal.animalType))),
-    []
+    () => Array.from(new Set(animals.map((animal) => animal.animalType))),
+    [animals]
   );
   const regions = useMemo(
-    () => Array.from(new Set(mockAnimals.map((animal) => animal.region))).sort(),
-    []
+    () => Array.from(new Set(animals.map((animal) => animal.region))).sort(),
+    [animals]
   );
 
-  const sortedAnimals = useMemo(() => sortByWindow(mockAnimals), []);
+  const sortedAnimals = useMemo(() => sortByWindow(animals), [animals]);
   const filteredAnimals = useMemo(() => {
     return sortedAnimals
       .filter((animal) =>
@@ -54,17 +98,19 @@ function App() {
   }, [labelFilter, regionFilter, sortedAnimals, typeFilter]);
 
   const selectedAnimal =
-    mockAnimals.find((animal) => animal.id === selectedAnimalId) ?? filteredAnimals[0];
+    animals.find((animal) => animal.id === selectedAnimalId) ?? filteredAnimals[0];
 
-  const activeAnimals = mockAnimals.filter((animal) => animal.processState === "보호중");
-  const urgentAnimals = mockAnimals.filter((animal) => animal.rescueWindowLabel === "긴급 확인");
+  const activeAnimals = animals.filter((animal) => animal.processState === "보호중");
+  const urgentAnimals = animals.filter((animal) => animal.rescueWindowLabel === "긴급 확인");
   const goldenTimeAnimals = sortedAnimals.filter((animal) =>
     ["긴급 확인", "곧 종료"].includes(animal.rescueWindowLabel)
   );
-  const averageScore = Math.round(
-    mockAnimals.reduce((sum, animal) => sum + animal.rescueWindowScore, 0) / mockAnimals.length
-  );
-  const missingPhotoCount = mockAnimals.filter((animal) => !animal.hasPhoto).length;
+  const averageScore = animals.length
+    ? Math.round(
+        animals.reduce((sum, animal) => sum + animal.rescueWindowScore, 0) / animals.length
+      )
+    : 0;
+  const missingPhotoCount = animals.filter((animal) => !animal.hasPhoto).length;
 
   const resetFilters = () => {
     setLabelFilter(ALL_FILTER);
@@ -84,9 +130,11 @@ function App() {
           </p>
         </div>
         <div className="status-panel" aria-label="데이터 상태">
-          <span>데이터 기준일</span>
-          <strong>{MOCK_REFERENCE_DATE}</strong>
-          <small>시범 데이터</small>
+          <span>{runtimeData.source === "exported" ? "정적 JSON" : "대체 데이터"}</span>
+          <strong>
+            {runtimeData.source === "exported" ? `${animals.length}건` : MOCK_REFERENCE_DATE}
+          </strong>
+          <small>{dataSourceCopy(runtimeData.source)}</small>
         </div>
       </header>
 
@@ -122,6 +170,7 @@ function App() {
         </aside>
 
         <section className="content-area">
+          <DataStateBanner source={runtimeData.source} errorMessage={runtimeData.errorMessage} />
           {activeView === "overview" && (
             <Overview
               activeCount={activeAnimals.length}
@@ -130,6 +179,7 @@ function App() {
               averageScore={averageScore}
               missingPhotoCount={missingPhotoCount}
               topAnimals={goldenTimeAnimals.slice(0, 3)}
+              rescueWindowSummaries={runtimeData.rescueWindowSummaries}
               onOpenGoldenTime={() => setActiveView("golden")}
             />
           )}
@@ -156,7 +206,9 @@ function App() {
               onSelect={setSelectedAnimalId}
             />
           )}
-          {activeView === "regions" && <RegionSummary animals={mockAnimals} />}
+          {activeView === "regions" && (
+            <RegionSummary animals={animals} summaries={runtimeData.regionSummaries} />
+          )}
           {activeView === "saved" && <SavedNotices />}
         </section>
 
@@ -173,6 +225,7 @@ function Overview({
   averageScore,
   missingPhotoCount,
   topAnimals,
+  rescueWindowSummaries,
   onOpenGoldenTime,
 }: {
   activeCount: number;
@@ -181,6 +234,7 @@ function Overview({
   averageScore: number;
   missingPhotoCount: number;
   topAnimals: MockAnimal[];
+  rescueWindowSummaries: RescueWindowSummaryRecord[];
   onOpenGoldenTime: () => void;
 }) {
   return (
@@ -214,6 +268,8 @@ function Overview({
         </div>
       </section>
 
+      <WindowSummaryStrip summaries={rescueWindowSummaries} />
+
       <section className="metric-grid" aria-label="요약 지표">
         <Metric label="긴급 확인" value={urgentCount} hint="D-Day 또는 D-1 공고" />
         <Metric label="3일 이내" value={goldenCount} hint="우선 확인 큐" />
@@ -225,6 +281,24 @@ function Overview({
   );
 }
 
+function WindowSummaryStrip({ summaries }: { summaries: RescueWindowSummaryRecord[] }) {
+  if (!summaries.length) {
+    return null;
+  }
+
+  return (
+    <section className="window-summary-strip" aria-label="Rescue Window 요약">
+      {summaries.slice(0, 5).map((summary) => (
+        <article key={`${summary.rescue_window_label}-${summary.deadline_bucket}`}>
+          <WindowBadge label={summary.rescue_window_label} />
+          <strong>{summary.animal_count}건</strong>
+          <span>{summary.deadline_bucket}</span>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 function Metric({ label, value, hint }: { label: string; value: number; hint: string }) {
   return (
     <article className="metric-card">
@@ -232,6 +306,39 @@ function Metric({ label, value, hint }: { label: string; value: number; hint: st
       <strong>{value}</strong>
       <small>{hint}</small>
     </article>
+  );
+}
+
+function DataStateBanner({
+  source,
+  errorMessage,
+}: {
+  source: DataSourceState;
+  errorMessage?: string;
+}) {
+  if (source === "loading") {
+    return (
+      <section className="data-state is-loading" aria-live="polite">
+        <strong>정적 JSON 데이터를 불러오는 중입니다.</strong>
+        <p>로컬 export 파일을 확인한 뒤 화면에 반영합니다.</p>
+      </section>
+    );
+  }
+
+  if (source === "fallback") {
+    return (
+      <section className="data-state is-fallback" aria-live="polite">
+        <strong>export JSON을 찾지 못해 mock 데이터를 표시합니다.</strong>
+        <p>{errorMessage ?? "app/public/data 파일을 생성한 뒤 다시 확인해주세요."}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="data-state is-exported" aria-live="polite">
+      <strong>Phase 1 SQL export 데이터를 표시 중입니다.</strong>
+      <p>브라우저는 PostgreSQL에 직접 연결하지 않고 정적 JSON만 읽습니다.</p>
+    </section>
   );
 }
 
@@ -437,8 +544,24 @@ function AnimalCards({
   );
 }
 
-function RegionSummary({ animals }: { animals: MockAnimal[] }) {
-  const summaries = useMemo(() => {
+function RegionSummary({
+  animals,
+  summaries,
+}: {
+  animals: MockAnimal[];
+  summaries: RegionSummaryRecord[];
+}) {
+  const computedSummaries = useMemo(() => {
+    if (summaries.length) {
+      return summaries.map((summary) => ({
+        region: summary.org_nm,
+        total: summary.animal_count,
+        urgent: summary.urgent_count,
+        endingSoon: summary.ending_soon_count,
+        averageScore: summary.avg_rescue_window_score,
+      }));
+    }
+
     const grouped = new Map<string, MockAnimal[]>();
     animals.forEach((animal) => {
       grouped.set(animal.region, [...(grouped.get(animal.region) ?? []), animal]);
@@ -458,7 +581,7 @@ function RegionSummary({ animals }: { animals: MockAnimal[] }) {
         ),
       }))
       .sort((a, b) => b.urgent - a.urgent || b.endingSoon - a.endingSoon || b.total - a.total);
-  }, [animals]);
+  }, [animals, summaries]);
 
   return (
     <div className="view-stack">
@@ -468,7 +591,7 @@ function RegionSummary({ animals }: { animals: MockAnimal[] }) {
         description="관심 지역의 공고를 차분히 확인할 수 있어요."
       />
       <section className="summary-table" aria-label="지역별 요약">
-        {summaries.map((summary) => (
+        {computedSummaries.map((summary) => (
           <article
             key={summary.region}
             className={`summary-row ${summary.urgent > 0 ? "has-urgent" : ""}`}
@@ -679,6 +802,16 @@ function sortByWindow(animals: MockAnimal[]) {
 
 function scoreStyle(score: number): CSSProperties & { "--score": string } {
   return { "--score": `${score}%` };
+}
+
+function dataSourceCopy(source: DataSourceState): string {
+  if (source === "loading") {
+    return "불러오는 중";
+  }
+  if (source === "exported") {
+    return "SQL export 기반";
+  }
+  return "mock 대체 데이터";
 }
 
 function labelClass(label: RescueWindowLabel) {

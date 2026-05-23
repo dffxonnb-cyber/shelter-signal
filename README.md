@@ -2,7 +2,7 @@
 
 Shelter Signal은 구조/유기동물 공고를 모니터링하고, 공고 종료까지 남은 시간을 기준으로 먼저 확인해야 할 대상을 정리하기 위한 프로젝트입니다.
 
-현재 저장소는 **Phase 1 데이터 파이프라인**과 **Phase 2 PWA 스타일 앱 스캐폴드** 단계입니다. 운영 서비스, 인증, 알림, n8n 자동화, 배포 환경은 아직 구현하지 않았습니다.
+현재 저장소는 **Phase 1 데이터 파이프라인**, **Phase 2 PWA 스타일 앱 스캐폴드**, **Phase 3 정적 JSON export 연동** 단계입니다. 운영 서비스, 인증, 알림, n8n 자동화, 배포 환경은 아직 구현하지 않았습니다.
 
 ## 현재 범위
 
@@ -25,6 +25,12 @@ Phase 2에서 추가한 것은 다음 항목입니다.
 - Rescue Window Score와 라벨을 보여주는 mock 데이터 UI
 - 라벨, 축종, 지역 기준 기본 필터
 
+Phase 3에서 추가한 것은 다음 항목입니다.
+
+- PostgreSQL mart view 결과를 앱용 정적 JSON으로 export하는 `scripts/export_app_data.py`
+- `app/public/data/*.json` 파일을 런타임에 읽는 PWA 데이터 로딩
+- 정적 JSON이 없거나 읽기 실패 시 기존 `app/src/data/mockAnimals.ts`로 fallback하는 흐름
+
 보호소 정보 조회 API는 향후 보호소 enrich layer 후보로 별도 스모크 테스트만 준비했습니다. 홈페이지 URL, 운영시간, 좌표 같은 필드는 실제 API 응답에서 확인되기 전까지 지원한다고 가정하지 않습니다. 보호소 API 호출이 `403`으로 실패하면 해당 API 활용신청 권한과 공식 endpoint를 먼저 확인합니다.
 
 ## API 키 관리
@@ -43,11 +49,12 @@ ANIMAL_API_KEY=발급받은_실제_키
 
 - pipeline mock 데이터: `data/sample/rescued_animals_mock.json`
 - app mock 데이터: `app/src/data/mockAnimals.ts`
+- app export 데이터: `app/public/data/*.json`
 - live API 호출: `ANIMAL_API_KEY`가 있는 로컬 `.env` 필요
 - DB 적재: `--load-db`를 명시한 경우에만 실행
 - 기본 ingestion 동작: dry-run, DB write 없음
 
-앱은 현재 PostgreSQL이나 live API에 직접 연결하지 않습니다. 백엔드/API 연결은 이후 단계에서 추가합니다.
+앱은 PostgreSQL이나 live API에 직접 연결하지 않습니다. 브라우저에서 DB 접속 정보를 다루지 않기 위해, 로컬 export 스크립트가 SQL view 결과를 정적 JSON으로 만든 뒤 PWA가 그 JSON만 읽습니다. 백엔드/API 연결은 이후 단계에서 추가합니다.
 
 ## Rescue Window Score
 
@@ -81,6 +88,26 @@ python scripts/validate_pipeline.py
 
 검증 스크립트는 migration 적용, mock 데이터 적재, SQL 모델 생성, SQL 테스트 실행, analytics view 미리보기를 자동으로 수행합니다.
 
+## Phase 3 정적 JSON export
+
+Phase 1 검증으로 로컬 PostgreSQL에 mock 데이터와 SQL view가 준비된 뒤 다음 명령으로 앱용 JSON을 생성합니다.
+
+```powershell
+python scripts/export_app_data.py
+```
+
+생성되는 파일은 다음 위치에 저장됩니다.
+
+```text
+app/public/data/animals.json
+app/public/data/region_summary.json
+app/public/data/rescue_window_summary.json
+app/public/data/shelter_summary.json
+app/public/data/kind_summary.json
+```
+
+이 파일들은 현재 MVP 앱이 읽는 정적 데이터입니다. 운영용 API 서버나 직접 DB 연결을 대체하는 임시 연결 방식입니다.
+
 ## Phase 2 앱 실행
 
 앱은 `/app` 폴더에서 실행합니다.
@@ -92,16 +119,28 @@ npm run dev
 npm run build
 ```
 
-현재 앱은 mock 데이터만 시각화합니다. 인증, 이메일/SMS 알림, n8n 자동화, 운영용 API 연결은 포함하지 않았습니다.
+로컬 데이터 흐름을 처음부터 확인하려면 다음 순서로 실행합니다.
+
+```powershell
+docker compose up -d
+python scripts/validate_pipeline.py
+python scripts/export_app_data.py
+cd app
+npm run dev
+```
+
+정적 JSON 파일이 없으면 앱은 기존 mock 데이터로 fallback합니다. 인증, 이메일/SMS 알림, n8n 자동화, 운영용 API 연결은 포함하지 않았습니다.
 
 ## 주요 경로
 
 ```text
 app/
 app/src/data/mockAnimals.ts
+app/public/data/
 ingestion/run_animal_ingestion.py
 scripts/test_animal_api.py
 scripts/test_shelter_api.py
+scripts/export_app_data.py
 scripts/validate_pipeline.py
 sql/migrations/001_create_raw_rescued_animals.sql
 sql/models/
