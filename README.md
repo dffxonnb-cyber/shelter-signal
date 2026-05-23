@@ -25,6 +25,8 @@ Phase 2에서 추가한 것은 다음 항목입니다.
 - Rescue Window Score와 라벨을 보여주는 mock 데이터 UI
 - 라벨, 축종, 지역 기준 기본 필터
 
+보호소 정보 조회 API는 향후 보호소 enrich layer 후보로 별도 스모크 테스트만 준비했습니다. 홈페이지 URL, 운영시간, 좌표 같은 필드는 실제 API 응답에서 확인되기 전까지 지원한다고 가정하지 않습니다. 보호소 API 호출이 `403`으로 실패하면 해당 API 활용신청 권한과 공식 endpoint를 먼저 확인합니다.
+
 ## API 키 관리
 
 실제 API 키는 로컬 `.env` 파일에만 둡니다. `.env`는 Git에 커밋하지 않습니다.
@@ -99,6 +101,7 @@ app/
 app/src/data/mockAnimals.ts
 ingestion/run_animal_ingestion.py
 scripts/test_animal_api.py
+scripts/test_shelter_api.py
 scripts/validate_pipeline.py
 sql/migrations/001_create_raw_rescued_animals.sql
 sql/models/
