@@ -17,12 +17,12 @@ type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
 
 const ALL_FILTER = "전체";
 
-const viewItems: Array<{ key: ViewKey; label: string }> = [
-  { key: "overview", label: "홈" },
-  { key: "golden", label: "골든 타임" },
-  { key: "notices", label: "공고 목록" },
-  { key: "regions", label: "지역 요약" },
-  { key: "saved", label: "저장 공고" },
+const viewItems: Array<{ key: ViewKey; label: string; testId: string }> = [
+  { key: "overview", label: "홈", testId: "nav-home" },
+  { key: "golden", label: "골든타임", testId: "nav-golden" },
+  { key: "notices", label: "공고", testId: "nav-notices" },
+  { key: "regions", label: "지역", testId: "nav-regions" },
+  { key: "saved", label: "저장", testId: "nav-saved" },
 ];
 
 const labelOrder: Record<RescueWindowLabel, number> = {
@@ -40,12 +40,20 @@ interface RuntimeAppData extends ExportedAppData {
   errorMessage?: string;
 }
 
+interface RegionSignal {
+  region: string;
+  total: number;
+  urgent: number;
+  endingSoon: number;
+  averageScore: number;
+}
+
 function App() {
   const [activeView, setActiveView] = useState<ViewKey>("overview");
   const [labelFilter, setLabelFilter] = useState(ALL_FILTER);
   const [typeFilter, setTypeFilter] = useState(ALL_FILTER);
   const [regionFilter, setRegionFilter] = useState(ALL_FILTER);
-  const [selectedAnimalId, setSelectedAnimalId] = useState("");
+  const [detailAnimalId, setDetailAnimalId] = useState<string | null>(null);
   const [runtimeData, setRuntimeData] = useState<RuntimeAppData>({
     ...fallbackAppData,
     source: "loading",
@@ -60,7 +68,6 @@ function App() {
           return;
         }
         setRuntimeData({ ...data, source: "exported" });
-        setSelectedAnimalId(data.animals[0]?.id ?? "");
       })
       .catch((error: unknown) => {
         if (!isMounted) {
@@ -68,13 +75,27 @@ function App() {
         }
         const message = error instanceof Error ? error.message : "exported JSON load failed";
         setRuntimeData({ ...fallbackAppData, source: "fallback", errorMessage: message });
-        setSelectedAnimalId(fallbackAppData.animals[0]?.id ?? "");
       });
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!detailAnimalId) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDetailAnimalId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [detailAnimalId]);
 
   const animals = runtimeData.animals;
 
@@ -86,7 +107,6 @@ function App() {
     () => Array.from(new Set(animals.map((animal) => animal.region))).sort(),
     [animals]
   );
-
   const sortedAnimals = useMemo(() => sortByWindow(animals), [animals]);
   const filteredAnimals = useMemo(() => {
     return sortedAnimals
@@ -97,20 +117,23 @@ function App() {
       .filter((animal) => (regionFilter === ALL_FILTER ? true : animal.region === regionFilter));
   }, [labelFilter, regionFilter, sortedAnimals, typeFilter]);
 
-  const selectedAnimal =
-    animals.find((animal) => animal.id === selectedAnimalId) ?? filteredAnimals[0];
-
-  const activeAnimals = animals.filter((animal) => animal.processState === "보호중");
+  const detailAnimal = detailAnimalId
+    ? animals.find((animal) => animal.id === detailAnimalId)
+    : undefined;
+  const activeAnimals = animals.filter((animal) => animal.processState.includes("보호"));
   const urgentAnimals = animals.filter((animal) => animal.rescueWindowLabel === "긴급 확인");
+  const soonEndingAnimals = animals.filter((animal) => animal.rescueWindowLabel === "곧 종료");
   const goldenTimeAnimals = sortedAnimals.filter((animal) =>
     ["긴급 확인", "곧 종료"].includes(animal.rescueWindowLabel)
   );
-  const averageScore = animals.length
-    ? Math.round(
-        animals.reduce((sum, animal) => sum + animal.rescueWindowScore, 0) / animals.length
-      )
-    : 0;
-  const missingPhotoCount = animals.filter((animal) => !animal.hasPhoto).length;
+  const topPriorityAnimals = (goldenTimeAnimals.length ? goldenTimeAnimals : sortedAnimals).slice(
+    0,
+    3
+  );
+  const regionSignals = useMemo(
+    () => buildRegionSignals(animals, runtimeData.regionSummaries),
+    [animals, runtimeData.regionSummaries]
+  );
 
   const resetFilters = () => {
     setLabelFilter(ALL_FILTER);
@@ -118,190 +141,225 @@ function App() {
     setRegionFilter(ALL_FILTER);
   };
 
+  const openDetail = (id: string) => {
+    setDetailAnimalId(id);
+  };
+
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="topbar-copy">
-          <p className="eyebrow">공공데이터 기반 구조동물 모니터링</p>
-          <h1>Shelter Signal</h1>
-          <p className="intro">
-            보호 종료가 가까운 공고를 먼저 확인해보세요. 공식 문의는 보호소 또는
-            관할기관을 통해 확인해주세요.
-          </p>
-        </div>
-        <div className="status-panel" aria-label="데이터 상태">
-          <span>{runtimeData.source === "exported" ? "정적 JSON" : "대체 데이터"}</span>
-          <strong>
-            {runtimeData.source === "exported" ? `${animals.length}건` : MOCK_REFERENCE_DATE}
-          </strong>
-          <small>{dataSourceCopy(runtimeData.source)}</small>
-        </div>
-      </header>
+      <AppHeader
+        dataSource={runtimeData.source}
+        errorMessage={runtimeData.errorMessage}
+        animalCount={animals.length}
+      />
 
-      <nav className="mobile-tabs" aria-label="주요 화면">
-        {viewItems.map((item) => (
-          <button
-            key={item.key}
-            className={activeView === item.key ? "is-active" : ""}
-            type="button"
-            onClick={() => setActiveView(item.key)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      <AppNavigation activeView={activeView} placement="top" onChange={setActiveView} />
 
-      <main className="layout">
-        <aside className="sidebar" aria-label="화면 선택">
-          <div className="brand-mark" aria-hidden="true">
-            SS
-          </div>
-          <p>Rescue Window</p>
-          {viewItems.map((item) => (
-            <button
-              key={item.key}
-              className={activeView === item.key ? "is-active" : ""}
-              type="button"
-              onClick={() => setActiveView(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </aside>
-
-        <section className="content-area">
-          <DataStateBanner source={runtimeData.source} errorMessage={runtimeData.errorMessage} />
-          {activeView === "overview" && (
-            <Overview
-              activeCount={activeAnimals.length}
-              urgentCount={urgentAnimals.length}
-              goldenCount={goldenTimeAnimals.length}
-              averageScore={averageScore}
-              missingPhotoCount={missingPhotoCount}
-              topAnimals={goldenTimeAnimals.slice(0, 3)}
-              rescueWindowSummaries={runtimeData.rescueWindowSummaries}
-              onOpenGoldenTime={() => setActiveView("golden")}
-            />
-          )}
-          {activeView === "golden" && (
-            <GoldenTimeList
-              animals={goldenTimeAnimals}
-              selectedAnimalId={selectedAnimal?.id}
-              onSelect={setSelectedAnimalId}
-            />
-          )}
-          {activeView === "notices" && (
-            <NoticeList
-              animals={filteredAnimals}
-              selectedAnimalId={selectedAnimal?.id}
-              labelFilter={labelFilter}
-              typeFilter={typeFilter}
-              regionFilter={regionFilter}
-              animalTypes={animalTypes}
-              regions={regions}
-              onLabelFilter={setLabelFilter}
-              onTypeFilter={setTypeFilter}
-              onRegionFilter={setRegionFilter}
-              onResetFilters={resetFilters}
-              onSelect={setSelectedAnimalId}
-            />
-          )}
-          {activeView === "regions" && (
-            <RegionSummary animals={animals} summaries={runtimeData.regionSummaries} />
-          )}
-          {activeView === "saved" && <SavedNotices />}
-        </section>
-
-        <AnimalDetail animal={selectedAnimal} />
+      <main className="app-main">
+        {activeView === "overview" && (
+          <HomeScreen
+            activeCount={activeAnimals.length}
+            urgentCount={urgentAnimals.length}
+            soonEndingCount={soonEndingAnimals.length}
+            goldenCount={goldenTimeAnimals.length}
+            topAnimals={topPriorityAnimals}
+            regionSignals={regionSignals}
+            rescueWindowSummaries={runtimeData.rescueWindowSummaries}
+            onOpenGoldenTime={() => setActiveView("golden")}
+            onOpenRegions={() => setActiveView("regions")}
+            onOpenSaved={() => setActiveView("saved")}
+            onOpenDetail={openDetail}
+          />
+        )}
+        {activeView === "golden" && (
+          <GoldenTimeScreen
+            animals={goldenTimeAnimals}
+            selectedAnimalId={detailAnimal?.id}
+            onSelect={openDetail}
+          />
+        )}
+        {activeView === "notices" && (
+          <NoticeListScreen
+            animals={filteredAnimals}
+            selectedAnimalId={detailAnimal?.id}
+            labelFilter={labelFilter}
+            typeFilter={typeFilter}
+            regionFilter={regionFilter}
+            animalTypes={animalTypes}
+            regions={regions}
+            onLabelFilter={setLabelFilter}
+            onTypeFilter={setTypeFilter}
+            onRegionFilter={setRegionFilter}
+            onResetFilters={resetFilters}
+            onSelect={openDetail}
+          />
+        )}
+        {activeView === "regions" && <RegionSummaryScreen regionSignals={regionSignals} />}
+        {activeView === "saved" && <SavedNoticesScreen />}
       </main>
+
+      <AppNavigation activeView={activeView} placement="bottom" onChange={setActiveView} />
+
+      {detailAnimal && (
+        <NoticeDetailSheet animal={detailAnimal} onClose={() => setDetailAnimalId(null)} />
+      )}
     </div>
   );
 }
 
-function Overview({
+function AppHeader({
+  dataSource,
+  errorMessage,
+  animalCount,
+}: {
+  dataSource: DataSourceState;
+  errorMessage?: string;
+  animalCount: number;
+}) {
+  return (
+    <header className="app-header">
+      <div>
+        <p className="eyebrow">공공데이터 구조동물 신호</p>
+        <h1>Shelter Signal</h1>
+      </div>
+      <DataSourceNote source={dataSource} errorMessage={errorMessage} animalCount={animalCount} />
+    </header>
+  );
+}
+
+function AppNavigation({
+  activeView,
+  placement,
+  onChange,
+}: {
+  activeView: ViewKey;
+  placement: "top" | "bottom";
+  onChange: (view: ViewKey) => void;
+}) {
+  return (
+    <nav className={`${placement}-nav app-nav`} aria-label="주요 화면">
+      {viewItems.map((item) => (
+        <button
+          key={item.key}
+          className={activeView === item.key ? "is-active" : ""}
+          type="button"
+          data-testid={`${item.testId}-${placement}`}
+          onClick={() => onChange(item.key)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function HomeScreen({
   activeCount,
   urgentCount,
+  soonEndingCount,
   goldenCount,
-  averageScore,
-  missingPhotoCount,
   topAnimals,
+  regionSignals,
   rescueWindowSummaries,
   onOpenGoldenTime,
+  onOpenRegions,
+  onOpenSaved,
+  onOpenDetail,
 }: {
   activeCount: number;
   urgentCount: number;
+  soonEndingCount: number;
   goldenCount: number;
-  averageScore: number;
-  missingPhotoCount: number;
   topAnimals: MockAnimal[];
+  regionSignals: RegionSignal[];
   rescueWindowSummaries: RescueWindowSummaryRecord[];
   onOpenGoldenTime: () => void;
+  onOpenRegions: () => void;
+  onOpenSaved: () => void;
+  onOpenDetail: (id: string) => void;
 }) {
+  const strongestRegion = regionSignals[0];
+
   return (
-    <div className="view-stack">
-      <section className="hero-panel">
+    <div className="screen-stack" data-testid="screen-home">
+      <section className="daily-hero">
         <div className="hero-copy">
-          <p className="eyebrow">Rescue Window Score</p>
-          <h2>공고 종료까지 남은 시간과 데이터 신호를 함께 봅니다.</h2>
-          <p>
-            Rescue Window Score는 남은 공고 기간, 사진과 연락처 유무, 공고 상태를
-            함께 읽어 우선 확인 순서를 제안하는 내부 지표입니다.
-          </p>
-          <button className="primary-action" type="button" onClick={onOpenGoldenTime}>
-            골든 타임 공고 보기
-          </button>
+          <p className="eyebrow">오늘의 신호</p>
+          <h2>오늘 먼저 확인할 공고를 정리했어요.</h2>
+          <p>보호 종료가 가까운 공고를 우선순위로 보여드려요.</p>
         </div>
-        <div className="priority-preview" aria-label="우선 확인 미리보기">
-          <span className="section-kicker">오늘 먼저 볼 공고</span>
-          {topAnimals.map((animal) => (
-            <div className="preview-row" key={animal.id}>
-              <span className={`label-dot label-${labelClass(animal.rescueWindowLabel)}`} />
-              <div>
-                <strong>{animal.ddayText}</strong>
-                <p>
-                  {animal.region} · {animal.breed}
-                </p>
-              </div>
-              <span>{animal.rescueWindowScore}</span>
-            </div>
-          ))}
+        <div className="hero-count" aria-label="오늘 먼저 확인할 골든타임 공고 수">
+          <span>오늘 확인</span>
+          <strong>{goldenCount}</strong>
+          <small>골든타임 공고</small>
         </div>
       </section>
 
-      <WindowSummaryStrip summaries={rescueWindowSummaries} />
+      <section className="signal-stat-row" aria-label="오늘의 요약">
+        <SignalStat label="긴급 확인" value={urgentCount} hint="D-Day 또는 D-1 중심" tone="urgent" />
+        <SignalStat label="곧 종료" value={soonEndingCount} hint="보호 종료 임박" tone="soon" />
+        <SignalStat label="보호중" value={activeCount} hint="현재 표시 데이터" tone="calm" />
+      </section>
 
-      <section className="metric-grid" aria-label="요약 지표">
-        <Metric label="긴급 확인" value={urgentCount} hint="D-Day 또는 D-1 공고" />
-        <Metric label="3일 이내" value={goldenCount} hint="우선 확인 큐" />
-        <Metric label="보호중 공고" value={activeCount} hint="현재 표시 데이터" />
-        <Metric label="사진 없음" value={missingPhotoCount} hint="추가 확인 신호" />
-        <Metric label="평균 점수" value={averageScore} hint="Rescue Window Score" />
+      <section className="priority-section">
+        <SectionHeader
+          kicker="Top priority"
+          title="먼저 볼 공고"
+          actionLabel="골든타임 보기"
+          onAction={onOpenGoldenTime}
+        />
+        <PriorityAnimalList animals={topAnimals} onSelect={onOpenDetail} />
+      </section>
+
+      <section className="home-split">
+        <button className="region-signal-card" type="button" onClick={onOpenRegions}>
+          <span className="section-kicker">지역 신호</span>
+          {strongestRegion ? (
+            <>
+              <strong>{strongestRegion.region}</strong>
+              <p>
+                긴급 {strongestRegion.urgent}건, 곧 종료 {strongestRegion.endingSoon}건을 먼저
+                확인할 수 있어요.
+              </p>
+              <SignalMeter urgent={strongestRegion.urgent} endingSoon={strongestRegion.endingSoon} />
+            </>
+          ) : (
+            <p>관심 지역의 신호를 차분히 확인할 수 있어요.</p>
+          )}
+        </button>
+
+        <button className="saved-preview-card" type="button" onClick={onOpenSaved}>
+          <span className="section-kicker">저장 준비</span>
+          <strong>관심 공고</strong>
+          <p>저장한 공고의 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요.</p>
+        </button>
+      </section>
+
+      <section className="info-note">
+        <strong>Rescue Window Score</strong>
+        <p>
+          공고 종료까지 남은 시간과 사진, 연락처 같은 데이터 신호를 함께 보며 우선 확인 순서를
+          제안하는 내부 지표입니다. 공식 결과를 뜻하지 않습니다.
+        </p>
+        <MiniWindowSummary summaries={rescueWindowSummaries} />
       </section>
     </div>
   );
 }
 
-function WindowSummaryStrip({ summaries }: { summaries: RescueWindowSummaryRecord[] }) {
-  if (!summaries.length) {
-    return null;
-  }
-
+function SignalStat({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  tone: "urgent" | "soon" | "calm";
+}) {
   return (
-    <section className="window-summary-strip" aria-label="Rescue Window 요약">
-      {summaries.slice(0, 5).map((summary) => (
-        <article key={`${summary.rescue_window_label}-${summary.deadline_bucket}`}>
-          <WindowBadge label={summary.rescue_window_label} />
-          <strong>{summary.animal_count}건</strong>
-          <span>{summary.deadline_bucket}</span>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function Metric({ label, value, hint }: { label: string; value: number; hint: string }) {
-  return (
-    <article className="metric-card">
+    <article className={`signal-stat tone-${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{hint}</small>
@@ -309,40 +367,87 @@ function Metric({ label, value, hint }: { label: string; value: number; hint: st
   );
 }
 
-function DataStateBanner({
-  source,
-  errorMessage,
+function SectionHeader({
+  kicker,
+  title,
+  actionLabel,
+  onAction,
 }: {
-  source: DataSourceState;
-  errorMessage?: string;
+  kicker: string;
+  title: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
-  if (source === "loading") {
-    return (
-      <section className="data-state is-loading" aria-live="polite">
-        <strong>정적 JSON 데이터를 불러오는 중입니다.</strong>
-        <p>로컬 export 파일을 확인한 뒤 화면에 반영합니다.</p>
-      </section>
-    );
-  }
-
-  if (source === "fallback") {
-    return (
-      <section className="data-state is-fallback" aria-live="polite">
-        <strong>export JSON을 찾지 못해 mock 데이터를 표시합니다.</strong>
-        <p>{errorMessage ?? "app/public/data 파일을 생성한 뒤 다시 확인해주세요."}</p>
-      </section>
-    );
-  }
-
   return (
-    <section className="data-state is-exported" aria-live="polite">
-      <strong>Phase 1 SQL export 데이터를 표시 중입니다.</strong>
-      <p>브라우저는 PostgreSQL에 직접 연결하지 않고 정적 JSON만 읽습니다.</p>
-    </section>
+    <header className="section-header">
+      <div>
+        <p className="section-kicker">{kicker}</p>
+        <h2>{title}</h2>
+      </div>
+      {actionLabel && onAction && (
+        <button className="text-action" type="button" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
+    </header>
   );
 }
 
-function GoldenTimeList({
+function MiniWindowSummary({ summaries }: { summaries: RescueWindowSummaryRecord[] }) {
+  if (!summaries.length) {
+    return null;
+  }
+
+  return (
+    <div className="mini-window-summary" aria-label="Rescue Window 요약">
+      {summaries.slice(0, 4).map((summary) => (
+        <span key={`${summary.rescue_window_label}-${summary.deadline_bucket}`}>
+          {summary.rescue_window_label} {summary.animal_count}건
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PriorityAnimalList({
+  animals,
+  onSelect,
+}: {
+  animals: MockAnimal[];
+  onSelect: (id: string) => void;
+}) {
+  if (!animals.length) {
+    return <EmptyState title="표시할 공고가 없습니다." description="데이터를 다시 확인해 주세요." />;
+  }
+
+  return (
+    <div className="priority-list" aria-label="먼저 확인할 공고">
+      {animals.map((animal) => (
+        <button
+          className="priority-card"
+          key={animal.id}
+          type="button"
+          data-testid="priority-card"
+          onClick={() => onSelect(animal.id)}
+        >
+          <div className="priority-d-day">
+            <strong>{animal.ddayText}</strong>
+            <span>{animal.rescueWindowLabel}</span>
+          </div>
+          <div className="priority-main">
+            <h3>{animal.kindFullName}</h3>
+            <p>
+              {animal.region} · {animal.shelterName}
+            </p>
+          </div>
+          <span className="priority-score">{animal.rescueWindowScore}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function GoldenTimeScreen({
   animals,
   selectedAnimalId,
   onSelect,
@@ -352,16 +457,16 @@ function GoldenTimeList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="view-stack">
-      <ViewHeader
-        kicker="우선 확인 큐"
-        title="골든 타임 리스트"
-        description="보호 종료가 가까운 공고를 먼저 확인할 수 있도록 Rescue Window Score 순서로 정리했습니다."
+    <div className="screen-stack" data-testid="screen-golden">
+      <ScreenHeader
+        kicker="골든타임"
+        title="보호 종료가 가까운 공고"
+        description="Rescue Window Score 순서로 오늘 먼저 살펴볼 공고를 정리했어요."
       />
-      <p className="signal-note">
-        이 목록은 공식 결과가 아니라 확인 순서를 돕는 신호입니다. 최종 상태는 보호소 또는
-        관할기관 공고로 확인해주세요.
-      </p>
+      <section className="signal-note">
+        이 목록은 공식 결과가 아니라 우선순위 신호입니다. 공식 문의와 최종 확인은 보호소 또는
+        관할기관을 통해 진행해주세요.
+      </section>
       <AnimalCards
         animals={animals}
         selectedAnimalId={selectedAnimalId}
@@ -372,7 +477,7 @@ function GoldenTimeList({
   );
 }
 
-function NoticeList({
+function NoticeListScreen({
   animals,
   selectedAnimalId,
   labelFilter,
@@ -400,40 +505,43 @@ function NoticeList({
   onSelect: (id: string) => void;
 }) {
   const activeFilters = [
-    ["윈도우", labelFilter],
+    ["신호", labelFilter],
     ["축종", typeFilter],
     ["지역", regionFilter],
   ].filter(([, value]) => value !== ALL_FILTER);
 
   return (
-    <div className="view-stack">
-      <ViewHeader
+    <div className="screen-stack" data-testid="screen-notices">
+      <ScreenHeader
         kicker="전체 공고"
-        title="동물 공고 목록"
-        description="Rescue Window 라벨, 축종, 지역으로 공고를 좁혀볼 수 있습니다."
+        title="공고를 차분히 살펴보기"
+        description="Rescue Window 라벨, 축종, 지역으로 필요한 공고만 좁혀볼 수 있어요."
       />
-      <section className="filters" aria-label="공고 필터">
+      <section className="filter-panel" aria-label="공고 필터">
         <FilterSelect
           label="Rescue Window"
           value={labelFilter}
           options={[ALL_FILTER, ...rescueWindowLabels]}
+          testId="filter-window"
           onChange={onLabelFilter}
         />
         <FilterSelect
           label="축종"
           value={typeFilter}
           options={[ALL_FILTER, ...animalTypes]}
+          testId="filter-type"
           onChange={onTypeFilter}
         />
         <FilterSelect
           label="지역"
           value={regionFilter}
           options={[ALL_FILTER, ...regions]}
+          testId="filter-region"
           onChange={onRegionFilter}
         />
       </section>
       <div className="filter-summary" aria-live="polite">
-        <span>{animals.length}건 표시</span>
+        <strong>{animals.length}건 표시</strong>
         {activeFilters.length ? (
           <>
             {activeFilters.map(([label, value]) => (
@@ -442,11 +550,11 @@ function NoticeList({
               </span>
             ))}
             <button type="button" onClick={onResetFilters}>
-              필터 초기화
+              초기화
             </button>
           </>
         ) : (
-          <span className="muted">필터 없음</span>
+          <span>적용된 필터가 없습니다.</span>
         )}
       </div>
       <AnimalCards animals={animals} selectedAnimalId={selectedAnimalId} onSelect={onSelect} />
@@ -458,17 +566,19 @@ function FilterSelect({
   label,
   value,
   options,
+  testId,
   onChange,
 }: {
   label: string;
   value: string;
   options: string[];
+  testId: string;
   onChange: (value: string) => void;
 }) {
   return (
     <label className="filter-control">
       <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select data-testid={testId} value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -492,51 +602,46 @@ function AnimalCards({
 }) {
   if (!animals.length) {
     return (
-      <section className="empty-state">
-        <strong>조건에 맞는 공고가 없습니다.</strong>
-        <p>필터를 줄이거나 다른 지역을 선택해보세요.</p>
-      </section>
+      <EmptyState
+        title="조건에 맞는 공고가 없습니다."
+        description="필터를 줄이거나 다른 지역을 선택해보세요."
+      />
     );
   }
 
   return (
-    <section className="animal-list" aria-label="동물 공고">
+    <section className="notice-list" aria-label="동물 공고">
       {animals.map((animal) => (
         <button
           key={animal.id}
-          className={`animal-card ${priority ? "is-priority" : ""} ${
+          className={`notice-card ${priority ? "is-priority" : ""} ${
             selectedAnimalId === animal.id ? "is-selected" : ""
           }`}
           type="button"
+          data-testid="notice-card"
           onClick={() => onSelect(animal.id)}
         >
           <PhotoPlaceholder animal={animal} />
-          <div className="animal-card-body">
-            <div className="card-topline">
-              <WindowBadge label={animal.rescueWindowLabel} />
+          <div className="notice-card-body">
+            <div className="notice-card-top">
               <DeadlineBadge animal={animal} />
+              <WindowBadge label={animal.rescueWindowLabel} />
             </div>
             <div>
               <h3>{animal.kindFullName}</h3>
-              <p className="card-subtitle">
+              <p className="notice-subtitle">
                 {animal.region} · {animal.shelterName}
               </p>
             </div>
-            <dl className="mini-facts">
-              <div>
-                <dt>상태</dt>
-                <dd>{animal.processState}</dd>
-              </div>
-              <div>
-                <dt>점수</dt>
-                <dd>{animal.rescueWindowScore}</dd>
-              </div>
-              <div>
-                <dt>사진</dt>
-                <dd>{animal.hasPhoto ? "있음" : "없음"}</dd>
-              </div>
-            </dl>
-            <ScoreBar score={animal.rescueWindowScore} />
+            <div className="notice-tags">
+              <span>{animal.processState}</span>
+              <span>{animal.animalType}</span>
+              <span>{animal.hasPhoto ? "사진 있음" : "사진 없음"}</span>
+            </div>
+            <div className="score-line">
+              <span>Rescue Window {animal.rescueWindowScore}</span>
+              <ScoreBar score={animal.rescueWindowScore} />
+            </div>
           </div>
         </button>
       ))}
@@ -544,77 +649,34 @@ function AnimalCards({
   );
 }
 
-function RegionSummary({
-  animals,
-  summaries,
-}: {
-  animals: MockAnimal[];
-  summaries: RegionSummaryRecord[];
-}) {
-  const computedSummaries = useMemo(() => {
-    if (summaries.length) {
-      return summaries.map((summary) => ({
-        region: summary.org_nm,
-        total: summary.animal_count,
-        urgent: summary.urgent_count,
-        endingSoon: summary.ending_soon_count,
-        averageScore: summary.avg_rescue_window_score,
-      }));
-    }
-
-    const grouped = new Map<string, MockAnimal[]>();
-    animals.forEach((animal) => {
-      grouped.set(animal.region, [...(grouped.get(animal.region) ?? []), animal]);
-    });
-
-    return Array.from(grouped.entries())
-      .map(([region, regionAnimals]) => ({
-        region,
-        total: regionAnimals.length,
-        urgent: regionAnimals.filter((animal) => animal.rescueWindowLabel === "긴급 확인").length,
-        endingSoon: regionAnimals.filter((animal) =>
-          ["긴급 확인", "곧 종료"].includes(animal.rescueWindowLabel)
-        ).length,
-        averageScore: Math.round(
-          regionAnimals.reduce((sum, animal) => sum + animal.rescueWindowScore, 0) /
-            regionAnimals.length
-        ),
-      }))
-      .sort((a, b) => b.urgent - a.urgent || b.endingSoon - a.endingSoon || b.total - a.total);
-  }, [animals, summaries]);
-
+function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] }) {
   return (
-    <div className="view-stack">
-      <ViewHeader
-        kicker="지역별 현황"
-        title="지역 요약"
-        description="관심 지역의 공고를 차분히 확인할 수 있어요."
+    <div className="screen-stack" data-testid="screen-regions">
+      <ScreenHeader
+        kicker="지역 신호"
+        title="관심 지역의 흐름"
+        description="지역별 공고 수와 종료가 가까운 신호를 카드로 확인할 수 있어요."
       />
-      <section className="summary-table" aria-label="지역별 요약">
-        {computedSummaries.map((summary) => (
+      <section className="region-card-list" aria-label="지역별 공고 요약">
+        {regionSignals.map((summary) => (
           <article
             key={summary.region}
-            className={`summary-row ${summary.urgent > 0 ? "has-urgent" : ""}`}
+            className={`region-card ${summary.urgent > 0 ? "has-urgent" : ""}`}
+            data-testid="region-card"
           >
-            <div className="summary-main">
-              <span className="section-kicker">{summary.urgent > 0 ? "우선 확인" : "일반"}</span>
+            <div className="region-card-main">
+              <span className="section-kicker">
+                {summary.urgent > 0 ? "우선 확인" : "일반 신호"}
+              </span>
               <h3>{summary.region}</h3>
               <p>총 {summary.total}건의 공고</p>
             </div>
-            <dl>
-              <div>
-                <dt>긴급</dt>
-                <dd>{summary.urgent}</dd>
-              </div>
-              <div>
-                <dt>3일 이내</dt>
-                <dd>{summary.endingSoon}</dd>
-              </div>
-              <div>
-                <dt>평균 점수</dt>
-                <dd>{summary.averageScore}</dd>
-              </div>
+            <dl className="region-counts">
+              <SummaryNumber label="긴급" value={summary.urgent} />
+              <SummaryNumber label="곧 종료" value={summary.endingSoon} />
+              <SummaryNumber label="평균 점수" value={summary.averageScore} />
             </dl>
+            <SignalMeter urgent={summary.urgent} endingSoon={summary.endingSoon} />
           </article>
         ))}
       </section>
@@ -622,23 +684,32 @@ function RegionSummary({
   );
 }
 
-function SavedNotices() {
+function SummaryNumber({ label, value }: { label: string; value: number }) {
   return (
-    <div className="view-stack">
-      <ViewHeader
-        kicker="나중에 볼 공고"
-        title="저장 공고"
-        description="관심 공고를 따로 모아 확인하는 공간입니다."
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function SavedNoticesScreen() {
+  return (
+    <div className="screen-stack" data-testid="screen-saved">
+      <ScreenHeader
+        kicker="관심 공고"
+        title="저장한 공고"
+        description="관심 공고를 저장하면 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요."
       />
-      <section className="saved-placeholder">
-        <div className="saved-symbol" aria-hidden="true">
+      <section className="saved-empty">
+        <div className="saved-icon" aria-hidden="true">
           저장
         </div>
         <div>
-          <strong>저장한 공고가 아직 없습니다.</strong>
+          <strong>아직 저장한 공고가 없습니다.</strong>
           <p>
-            이후 단계에서 저장 공고와 알림 흐름을 연결할 예정입니다. 현재는 화면 구조와
-            Rescue Window 표시 방식을 먼저 확인합니다.
+            저장 기능과 알림은 이후 단계에서 연결할 예정입니다. 현재는 Rescue Window 신호와 공고
+            상세 흐름을 먼저 확인합니다.
           </p>
         </div>
       </section>
@@ -646,66 +717,72 @@ function SavedNotices() {
   );
 }
 
-function AnimalDetail({ animal }: { animal?: MockAnimal }) {
-  if (!animal) {
-    return (
-      <aside className="detail-panel">
-        <p>선택된 공고가 없습니다.</p>
-      </aside>
-    );
-  }
-
+function NoticeDetailSheet({
+  animal,
+  onClose,
+}: {
+  animal: MockAnimal;
+  onClose: () => void;
+}) {
   return (
-    <aside className="detail-panel" aria-label="동물 상세">
-      <div className="detail-header">
-        <PhotoPlaceholder animal={animal} compact />
-        <div>
-          <WindowBadge label={animal.rescueWindowLabel} />
-          <h2>{animal.kindFullName}</h2>
-          <p>{animal.noticeNo}</p>
+    <div className="detail-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="detail-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="detail-title"
+        data-testid="detail-sheet"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="sheet-close" type="button" data-testid="detail-close" onClick={onClose}>
+          닫기
+        </button>
+
+        <div className="detail-visual">
+          <PhotoPlaceholder animal={animal} large />
+          <div className="detail-signal">
+            <DeadlineBadge animal={animal} large />
+            <WindowBadge label={animal.rescueWindowLabel} />
+            <span className="process-chip">{animal.processState}</span>
+          </div>
         </div>
-      </div>
 
-      <div className="score-panel">
-        <div
-          className="score-ring"
-          style={scoreStyle(animal.rescueWindowScore)}
-          aria-label={`Rescue Window Score ${animal.rescueWindowScore}점`}
-        >
-          <strong>{animal.rescueWindowScore}</strong>
-          <span>score</span>
-        </div>
-        <div>
-          <strong>{animal.ddayText}</strong>
-          <p>{animal.noticeEndDate} 보호 종료 예정</p>
-        </div>
-      </div>
+        <header className="detail-title">
+          <p className="section-kicker">공고 상세</p>
+          <h2 id="detail-title">{animal.kindFullName}</h2>
+          <p>{animal.region}</p>
+        </header>
 
-      <DetailSection title="공식 공고 정보">
-        <DetailItem label="공고 번호" value={animal.noticeNo} />
-        <DetailItem label="공고 기간" value={`${animal.noticeStartDate} ~ ${animal.noticeEndDate}`} />
-        <DetailItem label="처리 상태" value={animal.processState} />
-      </DetailSection>
+        <DetailSection title="공식 공고 정보">
+          <DetailItem label="공고번호" value={animal.noticeNo} />
+          <DetailItem label="공고 시작" value={animal.noticeStartDate} />
+          <DetailItem label="공고 종료" value={animal.noticeEndDate} />
+          <DetailItem label="발견일" value={animal.happenDate} />
+          <DetailItem label="발견 장소" value={animal.happenPlace} />
+        </DetailSection>
 
-      <DetailSection title="동물 정보">
-        <DetailItem label="축종/품종" value={`${animal.animalType} · ${animal.breed}`} />
-        <DetailItem label="색상" value={animal.color} />
-        <DetailItem label="나이/체중" value={`${animal.age} · ${animal.weight}`} />
-        <DetailItem label="성별/중성화" value={`${animal.sex} · ${animal.neuterYn}`} />
-        <DetailItem label="특징" value={animal.specialMark} />
-      </DetailSection>
+        <DetailSection title="동물 정보">
+          <DetailItem label="품종" value={animal.kindFullName} />
+          <DetailItem label="성별" value={animal.sex} />
+          <DetailItem label="나이" value={animal.age} />
+          <DetailItem label="체중" value={animal.weight} />
+          <DetailItem label="색상" value={animal.color} />
+          <DetailItem label="중성화" value={animal.neuterYn} />
+          <DetailItem label="특징" value={animal.specialMark} />
+        </DetailSection>
 
-      <DetailSection title="보호소 및 지역">
-        <DetailItem label="지역" value={animal.region} />
-        <DetailItem label="보호소" value={animal.shelterName} />
-        <DetailItem label="연락처" value={animal.shelterTel ?? "데이터 없음"} />
-        <DetailItem label="발견 위치" value={animal.happenPlace} />
-      </DetailSection>
+        <DetailSection title="보호소 및 연락처">
+          <DetailItem label="보호소" value={animal.shelterName} />
+          <DetailItem label="전화" value={animal.shelterTel ?? "데이터 없음"} />
+          <DetailItem label="주소" value={animal.shelterAddress} />
+          <DetailItem label="관할기관" value={animal.region} />
+        </DetailSection>
 
-      <p className="detail-note">
-        공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
-      </p>
-    </aside>
+        <p className="official-disclaimer">
+          공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
+        </p>
+      </section>
+    </div>
   );
 }
 
@@ -726,14 +803,14 @@ function DetailSection({
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="detail-item">
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
   );
 }
 
-function ViewHeader({
+function ScreenHeader({
   kicker,
   title,
   description,
@@ -743,7 +820,7 @@ function ViewHeader({
   description: string;
 }) {
   return (
-    <header className="view-header">
+    <header className="screen-header">
       <p className="section-kicker">{kicker}</p>
       <h2>{title}</h2>
       <p>{description}</p>
@@ -751,13 +828,38 @@ function ViewHeader({
   );
 }
 
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <section className="empty-state">
+      <strong>{title}</strong>
+      <p>{description}</p>
+    </section>
+  );
+}
+
+function DataSourceNote({
+  source,
+  errorMessage,
+  animalCount,
+}: {
+  source: DataSourceState;
+  errorMessage?: string;
+  animalCount: number;
+}) {
+  return (
+    <p className={`data-note is-${source}`} aria-live="polite" title={errorMessage}>
+      {dataSourceCopy(source, animalCount)}
+    </p>
+  );
+}
+
 function WindowBadge({ label }: { label: RescueWindowLabel }) {
   return <span className={`label-pill label-${labelClass(label)}`}>{label}</span>;
 }
 
-function DeadlineBadge({ animal }: { animal: MockAnimal }) {
+function DeadlineBadge({ animal, large = false }: { animal: MockAnimal; large?: boolean }) {
   return (
-    <div className="deadline-badge">
+    <div className={`deadline-badge ${large ? "is-large" : ""}`}>
       <strong>{animal.ddayText}</strong>
       <span>{animal.deadlineBucket}</span>
     </div>
@@ -772,20 +874,28 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
+function SignalMeter({ urgent, endingSoon }: { urgent: number; endingSoon: number }) {
+  return (
+    <div className="signal-meter" aria-label={`긴급 ${urgent}건, 곧 종료 ${endingSoon}건`}>
+      <span style={signalStyle(urgent, endingSoon)} />
+    </div>
+  );
+}
+
 function PhotoPlaceholder({
   animal,
-  compact = false,
+  large = false,
 }: {
   animal: MockAnimal;
-  compact?: boolean;
+  large?: boolean;
 }) {
   return (
     <div
-      className={`photo-placeholder tone-${animal.photoTone} ${compact ? "is-compact" : ""}`}
+      className={`photo-placeholder tone-${animal.photoTone} ${large ? "is-large" : ""}`}
       aria-label={animal.hasPhoto ? "공고 이미지 자리" : "사진 미등록"}
     >
       <span>{animal.animalType}</span>
-      <strong>{animal.breed.slice(0, 4)}</strong>
+      <strong>{animal.breed.slice(0, 5)}</strong>
       <small>{animal.hasPhoto ? "image" : "no image"}</small>
     </div>
   );
@@ -800,18 +910,60 @@ function sortByWindow(animals: MockAnimal[]) {
   );
 }
 
-function scoreStyle(score: number): CSSProperties & { "--score": string } {
-  return { "--score": `${score}%` };
+function buildRegionSignals(
+  animals: MockAnimal[],
+  summaries: RegionSummaryRecord[]
+): RegionSignal[] {
+  if (summaries.length) {
+    return summaries
+      .map((summary) => ({
+        region: summary.org_nm,
+        total: summary.animal_count,
+        urgent: summary.urgent_count,
+        endingSoon: summary.ending_soon_count,
+        averageScore: Math.round(summary.avg_rescue_window_score),
+      }))
+      .sort((a, b) => b.urgent - a.urgent || b.endingSoon - a.endingSoon || b.total - a.total);
+  }
+
+  const grouped = new Map<string, MockAnimal[]>();
+  animals.forEach((animal) => {
+    grouped.set(animal.region, [...(grouped.get(animal.region) ?? []), animal]);
+  });
+
+  return Array.from(grouped.entries())
+    .map(([region, regionAnimals]) => ({
+      region,
+      total: regionAnimals.length,
+      urgent: regionAnimals.filter((animal) => animal.rescueWindowLabel === "긴급 확인").length,
+      endingSoon: regionAnimals.filter((animal) =>
+        ["긴급 확인", "곧 종료"].includes(animal.rescueWindowLabel)
+      ).length,
+      averageScore: Math.round(
+        regionAnimals.reduce((sum, animal) => sum + animal.rescueWindowScore, 0) /
+          regionAnimals.length
+      ),
+    }))
+    .sort((a, b) => b.urgent - a.urgent || b.endingSoon - a.endingSoon || b.total - a.total);
 }
 
-function dataSourceCopy(source: DataSourceState): string {
+function scoreStyle(score: number): CSSProperties & { "--score": string } {
+  return { "--score": `${Math.max(0, Math.min(score, 100))}%` };
+}
+
+function signalStyle(urgent: number, endingSoon: number): CSSProperties & { "--signal": string } {
+  const value = Math.min(100, urgent * 28 + endingSoon * 14);
+  return { "--signal": `${value}%` };
+}
+
+function dataSourceCopy(source: DataSourceState, animalCount: number): string {
   if (source === "loading") {
-    return "불러오는 중";
+    return "데이터 확인 중";
   }
   if (source === "exported") {
-    return "SQL export 기반";
+    return `SQL export ${animalCount}건`;
   }
-  return "mock 대체 데이터";
+  return `mock 데이터 표시 · 기준일 ${MOCK_REFERENCE_DATE}`;
 }
 
 function labelClass(label: RescueWindowLabel) {
