@@ -14,8 +14,24 @@ import {
 } from "./data/exportedData";
 
 type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
+type NoticeLimit = 5 | 10 | 20 | "all";
+type RegionClusterKey =
+  | "capital"
+  | "gangwon"
+  | "chungcheong"
+  | "jeolla"
+  | "gyeongsang"
+  | "jeju"
+  | "other";
+type RegionSelectionKey = "all" | `cluster:${RegionClusterKey}` | `region:${string}`;
 
 const ALL_FILTER = "전체";
+const NOTICE_LIMIT_OPTIONS: Array<{ value: NoticeLimit; label: string }> = [
+  { value: 5, label: "5개" },
+  { value: 10, label: "10개" },
+  { value: 20, label: "20개" },
+  { value: "all", label: "전체" },
+];
 
 const viewItems: Array<{ key: ViewKey; label: string; testId: string }> = [
   { key: "overview", label: "홈", testId: "nav-home" },
@@ -33,6 +49,20 @@ const labelOrder: Record<RescueWindowLabel, number> = {
   "종료/확인 필요": 5,
 };
 
+const REGION_CLUSTERS: Array<{
+  key: RegionClusterKey;
+  label: string;
+  matchers: string[];
+}> = [
+  { key: "capital", label: "수도권", matchers: ["서울", "경기", "인천"] },
+  { key: "gangwon", label: "강원", matchers: ["강원"] },
+  { key: "chungcheong", label: "충청", matchers: ["충청", "충북", "충남", "대전", "세종"] },
+  { key: "jeolla", label: "전라", matchers: ["전라", "전북", "전남", "광주"] },
+  { key: "gyeongsang", label: "경상", matchers: ["경상", "경북", "경남", "부산", "대구", "울산"] },
+  { key: "jeju", label: "제주", matchers: ["제주"] },
+  { key: "other", label: "그 외", matchers: [] },
+];
+
 type DataSourceState = "loading" | "exported" | "fallback";
 
 interface RuntimeAppData extends ExportedAppData {
@@ -46,6 +76,24 @@ interface RegionSignal {
   urgent: number;
   endingSoon: number;
   averageScore: number;
+}
+
+interface RegionClusterSignal {
+  key: RegionClusterKey;
+  label: string;
+  total: number;
+  urgent: number;
+  endingSoon: number;
+  averageScore: number;
+  regionCount: number;
+}
+
+interface RegionSignalTotals {
+  total: number;
+  urgent: number;
+  endingSoon: number;
+  averageScore: number;
+  regionCount: number;
 }
 
 function App() {
@@ -503,11 +551,16 @@ function NoticeListScreen({
   onResetFilters: () => void;
   onSelect: (id: string) => void;
 }) {
+  const [noticeLimit, setNoticeLimit] = useState<NoticeLimit>(10);
   const activeFilters = [
     ["신호", labelFilter],
     ["축종", typeFilter],
     ["지역", regionFilter],
   ].filter(([, value]) => value !== ALL_FILTER);
+  const displayedAnimals = useMemo(
+    () => limitNotices(animals, noticeLimit),
+    [animals, noticeLimit]
+  );
 
   return (
     <div className="screen-stack" data-testid="screen-notices">
@@ -540,7 +593,8 @@ function NoticeListScreen({
         />
       </section>
       <div className="filter-summary" aria-live="polite">
-        <strong>{animals.length}건 표시</strong>
+        <strong>{displayedAnimals.length}건 표시</strong>
+        {animals.length !== displayedAnimals.length && <span>필터 결과 {animals.length}건 중</span>}
         {activeFilters.length ? (
           <>
             {activeFilters.map(([label, value]) => (
@@ -556,8 +610,55 @@ function NoticeListScreen({
           <span>적용된 필터가 없습니다.</span>
         )}
       </div>
-      <AnimalCards animals={animals} selectedAnimalId={selectedAnimalId} onSelect={onSelect} />
+      <NoticeDisplayControl
+        value={noticeLimit}
+        resultCount={animals.length}
+        displayedCount={displayedAnimals.length}
+        onChange={setNoticeLimit}
+      />
+      <AnimalCards
+        animals={displayedAnimals}
+        selectedAnimalId={selectedAnimalId}
+        onSelect={onSelect}
+      />
     </div>
+  );
+}
+
+function NoticeDisplayControl({
+  value,
+  resultCount,
+  displayedCount,
+  onChange,
+}: {
+  value: NoticeLimit;
+  resultCount: number;
+  displayedCount: number;
+  onChange: (value: NoticeLimit) => void;
+}) {
+  return (
+    <section className="notice-display-control" aria-label="표시 공고 수">
+      <div>
+        <strong>표시 수</strong>
+        <p>필터 결과 중 표시할 공고 수를 조정할 수 있어요.</p>
+      </div>
+      <div className="notice-limit-options" role="group" aria-label="표시할 공고 수 선택">
+        {NOTICE_LIMIT_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            className={value === option.value ? "is-active" : ""}
+            type="button"
+            data-testid={`notice-limit-${option.value}`}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <span className="notice-display-count" aria-live="polite">
+        {displayedCount}/{resultCount}건
+      </span>
+    </section>
   );
 }
 
@@ -649,37 +750,125 @@ function AnimalCards({
 }
 
 function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] }) {
+  const [selectedRegion, setSelectedRegion] = useState<RegionSelectionKey>("all");
+  const clusterSignals = useMemo(() => buildRegionClusterSignals(regionSignals), [regionSignals]);
+  const visibleRegionSignals = useMemo(
+    () => filterRegionSignals(regionSignals, selectedRegion),
+    [regionSignals, selectedRegion]
+  );
+  const selectedTotals = useMemo(
+    () => summarizeRegionSignals(visibleRegionSignals),
+    [visibleRegionSignals]
+  );
+  const selectedLabel = regionSelectionLabel(selectedRegion);
+
   return (
     <div className="screen-stack" data-testid="screen-regions">
       <ScreenHeader
         kicker="지역 신호"
         title="관심 지역의 흐름"
-        description="지역별로 종료가 가까운 신호를 확인할 수 있어요."
+        description="관심 지역의 신호를 선택해 확인해보세요."
       />
-      <section className="region-card-list" aria-label="지역별 공고 요약">
-        {regionSignals.map((summary) => (
-          <article
-            key={summary.region}
-            className={`region-card ${summary.urgent > 0 ? "has-urgent" : ""}`}
-            data-testid="region-card"
+
+      <section className="region-explorer" aria-label="지역 신호 선택">
+        <div className="region-explorer-copy">
+          <span className="section-kicker">전체 지역</span>
+          <p>지역별로 보호 종료가 가까운 공고 흐름을 볼 수 있어요.</p>
+        </div>
+
+        <div className="region-map-panel">
+          <button
+            className={`region-all-tile ${selectedRegion === "all" ? "is-selected" : ""}`}
+            type="button"
+            data-testid="region-select-all"
+            onClick={() => setSelectedRegion("all")}
           >
-            <div className="region-card-main">
-              <span className="section-kicker">
-                {summary.urgent > 0 ? "우선 확인" : "일반 신호"}
-              </span>
-              <h3>{summary.region}</h3>
-              <p>총 {summary.total}건의 공고</p>
-            </div>
-            <dl className="region-counts">
-              <SummaryNumber label="긴급" value={summary.urgent} />
-              <SummaryNumber label="곧 종료" value={summary.endingSoon} />
-              <SummaryNumber label="평균 점수" value={summary.averageScore} />
-            </dl>
-            <SignalMeter urgent={summary.urgent} endingSoon={summary.endingSoon} />
-          </article>
-        ))}
+            <span>전체</span>
+            <strong>{regionSignals.length}</strong>
+            <small>지역</small>
+          </button>
+
+          <div className="region-cluster-grid">
+            {clusterSignals.map((cluster) => (
+              <button
+                key={cluster.key}
+                className={`region-cluster-tile ${
+                  selectedRegion === `cluster:${cluster.key}` ? "is-selected" : ""
+                }`}
+                type="button"
+                data-testid={`region-cluster-${cluster.key}`}
+                disabled={cluster.total === 0}
+                onClick={() => setSelectedRegion(`cluster:${cluster.key}`)}
+              >
+                <span>{cluster.label}</span>
+                <strong>{cluster.total}</strong>
+                <small>긴급 {cluster.urgent} · 곧 종료 {cluster.endingSoon}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="region-chip-row" aria-label="개별 지역 선택">
+          {regionSignals.map((summary) => (
+            <button
+              key={summary.region}
+              className={selectedRegion === `region:${summary.region}` ? "is-selected" : ""}
+              type="button"
+              data-testid="region-chip"
+              onClick={() => setSelectedRegion(`region:${summary.region}`)}
+            >
+              {summary.region}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="selected-region-panel" aria-label="선택한 지역 요약">
+        <div>
+          <span className="section-kicker">선택한 지역</span>
+          <h3>{selectedLabel}</h3>
+          <p>
+            {selectedTotals.regionCount}개 지역, 공고 {selectedTotals.total}건을 확인하고 있어요.
+          </p>
+        </div>
+        <dl className="selected-region-metrics">
+          <SummaryNumber label="긴급" value={selectedTotals.urgent} />
+          <SummaryNumber label="곧 종료" value={selectedTotals.endingSoon} />
+          <SummaryNumber label="평균 점수" value={selectedTotals.averageScore} />
+        </dl>
+      </section>
+
+      <section className="region-card-list" aria-label="지역별 공고 요약">
+        {visibleRegionSignals.length ? (
+          visibleRegionSignals.map((summary) => (
+            <RegionCard key={summary.region} summary={summary} />
+          ))
+        ) : (
+          <EmptyState title="선택한 지역의 공고가 없습니다." description="전체 지역을 다시 선택해보세요." />
+        )}
       </section>
     </div>
+  );
+}
+
+function RegionCard({ summary }: { summary: RegionSignal }) {
+  return (
+    <article
+      className={`region-card ${summary.urgent > 0 ? "has-urgent" : ""}`}
+      data-testid="region-card"
+    >
+      <div className="region-card-main">
+        <span className="section-kicker">{summary.urgent > 0 ? "우선 확인" : "일반 신호"}</span>
+        <h3>{summary.region}</h3>
+        <p>총 {summary.total}건의 공고</p>
+      </div>
+      <dl className="region-counts">
+        <SummaryNumber label="긴급" value={summary.urgent} />
+        <SummaryNumber label="곧 종료" value={summary.endingSoon} />
+        <SummaryNumber label="평균 점수" value={summary.averageScore} />
+      </dl>
+      <SignalMeter urgent={summary.urgent} endingSoon={summary.endingSoon} />
+    </article>
   );
 }
 
@@ -774,10 +963,36 @@ function NoticeDetailSheet({
           <DetailItem label="관할기관" value={animal.region} />
         </DetailSection>
 
-        <p className="official-disclaimer">
+        <ContactActions animal={animal} />
+
+        <p className="official-disclaimer" id="official-contact-guide">
           공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
         </p>
       </section>
+    </div>
+  );
+}
+
+function ContactActions({ animal }: { animal: MockAnimal }) {
+  const telHref = telLink(animal.shelterTel);
+
+  return (
+    <div className="contact-actions" aria-label="보호소 문의 도구">
+      {telHref ? (
+        <a className="contact-action" href={telHref} data-testid="contact-tel">
+          전화번호 보기
+        </a>
+      ) : (
+        <span className="contact-action is-disabled" aria-disabled="true" data-testid="contact-tel">
+          전화번호 없음
+        </span>
+      )}
+      <span className="contact-action is-static" title={animal.shelterAddress} data-testid="contact-address">
+        주소 확인
+      </span>
+      <a className="contact-action" href="#official-contact-guide" data-testid="contact-guide">
+        공식 문의 안내
+      </a>
     </div>
   );
 }
@@ -941,6 +1156,91 @@ function buildRegionSignals(
       ),
     }))
     .sort((a, b) => b.urgent - a.urgent || b.endingSoon - a.endingSoon || b.total - a.total);
+}
+
+function limitNotices(animals: MockAnimal[], limit: NoticeLimit): MockAnimal[] {
+  if (limit === "all") {
+    return animals;
+  }
+
+  return animals.slice(0, limit);
+}
+
+function buildRegionClusterSignals(regionSignals: RegionSignal[]): RegionClusterSignal[] {
+  return REGION_CLUSTERS.map((cluster) => {
+    const signals = regionSignals.filter((signal) => regionClusterFor(signal.region) === cluster.key);
+    const totals = summarizeRegionSignals(signals);
+
+    return {
+      key: cluster.key,
+      label: cluster.label,
+      total: totals.total,
+      urgent: totals.urgent,
+      endingSoon: totals.endingSoon,
+      averageScore: totals.averageScore,
+      regionCount: totals.regionCount,
+    };
+  }).filter((cluster) => cluster.key !== "other" || cluster.total > 0);
+}
+
+function filterRegionSignals(
+  regionSignals: RegionSignal[],
+  selection: RegionSelectionKey
+): RegionSignal[] {
+  if (selection === "all") {
+    return regionSignals;
+  }
+
+  if (selection.startsWith("cluster:")) {
+    const clusterKey = selection.replace("cluster:", "") as RegionClusterKey;
+    return regionSignals.filter((signal) => regionClusterFor(signal.region) === clusterKey);
+  }
+
+  const regionName = selection.replace("region:", "");
+  return regionSignals.filter((signal) => signal.region === regionName);
+}
+
+function summarizeRegionSignals(regionSignals: RegionSignal[]): RegionSignalTotals {
+  const total = regionSignals.reduce((sum, signal) => sum + signal.total, 0);
+  const weightedScore = regionSignals.reduce(
+    (sum, signal) => sum + signal.averageScore * signal.total,
+    0
+  );
+
+  return {
+    total,
+    urgent: regionSignals.reduce((sum, signal) => sum + signal.urgent, 0),
+    endingSoon: regionSignals.reduce((sum, signal) => sum + signal.endingSoon, 0),
+    averageScore: total ? Math.round(weightedScore / total) : 0,
+    regionCount: regionSignals.length,
+  };
+}
+
+function regionClusterFor(region: string): RegionClusterKey {
+  const cluster = REGION_CLUSTERS.find(
+    (definition) =>
+      definition.key !== "other" && definition.matchers.some((matcher) => region.includes(matcher))
+  );
+
+  return cluster?.key ?? "other";
+}
+
+function regionSelectionLabel(selection: RegionSelectionKey): string {
+  if (selection === "all") {
+    return "전체 지역";
+  }
+
+  if (selection.startsWith("cluster:")) {
+    const clusterKey = selection.replace("cluster:", "") as RegionClusterKey;
+    return REGION_CLUSTERS.find((cluster) => cluster.key === clusterKey)?.label ?? "선택한 권역";
+  }
+
+  return selection.replace("region:", "");
+}
+
+function telLink(tel: string | null): string | undefined {
+  const normalized = tel?.replace(/[^\d+]/g, "");
+  return normalized ? `tel:${normalized}` : undefined;
 }
 
 function scoreStyle(score: number): CSSProperties & { "--score": string } {
