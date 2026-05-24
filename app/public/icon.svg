@@ -1,12 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="icon-title icon-desc">
   <title id="icon-title">Shelter Signal app icon</title>
-  <desc id="icon-desc">A shelter roof, signal light, and calm monitoring window.</desc>
-  <rect width="192" height="192" rx="44" fill="#f5f1e8"/>
-  <rect x="22" y="22" width="148" height="148" rx="36" fill="#fffdf8" stroke="#d8cebe" stroke-width="4"/>
-  <path d="M50 92 96 56l46 36" fill="none" stroke="#2f594e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M64 94v48h64V94" fill="none" stroke="#2f594e" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="96" cy="105" r="11" fill="#c3914f"/>
-  <path d="M78 105a18 18 0 0 1 36 0" fill="none" stroke="#9eb39a" stroke-width="9" stroke-linecap="round"/>
-  <path d="M66 105a30 30 0 0 1 60 0" fill="none" stroke="#d7c492" stroke-width="7" stroke-linecap="round"/>
-  <path d="M76 143h40" fill="none" stroke="#2f594e" stroke-width="14" stroke-linecap="round"/>
+  <desc id="icon-desc">A minimal signal dot and line on a warm background.</desc>
+  <rect width="192" height="192" rx="44" fill="#f8f4ec"/>
+  <rect x="30" y="30" width="132" height="132" rx="34" fill="#fffdfa" stroke="#e2d8ca" stroke-width="4"/>
+  <circle cx="80" cy="96" r="18" fill="#31584e"/>
+  <path d="M108 96h38" fill="none" stroke="#d3c7b8" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="80" cy="96" r="31" fill="none" stroke="#e8f0e8" stroke-width="8"/>
 </svg>

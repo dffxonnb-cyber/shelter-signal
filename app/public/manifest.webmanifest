@@ -1,11 +1,11 @@
 {
   "name": "Shelter Signal",
   "short_name": "Signal",
-  "description": "보호 종료가 가까운 구조동물 공고를 Rescue Window Score로 먼저 확인하는 PWA",
+  "description": "보호 종료가 가까운 구조동물 공고를 먼저 확인하는 PWA",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f1e8",
-  "theme_color": "#2f594e",
+  "background_color": "#f8f4ec",
+  "theme_color": "#f8f4ec",
   "lang": "ko-KR",
   "icons": [
     {

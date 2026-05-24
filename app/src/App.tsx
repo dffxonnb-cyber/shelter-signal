@@ -219,16 +219,8 @@ function AppHeader({
   return (
     <header className="app-header">
       <div className="brand-lockup">
-        <img
-          className="brand-logo"
-          src="/logo.svg"
-          alt="Shelter Signal 로고"
-          width="48"
-          height="48"
-          data-testid="brand-logo"
-        />
+        <span className="brand-mark" aria-hidden="true" data-testid="brand-logo" />
         <div className="brand-copy">
-          <p className="eyebrow">공공데이터 구조동물 신호</p>
           <h1>Shelter Signal</h1>
           <p className="brand-tagline">보호 종료가 가까운 공고를 먼저 확인합니다.</p>
         </div>
@@ -296,27 +288,27 @@ function HomeScreen({
       <section className="daily-hero">
         <div className="hero-copy">
           <p className="eyebrow">오늘의 신호</p>
-          <h2>오늘 먼저 확인할 공고를 정리했어요.</h2>
-          <p>보호 종료가 가까운 공고를 우선순위로 보여드려요.</p>
+          <h2>오늘의 보호 종료 신호</h2>
+          <p>보호 종료가 가까운 공고를 먼저 확인합니다.</p>
         </div>
         <div className="hero-count" aria-label="오늘 먼저 확인할 골든타임 공고 수">
-          <span>오늘 확인</span>
+          <span>우선 확인</span>
           <strong>{goldenCount}</strong>
-          <small>골든타임 공고</small>
+          <small>공고</small>
         </div>
       </section>
 
       <section className="signal-stat-row" aria-label="오늘의 요약">
-        <SignalStat label="긴급 확인" value={urgentCount} hint="D-Day 또는 D-1 중심" tone="urgent" />
-        <SignalStat label="곧 종료" value={soonEndingCount} hint="보호 종료 임박" tone="soon" />
-        <SignalStat label="보호중" value={activeCount} hint="현재 표시 데이터" tone="calm" />
+        <SignalStat label="긴급 확인" value={urgentCount} hint="오늘 마감권" tone="urgent" />
+        <SignalStat label="곧 종료" value={soonEndingCount} hint="종료 임박" tone="soon" />
+        <SignalStat label="보호중" value={activeCount} hint="표시 중" tone="calm" />
       </section>
 
       <section className="priority-section">
         <SectionHeader
-          kicker="Top priority"
+          kicker="우선 확인"
           title="먼저 볼 공고"
-          actionLabel="골든타임 보기"
+          actionLabel="목록 보기"
           onAction={onOpenGoldenTime}
         />
         <PriorityAnimalList animals={topAnimals} onSelect={onOpenDetail} />
@@ -342,16 +334,13 @@ function HomeScreen({
         <button className="saved-preview-card" type="button" onClick={onOpenSaved}>
           <span className="section-kicker">저장 준비</span>
           <strong>관심 공고</strong>
-          <p>저장한 공고의 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요.</p>
+          <p>관심 공고를 저장하면 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요.</p>
         </button>
       </section>
 
       <section className="info-note">
         <strong>Rescue Window Score</strong>
-        <p>
-          공고 종료까지 남은 시간과 사진, 연락처 같은 데이터 신호를 함께 보며 우선 확인 순서를
-          제안하는 내부 지표입니다. 공식 결과를 뜻하지 않습니다.
-        </p>
+        <p>공고 종료일과 데이터 신호를 바탕으로 먼저 확인할 순서를 정리합니다.</p>
         <MiniWindowSummary summaries={rescueWindowSummaries} />
       </section>
     </div>
@@ -472,11 +461,10 @@ function GoldenTimeScreen({
       <ScreenHeader
         kicker="골든타임"
         title="보호 종료가 가까운 공고"
-        description="Rescue Window Score 순서로 오늘 먼저 살펴볼 공고를 정리했어요."
+        description="오늘 먼저 확인할 공고부터 정리했어요."
       />
       <section className="signal-note">
-        이 목록은 공식 결과가 아니라 우선순위 신호입니다. 공식 문의와 최종 확인은 보호소 또는
-        관할기관을 통해 진행해주세요.
+        공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
       </section>
       <AnimalCards
         animals={animals}
@@ -525,7 +513,7 @@ function NoticeListScreen({
     <div className="screen-stack" data-testid="screen-notices">
       <ScreenHeader
         kicker="전체 공고"
-        title="공고를 차분히 살펴보기"
+        title="공고 살펴보기"
         description="Rescue Window 라벨, 축종, 지역으로 필요한 공고만 좁혀볼 수 있어요."
       />
       <section className="filter-panel" aria-label="공고 필터">
@@ -666,7 +654,7 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
       <ScreenHeader
         kicker="지역 신호"
         title="관심 지역의 흐름"
-        description="지역별 공고 수와 종료가 가까운 신호를 카드로 확인할 수 있어요."
+        description="지역별로 종료가 가까운 신호를 확인할 수 있어요."
       />
       <section className="region-card-list" aria-label="지역별 공고 요약">
         {regionSignals.map((summary) => (
@@ -718,10 +706,7 @@ function SavedNoticesScreen() {
         </div>
         <div>
           <strong>아직 저장한 공고가 없습니다.</strong>
-          <p>
-            저장 기능과 알림은 이후 단계에서 연결할 예정입니다. 현재는 Rescue Window 신호와 공고
-            상세 흐름을 먼저 확인합니다.
-          </p>
+          <p>관심 공고를 저장하면 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요.</p>
         </div>
       </section>
     </div>
@@ -972,9 +957,9 @@ function dataSourceCopy(source: DataSourceState, animalCount: number): string {
     return "데이터 확인 중";
   }
   if (source === "exported") {
-    return `SQL export ${animalCount}건`;
+    return `공고 ${animalCount}건`;
   }
-  return `mock 데이터 표시 · 기준일 ${MOCK_REFERENCE_DATE}`;
+  return `예시 데이터 · 기준일 ${MOCK_REFERENCE_DATE}`;
 }
 
 function labelClass(label: RescueWindowLabel) {

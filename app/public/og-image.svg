@@ -1,44 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="og-title og-desc">
-  <title id="og-title">Shelter Signal representative image</title>
-  <desc id="og-desc">Shelter Signal brand image with Korean tagline and calm signal cards.</desc>
-  <rect width="1200" height="630" fill="#f5f1e8"/>
-  <rect x="64" y="64" width="1072" height="502" rx="34" fill="#fffdf8" stroke="#d8cebe" stroke-width="2"/>
-  <g transform="translate(104 102)">
-    <rect x="0" y="0" width="88" height="88" rx="24" fill="#edf2ec" stroke="#cddbc9" stroke-width="2"/>
-    <path d="M18 46 44 24l26 22" fill="none" stroke="#2f594e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M27 47v25h34V47" fill="none" stroke="#2f594e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="44" cy="53" r="6" fill="#c3914f"/>
-    <path d="M32 53a12 12 0 0 1 24 0" fill="none" stroke="#9eb39a" stroke-width="5" stroke-linecap="round"/>
-    <path d="M26 53a18 18 0 0 1 36 0" fill="none" stroke="#d7c492" stroke-width="4" stroke-linecap="round"/>
+  <title id="og-title">Shelter Signal</title>
+  <desc id="og-desc">A calm Shelter Signal social image with a text-first wordmark and priority notice feed.</desc>
+  <rect width="1200" height="630" fill="#f8f4ec"/>
+  <rect x="88" y="72" width="1024" height="486" rx="28" fill="#fffdfa" stroke="#e2d8ca" stroke-width="2"/>
+  <g transform="translate(128 116)">
+    <circle cx="16" cy="18" r="8" fill="#31584e"/>
+    <path d="M32 18h34" fill="none" stroke="#d3c7b8" stroke-width="3" stroke-linecap="round"/>
+    <text x="84" y="29" fill="#1b2421" font-family="Inter, Pretendard, Noto Sans KR, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="0">Shelter Signal</text>
   </g>
-  <text x="214" y="140" fill="#172522" font-family="Inter, Pretendard, Noto Sans KR, Arial, sans-serif" font-size="58" font-weight="800">Shelter Signal</text>
-  <text x="104" y="240" fill="#2f594e" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="43" font-weight="800">보호 종료가 가까운 공고를 먼저 확인합니다.</text>
-  <text x="104" y="296" fill="#596861" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="26" font-weight="600">구조동물 공고의 남은 시간과 데이터 신호를 차분히 보여주는 공공데이터 앱</text>
-  <g transform="translate(104 362)">
-    <rect width="200" height="116" rx="18" fill="#2f594e"/>
-    <text x="26" y="45" fill="#dbe7e0" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="20" font-weight="800">오늘 확인</text>
-    <text x="26" y="92" fill="#fffdf8" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="850">3</text>
-    <rect x="232" width="200" height="116" rx="18" fill="#f1eadc" stroke="#ded5c7"/>
-    <text x="258" y="45" fill="#6d4534" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="20" font-weight="800">긴급 확인</text>
-    <text x="258" y="92" fill="#6d4534" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="850">1</text>
-    <rect x="464" width="200" height="116" rx="18" fill="#edf2ec" stroke="#cddbc9"/>
-    <text x="490" y="45" fill="#2f594e" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="20" font-weight="800">곧 종료</text>
-    <text x="490" y="92" fill="#2f594e" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="850">2</text>
+  <text x="128" y="242" fill="#1b2421" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="52" font-weight="700" letter-spacing="0">오늘의 보호 종료 신호</text>
+  <text x="128" y="306" fill="#64716b" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="30" font-weight="500" letter-spacing="0">보호 종료가 가까운 공고를 먼저 확인합니다.</text>
+  <g transform="translate(128 380)">
+    <rect width="392" height="1.5" rx="0.75" fill="#e2d8ca"/>
+    <g transform="translate(0 28)">
+      <path d="M0 0h392" stroke="#e2d8ca" stroke-width="1.5"/>
+      <text x="0" y="42" fill="#72552d" font-family="Inter, Pretendard, Arial, sans-serif" font-size="28" font-weight="700">D-1</text>
+      <text x="88" y="39" fill="#1b2421" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="25" font-weight="650">긴급 확인 공고</text>
+      <circle cx="350" cy="30" r="22" fill="#eef4ef" stroke="#e2d8ca"/>
+      <text x="338" y="39" fill="#31584e" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">82</text>
+    </g>
+    <g transform="translate(0 112)">
+      <path d="M0 0h392" stroke="#e2d8ca" stroke-width="1.5"/>
+      <text x="0" y="42" fill="#77572d" font-family="Inter, Pretendard, Arial, sans-serif" font-size="28" font-weight="700">D-2</text>
+      <text x="88" y="39" fill="#1b2421" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="25" font-weight="650">곧 종료 공고</text>
+      <circle cx="350" cy="30" r="22" fill="#f7ecd8" stroke="#e2d8ca"/>
+      <text x="338" y="39" fill="#77572d" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">74</text>
+    </g>
   </g>
-  <g transform="translate(812 96)">
-    <rect width="248" height="438" rx="32" fill="#172522"/>
-    <rect x="14" y="18" width="220" height="402" rx="22" fill="#fffdf8"/>
-    <text x="34" y="74" fill="#8a5d3b" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="18" font-weight="800">오늘의 신호</text>
-    <text x="34" y="122" fill="#172522" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="31" font-weight="850">먼저 볼 공고</text>
-    <rect x="34" y="154" width="180" height="72" rx="12" fill="#f1eadc"/>
-    <text x="52" y="197" fill="#6d4534" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="850">D-1</text>
-    <circle cx="176" cy="190" r="22" fill="#dfeae1"/>
-    <text x="165" y="200" fill="#2f594e" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="850">80</text>
-    <rect x="34" y="246" width="180" height="72" rx="12" fill="#edf2ec"/>
-    <text x="52" y="289" fill="#2f594e" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="850">D-2</text>
-    <circle cx="176" cy="282" r="22" fill="#f1eadc"/>
-    <text x="165" y="292" fill="#6d4534" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="850">75</text>
-    <rect x="34" y="344" width="180" height="10" rx="5" fill="#e7dfd0"/>
-    <rect x="34" y="344" width="136" height="10" rx="5" fill="#9eb39a"/>
+  <g transform="translate(742 176)">
+    <rect width="260" height="274" rx="24" fill="#fbf8f1" stroke="#e2d8ca" stroke-width="2"/>
+    <text x="30" y="58" fill="#8a5d3b" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="18" font-weight="700">지역 신호</text>
+    <text x="30" y="105" fill="#1b2421" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="31" font-weight="700">관심 지역의 흐름</text>
+    <path d="M30 154h200" stroke="#ebe3d8" stroke-width="10" stroke-linecap="round"/>
+    <path d="M30 154h132" stroke="#92a98f" stroke-width="10" stroke-linecap="round"/>
+    <text x="30" y="214" fill="#64716b" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="22" font-weight="500">종료가 가까운 신호를</text>
+    <text x="30" y="248" fill="#64716b" font-family="Pretendard, Noto Sans KR, Arial, sans-serif" font-size="22" font-weight="500">차분히 정리합니다.</text>
   </g>
 </svg>
