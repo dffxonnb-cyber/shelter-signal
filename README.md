@@ -92,6 +92,8 @@ app/public/data/shelter_summary.json
 app/public/data/kind_summary.json
 ```
 
+이 파일들은 현재 저장소에 포함된 정적 export 데이터이며, Vercel 배포 시 `/data/*.json` 정적 자산으로 함께 제공됩니다. 배포된 앱은 이 JSON을 먼저 읽고, 로딩에 실패하면 앱 내부 mock 데이터로 fallback합니다.
+
 ## Rescue Window Score
 
 Rescue Window Score는 Shelter Signal 내부에서 공고 탐색 순서를 돕기 위한 우선순위 신호입니다.
@@ -185,6 +187,19 @@ cd app
 .\node_modules\.bin\vite.cmd build
 ```
 
+## Vercel 배포 메모
+
+Shelter Signal 앱은 저장소 루트가 아니라 `/app` 폴더에 있는 Vite PWA입니다. Vercel에서 프로젝트를 연결할 때 다음 설정을 사용합니다.
+
+```text
+Root Directory: app
+Install Command: npm install
+Build Command: npm run build
+Output Directory: dist
+```
+
+배포 시 별도의 backend, DB 연결, API key, n8n, email/SMS, auth 설정은 필요하지 않습니다. 현재 앱은 `app/public/data/*.json` 정적 export 데이터를 사용하며, 운영용 실시간 API 서버가 붙은 production-ready 서비스는 아닙니다.
+
 ## 검증 방법
 
 현재까지 확인한 검증 흐름은 다음과 같습니다.
@@ -233,6 +248,7 @@ data/raw/
 docs/
 docs/portfolio-summary.md
 docs/screenshots/
+docs/screenshots/README.md
 ```
 
 `data/raw`의 실제 API 응답 샘플은 현재 Git에서 무시합니다. 로컬 점검용 원본 파일을 실수로 커밋하지 않기 위한 설정입니다.
