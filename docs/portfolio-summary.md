@@ -4,6 +4,10 @@
 
 Shelter Signal
 
+배포 링크: https://shelter-signal-ebon.vercel.app/
+
+현재 배포된 앱은 export된 정적 JSON 데이터를 사용하는 포트폴리오 시연용 PWA입니다.
+
 ## One-line Description
 
 Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고를 정리하는 공공데이터 기반 PWA입니다.

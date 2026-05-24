@@ -2,6 +2,10 @@
 
 Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고를 정리하는 공공데이터 기반 PWA입니다.
 
+배포 링크: https://shelter-signal-ebon.vercel.app/
+
+현재 배포된 앱은 `app/public/data/*.json`으로 export된 정적 JSON 데이터를 사용합니다. 운영용 실시간 backend나 사용자 계정 기능이 붙은 production-ready 서비스는 아닙니다.
+
 이 저장소는 공공데이터 API 점검, PostgreSQL 적재, SQL 모델링, 정적 JSON export, React PWA 화면까지 이어지는 데이터 제품형 MVP입니다. 운영 서비스로 완성된 상태는 아니며, 포트폴리오와 다음 단계 구현을 위한 검증 가능한 기반을 목표로 합니다.
 
 ## 프로젝트 개요

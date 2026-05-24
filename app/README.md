@@ -2,6 +2,10 @@
 
 Vite + React + TypeScript 기반 Shelter Signal PWA입니다.
 
+배포 링크: https://shelter-signal-ebon.vercel.app/
+
+현재 배포된 앱은 export된 정적 JSON 데이터를 사용합니다. 운영용 실시간 backend, 인증, 알림 기능이 붙은 production-ready 서비스는 아닙니다.
+
 앱은 `public/data/*.json`에 export된 정적 JSON을 먼저 읽고, 로딩에 실패하면 `src/data/mockAnimals.ts`의 mock 데이터로 fallback합니다. 브라우저에서 PostgreSQL이나 공공 API에 직접 연결하지 않습니다.
 
 ## 실행
