@@ -13,7 +13,8 @@
 ## Preview Header
 
 ```text
-Shelter Signal V2 preview
+Shelter Signal
+보호 종료가 가까운 공고를 먼저 확인합니다.
 ```
 
 ## Opening Copy
@@ -31,13 +32,24 @@ Shelter Signal V2 preview
 ## Candidate Row Fields
 
 ```text
-우선순위
-선정 사유
-신호
-남은 일수
-공고
-공고번호
+D-day
+Rescue Window 라벨
+품종
+발견 장소
+보호소
+전화번호
 보호 종료일
+Rescue Window Score
+선정 사유
+```
+
+## Summary Fields
+
+```text
+전체 후보
+긴급 확인
+곧 종료
+생성 시각
 ```
 
 ## Empty State Copy
@@ -49,7 +61,8 @@ Shelter Signal V2 preview
 ## Footer Note
 
 ```text
-이 파일은 V2 계획 단계의 preview-only 산출물이며 실제 이메일을 발송하지 않습니다.
+이 메일은 Shelter Signal V2 알림 파이프라인 검증을 위한 미리보기입니다.
+공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
 ```
 
 ## Tone Rules
@@ -59,6 +72,7 @@ Shelter Signal V2 preview
 - Rescue Window Score를 공식 위험 점수처럼 표현하지 않습니다.
 - 공고 상태가 바뀔 수 있음을 전제로 문장을 씁니다.
 - 공포, 죄책감, 즉시 행동 압박을 유도하는 문구는 사용하지 않습니다.
+- 외부 CSS, 외부 폰트, JavaScript 없이 단순한 email-friendly HTML로 유지합니다.
 
 ## Not Included Yet
 
