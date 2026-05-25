@@ -53,7 +53,7 @@ data/exports/email_digest_preview.html
 
 HTML preview는 calm card-based digest 원칙을 따릅니다. 너무 평평한 운영 리포트처럼 보이지 않도록 각 공고를 차분한 카드로 보여주되, 홍보성 뉴스레터처럼 과장하지 않습니다.
 
-시각 방향은 warm ivory 배경, white/near-white 후보 카드, deep charcoal 본문, muted forest/sage accent, muted amber caution입니다. 큰 장식 로고, loud red, cartoon/cute 요소는 사용하지 않습니다.
+시각 방향은 warm ivory 배경, white/near-white 후보 카드, deep charcoal 본문, muted stone/sage accent, restrained ochre caution입니다. 큰 장식 로고, loud red, cartoon/cute 요소는 사용하지 않습니다.
 
 이메일 클라이언트 호환성을 우선해 단순한 table/block layout과 inline style만 사용합니다. JavaScript, 외부 폰트, 외부 CSS 파일은 사용하지 않습니다.
 

@@ -233,14 +233,14 @@ def is_soon_ending_candidate(candidate: dict[str, Any]) -> bool:
 
 def badge_style(candidate: dict[str, Any]) -> str:
     if is_urgent_candidate(candidate):
-        return "background:#f4dfb5; border:1px solid #d9b46b; color:#684714;"
-    return "background:#dfe9df; border:1px solid #b9cdbb; color:#24483d;"
+        return "background:#eadcc6; border:1px solid #c8ad7f; color:#5a4630;"
+    return "background:#e4e9df; border:1px solid #c5cebf; color:#334d42;"
 
 
 def pill_style(candidate: dict[str, Any]) -> str:
     if is_urgent_candidate(candidate):
-        return "background:#fbf2df; border:1px solid #ead3a5; color:#6b4b1b;"
-    return "background:#edf4ed; border:1px solid #d3e1d4; color:#31584e;"
+        return "background:#f5ead7; border:1px solid #dfc79e; color:#5a4630;"
+    return "background:#edf1eb; border:1px solid #d7ddd3; color:#3f5a4c;"
 
 
 def build_candidate_card(candidate: dict[str, Any]) -> str:
@@ -256,7 +256,7 @@ def build_candidate_card(candidate: dict[str, Any]) -> str:
     return f"""
       <tr>
         <td style="padding:0 0 14px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0; background:#fffdfa; border:1px solid #e4ddcf; border-radius:16px; box-shadow:0 2px 8px rgba(51,45,34,0.05);">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0; background:#fffdf8; border:1px solid #ded8cc; border-radius:16px; box-shadow:0 2px 8px rgba(32,35,31,0.06);">
             <tr>
               <td style="padding:18px 18px 4px 18px; font-family:Arial, 'Malgun Gothic', sans-serif; vertical-align:top;">
                 <span style="display:inline-block; padding:4px 9px; border-radius:999px; font-size:11px; line-height:1.35; font-weight:700; {pill_style(candidate)}">{html_text(label)}</span>
@@ -267,19 +267,19 @@ def build_candidate_card(candidate: dict[str, Any]) -> str:
             </tr>
             <tr>
               <td colspan="2" style="padding:0 18px 18px 18px; font-family:Arial, 'Malgun Gothic', sans-serif;">
-                <div style="font-size:18px; line-height:1.45; color:#1b2421; font-weight:700;">{html_text(kind)}</div>
-                <div style="margin-top:5px; font-size:13px; line-height:1.65; color:#46544f;">{html_text(place)} · {html_text(care_name)}</div>
+                <div style="font-size:18px; line-height:1.45; color:#20231f; font-weight:700;">{html_text(kind)}</div>
+                <div style="margin-top:5px; font-size:13px; line-height:1.65; color:#515852;">{html_text(place)} · {html_text(care_name)}</div>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px; border-collapse:collapse;">
                   <tr>
-                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#64716b; width:86px;">보호 종료일</td>
-                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#1b2421;">{html_text(notice_end)}</td>
+                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#6f746e; width:86px;">보호 종료일</td>
+                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#20231f;">{html_text(notice_end)}</td>
                   </tr>
                   <tr>
-                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#64716b;">연락처</td>
-                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#1b2421;">{html_text(care_tel)}</td>
+                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#6f746e;">연락처</td>
+                    <td style="padding:0 0 6px 0; font-family:Arial, 'Malgun Gothic', sans-serif; font-size:13px; line-height:1.6; color:#20231f;">{html_text(care_tel)}</td>
                   </tr>
                 </table>
-                <div style="margin-top:6px; padding-top:10px; border-top:1px solid #eee7db; font-size:12px; line-height:1.6; color:#46544f;">
+                <div style="margin-top:6px; padding-top:10px; border-top:1px solid #ebe4d8; font-size:12px; line-height:1.6; color:#515852;">
                   Rescue Window {html_text(score)} · 사유: {html_text(reason)}
                 </div>
               </td>
@@ -297,7 +297,7 @@ def build_html(digest: dict[str, Any]) -> str:
     else:
         candidate_cards = """
       <tr>
-        <td style="padding:18px; background:#fffdfa; border:1px solid #e4ddcf; border-radius:16px; font-family:Arial, 'Malgun Gothic', sans-serif; color:#46544f; font-size:14px; line-height:1.7;">
+        <td style="padding:18px; background:#fffdf8; border:1px solid #ded8cc; border-radius:16px; font-family:Arial, 'Malgun Gothic', sans-serif; color:#515852; font-size:14px; line-height:1.7;">
           오늘 preview에 포함할 알림 후보가 없습니다.
         </td>
       </tr>
@@ -313,39 +313,39 @@ def build_html(digest: dict[str, Any]) -> str:
   <meta charset="utf-8">
   <title>{html.escape(digest["subject"])}</title>
 </head>
-<body style="margin:0; padding:0; background:#fbf6ea; color:#1b2421;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; background:#fbf6ea;">
+<body style="margin:0; padding:0; background:#f6f1e8; color:#20231f;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; background:#f6f1e8;">
     <tr>
       <td align="center" style="padding:32px 12px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%; max-width:600px; border-collapse:collapse;">
           <tr>
             <td style="padding:0 4px 18px 4px; font-family:Arial, 'Malgun Gothic', sans-serif;">
-              <div style="font-size:22px; line-height:1.35; font-weight:700; color:#1b2421;">Shelter Signal</div>
-              <div style="margin-top:4px; font-size:14px; line-height:1.6; color:#31584e;">{html.escape(SUBTITLE_COPY)}</div>
-              <div style="margin-top:8px; font-size:12px; line-height:1.5; color:#76817b;">생성일: {html.escape(report_generated_at(digest))}</div>
+              <div style="font-size:22px; line-height:1.35; font-weight:700; color:#20231f;">Shelter Signal</div>
+              <div style="margin-top:4px; font-size:14px; line-height:1.6; color:#3f5a4c;">{html.escape(SUBTITLE_COPY)}</div>
+              <div style="margin-top:8px; font-size:12px; line-height:1.5; color:#777a74;">생성일: {html.escape(report_generated_at(digest))}</div>
             </td>
           </tr>
           <tr>
-            <td style="padding:18px 20px; background:#fffdfa; border:1px solid #e4ddcf; border-radius:16px; font-family:Arial, 'Malgun Gothic', sans-serif;">
-              <p style="margin:0; font-size:15px; line-height:1.7; color:#1b2421;">{html.escape(digest["intro"])}</p>
-              <p style="margin:8px 0 0 0; font-size:13px; line-height:1.7; color:#46544f;">{html.escape(digest["safety_note"])}</p>
+            <td style="padding:18px 20px; background:#fffdf8; border:1px solid #ded8cc; border-radius:16px; font-family:Arial, 'Malgun Gothic', sans-serif;">
+              <p style="margin:0; font-size:15px; line-height:1.7; color:#20231f;">{html.escape(digest["intro"])}</p>
+              <p style="margin:8px 0 0 0; font-size:13px; line-height:1.7; color:#515852;">{html.escape(digest["safety_note"])}</p>
             </td>
           </tr>
           <tr>
             <td style="padding:14px 0 18px 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0; background:#eef4ec; border:1px solid #d9e5d8; border-radius:14px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0; background:#eef1ea; border:1px solid #d9ded4; border-radius:14px;">
                 <tr>
-                  <td align="center" style="padding:12px 6px; font-family:Arial, 'Malgun Gothic', sans-serif; border-right:1px solid #d9e5d8;">
-                    <div style="font-size:11px; line-height:1.4; color:#64716b;">전체 후보</div>
-                    <div style="margin-top:2px; font-size:18px; line-height:1.3; font-weight:700; color:#1b2421;">{html_text(total_count)}건</div>
+                  <td align="center" style="padding:12px 6px; font-family:Arial, 'Malgun Gothic', sans-serif; border-right:1px solid #d9ded4;">
+                    <div style="font-size:11px; line-height:1.4; color:#6f746e;">전체 후보</div>
+                    <div style="margin-top:2px; font-size:18px; line-height:1.3; font-weight:700; color:#20231f;">{html_text(total_count)}건</div>
                   </td>
-                  <td align="center" style="padding:12px 6px; font-family:Arial, 'Malgun Gothic', sans-serif; border-right:1px solid #d9e5d8;">
-                    <div style="font-size:11px; line-height:1.4; color:#64716b;">긴급 확인</div>
-                    <div style="margin-top:2px; font-size:18px; line-height:1.3; font-weight:700; color:#6b4b1b;">{html_text(urgent_count)}건</div>
+                  <td align="center" style="padding:12px 6px; font-family:Arial, 'Malgun Gothic', sans-serif; border-right:1px solid #d9ded4;">
+                    <div style="font-size:11px; line-height:1.4; color:#6f746e;">긴급 확인</div>
+                    <div style="margin-top:2px; font-size:18px; line-height:1.3; font-weight:700; color:#6f5532;">{html_text(urgent_count)}건</div>
                   </td>
                   <td align="center" style="padding:12px 6px; font-family:Arial, 'Malgun Gothic', sans-serif;">
-                    <div style="font-size:11px; line-height:1.4; color:#64716b;">곧 종료</div>
-                    <div style="margin-top:2px; font-size:18px; line-height:1.3; font-weight:700; color:#31584e;">{html_text(soon_count)}건</div>
+                    <div style="font-size:11px; line-height:1.4; color:#6f746e;">곧 종료</div>
+                    <div style="margin-top:2px; font-size:18px; line-height:1.3; font-weight:700; color:#3f5a4c;">{html_text(soon_count)}건</div>
                   </td>
                 </tr>
               </table>
@@ -360,8 +360,8 @@ def build_html(digest: dict[str, Any]) -> str:
           </tr>
           <tr>
             <td style="padding:8px 4px 0 4px; font-family:Arial, 'Malgun Gothic', sans-serif;">
-              <p style="margin:0; font-size:12px; line-height:1.7; color:#64716b;">{html.escape(HTML_FOOTER_NOTE)}</p>
-              <p style="margin:6px 0 0 0; font-size:12px; line-height:1.7; color:#64716b;">{html.escape(digest["safety_note"])}</p>
+              <p style="margin:0; font-size:12px; line-height:1.7; color:#6f746e;">{html.escape(HTML_FOOTER_NOTE)}</p>
+              <p style="margin:6px 0 0 0; font-size:12px; line-height:1.7; color:#6f746e;">{html.escape(digest["safety_note"])}</p>
             </td>
           </tr>
         </table>

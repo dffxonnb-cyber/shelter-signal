@@ -69,7 +69,7 @@ Rescue Window 80 · 사유: 보호 종료 임박
 - 공포, 죄책감, 즉시 행동 압박을 유도하는 문구는 사용하지 않습니다.
 - calm card-based digest 형식을 유지하되, loud marketing newsletter처럼 보이지 않게 절제합니다.
 - 각 후보 카드는 top-right circular D-day badge를 시각적 기준점으로 둡니다.
-- warm ivory 배경, near-white 카드, muted forest/sage accent, muted amber caution을 사용합니다.
+- warm ivory 배경, near-white 카드, muted stone/sage accent, restrained ochre caution을 사용합니다.
 - 외부 CSS, 외부 폰트, JavaScript 없이 단순한 email-friendly HTML로 유지합니다.
 - loud red, 큰 장식 로고, cartoon/cute 요소, 무거운 그림자는 사용하지 않습니다.
 
