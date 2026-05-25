@@ -1,6 +1,9 @@
 .env
 data/raw/*.json
 data/raw/*.xml
+data/exports/*.json
+data/exports/*.html
+!data/exports/.gitkeep
 __pycache__/
 *.pyc
 app/node_modules/

@@ -164,6 +164,7 @@ def run_sql_tests() -> list[str]:
 
 def print_previews() -> None:
     previews = {
+        "mart.alert_candidates": "SELECT * FROM mart.alert_candidates LIMIT 10;",
         "mart.rescue_window_summary": "SELECT * FROM mart.rescue_window_summary LIMIT 10;",
         "mart.region_summary": "SELECT * FROM mart.region_summary LIMIT 10;",
         "mart.shelter_summary": "SELECT * FROM mart.shelter_summary LIMIT 10;",
