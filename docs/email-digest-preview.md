@@ -49,6 +49,18 @@ data/exports/email_digest_preview.html
 
 `data/exports/*.json`과 `data/exports/*.html`은 live data가 포함될 수 있으므로 Git에 커밋하지 않습니다. 폴더 유지를 위해 `data/exports/.gitkeep`만 커밋합니다.
 
+## Daily Digest Dry-Run
+
+daily digest preview를 한 번에 준비하고 확인하려면 다음 명령을 사용합니다.
+
+```powershell
+python scripts/run_daily_digest_dry_run.py
+```
+
+이 명령은 로컬 PostgreSQL 연결을 확인하고, `mart.alert_candidates` model/view 존재 여부와 후보 수를 점검한 뒤, preview JSON/HTML 파일을 생성하고 두 파일이 실제로 만들어졌는지 검증합니다. 실제 이메일을 보내지 않으며, 수신자 이메일이나 SMTP/Gmail credential, API key가 필요하지 않습니다.
+
+n8n 자동화가 추가될 때는 실제 email sending을 붙이기 전에 이 dry-run 명령을 Execute Command 단계에서 호출해 preview 산출물과 후보 수를 먼저 확인할 수 있습니다.
+
 ## HTML Preview Principle
 
 HTML preview는 calm card-based digest 원칙을 따릅니다. 너무 평평한 운영 리포트처럼 보이지 않도록 각 공고를 차분한 카드로 보여주되, 홍보성 뉴스레터처럼 과장하지 않습니다.

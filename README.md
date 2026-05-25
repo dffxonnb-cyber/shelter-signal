@@ -10,7 +10,7 @@ Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를
 
 V1은 배포와 문서화가 완료된 안정 버전이며 `v1.0.0` 태그로 보존합니다. V2는 별도 브랜치 `v2/n8n-email-alerts`에서 계획 중이며, n8n 자동 수집과 이메일 요약 digest를 중심으로 검토합니다.
 
-V2 기능은 아직 실제 알림 서비스로 구현된 상태가 아닙니다. 현재 브랜치에서는 `mart.alert_candidates` SQL model과 email digest preview export 기반을 준비하고 있으며, n8n daily email digest workflow 문서와 안전한 outline을 추가했습니다. 실제 이메일 발송은 구현하지 않았고, 현재 단계는 preview + workflow planning입니다. 앱 동작이나 DB schema는 V1 상태를 유지합니다. 자세한 범위는 [docs/v2-roadmap.md](docs/v2-roadmap.md), [docs/email-digest-preview.md](docs/email-digest-preview.md), [docs/n8n/daily-email-digest-workflow.md](docs/n8n/daily-email-digest-workflow.md)를 참고합니다.
+V2 기능은 아직 실제 알림 서비스로 구현된 상태가 아닙니다. 현재 브랜치에서는 `mart.alert_candidates` SQL model과 email digest preview export 기반을 준비하고 있으며, n8n daily email digest workflow 문서와 안전한 outline을 추가했습니다. daily digest preview는 `python scripts/run_daily_digest_dry_run.py`로 로컬 dry-run 검증을 할 수 있습니다. 실제 이메일 발송은 구현하지 않았고, 현재 단계는 preview + workflow planning입니다. 앱 동작이나 DB schema는 V1 상태를 유지합니다. 자세한 범위는 [docs/v2-roadmap.md](docs/v2-roadmap.md), [docs/email-digest-preview.md](docs/email-digest-preview.md), [docs/n8n/daily-email-digest-workflow.md](docs/n8n/daily-email-digest-workflow.md)를 참고합니다.
 
 ## 화면 미리보기
 
