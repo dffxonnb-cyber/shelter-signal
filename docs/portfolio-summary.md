@@ -8,6 +8,19 @@ Shelter Signal
 
 현재 배포된 앱은 export된 정적 JSON 데이터를 사용하는 포트폴리오 시연용 PWA입니다.
 
+## Portfolio Card Copy
+
+“구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고를 정리하는 공공데이터 기반 PWA”
+
+## Screenshot References
+
+- 홈: `docs/screenshots/01-home.png`
+- 골든타임: `docs/screenshots/02-golden-time.png`
+- 공고 필터: `docs/screenshots/03-notices.png`
+- 상세 시트: `docs/screenshots/04-detail-sheet.png`
+- 지역 탐색: `docs/screenshots/05-region-explorer.png`
+- 저장 화면: `docs/screenshots/06-saved.png`
+
 ## One-line Description
 
 Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고를 정리하는 공공데이터 기반 PWA입니다.
