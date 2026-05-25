@@ -20,7 +20,7 @@ Shelter Signal
 ## Opening Copy
 
 ```text
-오늘 확인할 보호 종료 임박 공고를 정리했어요.
+오늘 확인할 공고를 정리했어요.
 ```
 
 ## Safety Note
@@ -29,27 +29,22 @@ Shelter Signal
 공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
 ```
 
-## Candidate Row Fields
+## Summary Line
 
 ```text
-D-day
-Rescue Window 라벨
-품종
-발견 장소
-보호소
-전화번호
-보호 종료일
-Rescue Window Score
-선정 사유
+오늘 확인할 공고 N건
+생성일: YYYY-MM-DD HH:mm
 ```
 
-## Summary Fields
+## Candidate Report Item
 
 ```text
-전체 후보
-긴급 확인
-곧 종료
-생성 시각
+1. [D-1] 믹스견
+   서울특별시 마포구 · 마포도와동물보호센터
+   보호 종료일: 2026-05-24
+   Rescue Window: 80
+   연락처: 02-000-0000
+   사유: 보호 종료 임박
 ```
 
 ## Empty State Copy
@@ -72,7 +67,9 @@ Rescue Window Score
 - Rescue Window Score를 공식 위험 점수처럼 표현하지 않습니다.
 - 공고 상태가 바뀔 수 있음을 전제로 문장을 씁니다.
 - 공포, 죄책감, 즉시 행동 압박을 유도하는 문구는 사용하지 않습니다.
+- marketing newsletter나 web app card UI처럼 보이지 않게 minimal daily report 형식을 유지합니다.
 - 외부 CSS, 외부 폰트, JavaScript 없이 단순한 email-friendly HTML로 유지합니다.
+- 큰 컬러 카드, 큰 배지, 그림자, 장식용 로고 마크를 사용하지 않습니다.
 
 ## Not Included Yet
 
