@@ -51,16 +51,18 @@ data/exports/email_digest_preview.html
 
 ## HTML Preview Principle
 
-HTML preview는 “minimal daily report, not marketing newsletter.” 원칙을 따릅니다. 앱 카드 UI나 홍보성 뉴스레터처럼 보이지 않도록 대부분을 텍스트 기반으로 구성하고, 얇은 구분선과 아주 옅은 배경만 사용합니다.
+HTML preview는 calm card-based digest 원칙을 따릅니다. 너무 평평한 운영 리포트처럼 보이지 않도록 각 공고를 차분한 카드로 보여주되, 홍보성 뉴스레터처럼 과장하지 않습니다.
+
+시각 방향은 warm ivory 배경, white/near-white 후보 카드, deep charcoal 본문, muted forest/sage accent, muted amber caution입니다. 큰 장식 로고, loud red, cartoon/cute 요소는 사용하지 않습니다.
 
 이메일 클라이언트 호환성을 우선해 단순한 table/block layout과 inline style만 사용합니다. JavaScript, 외부 폰트, 외부 CSS 파일은 사용하지 않습니다.
 
 구성은 다음 순서입니다.
 
-- Header: `Shelter Signal`, `보호 종료가 가까운 공고를 먼저 확인합니다.`
-- Summary line: 오늘 확인할 공고 수와 생성일
+- Header: `Shelter Signal`, `보호 종료가 가까운 공고를 먼저 확인합니다.`, 생성일
 - Short notice: 공식 확인 안내
-- Candidate list: 번호가 붙은 report item과 얇은 구분선
+- Summary strip: 전체 후보, 긴급 확인, 곧 종료 count
+- Candidate cards: rescue window label pill, top-right circular D-day badge, 품종/장소/보호소/연락처/보호 종료일/사유
 - Footer: preview-only 안내와 공식 확인 안내 반복
 
 ## Why Emails Are Preview-Only In This Phase
