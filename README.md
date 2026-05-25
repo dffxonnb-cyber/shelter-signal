@@ -6,6 +6,12 @@ Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를
 
 현재 배포된 앱은 `app/public/data/*.json`으로 export된 정적 JSON 데이터를 사용합니다. 운영용 실시간 backend나 사용자 계정 기능이 붙은 production-ready 서비스는 아닙니다.
 
+## V2 계획 메모
+
+V1은 배포와 문서화가 완료된 안정 버전이며 `v1.0.0` 태그로 보존합니다. V2는 별도 브랜치 `v2/n8n-email-alerts`에서 계획 중이며, n8n 자동 수집과 이메일 요약 digest를 중심으로 검토합니다.
+
+V2 기능은 아직 구현된 상태가 아닙니다. 현재 계획은 SQL alert candidate model, email digest preview export, n8n workflow documentation부터 시작하며, 앱 동작이나 DB schema는 V1 상태를 유지합니다. 자세한 범위는 [docs/v2-roadmap.md](docs/v2-roadmap.md)를 참고합니다.
+
 ## 화면 미리보기
 
 | 홈 | 골든타임 | 공고 |
