@@ -44,6 +44,36 @@ EMAIL_PREVIEW_RECIPIENT_DISABLED
 - 생성 파일은 `data/exports/email_digest_preview.json`과 `data/exports/email_digest_preview.html`입니다.
 - `data/exports/*.json`과 `data/exports/*.html`은 Git에 커밋하지 않습니다.
 
+## Local Dry-Run Execution Stage
+
+현재 V2의 n8n 실행 준비는 로컬 생성 검증 단계입니다. n8n이 직접 실행해야 하는 명령은 다음 하나입니다.
+
+```powershell
+python scripts/run_daily_digest_dry_run.py
+```
+
+권장 흐름은 Docker Desktop을 켠 뒤 PostgreSQL만 Compose로 시작하고, n8n은 저장소 루트에서 host process로 실행하는 방식입니다.
+
+```powershell
+docker compose up -d postgres
+python scripts/validate_pipeline.py
+python scripts/run_daily_digest_dry_run.py
+npx n8n@latest start
+```
+
+로컬 `5432` 포트가 이미 사용 중이면 PostgreSQL을 시작하기 전에 `POSTGRES_PORT=5433`을 설정합니다. 이 값은 host port binding만 바꾸며, Docker 내부의 Postgres 포트는 계속 `5432`입니다.
+
+```powershell
+$env:POSTGRES_PORT = "5433"
+docker compose up -d postgres
+```
+
+n8n의 Execute Command node는 저장소 루트에서 실행되는 것을 전제로 `python scripts/run_daily_digest_dry_run.py`를 호출합니다. n8n을 다른 디렉터리에서 시작했다면 command에서 먼저 저장소 루트로 이동해야 합니다.
+
+Docker 안에서 n8n을 실행하려면 프로젝트 디렉터리 mount, Python 설치, `data/exports/` write 권한, Docker Compose 접근이 모두 필요합니다. 현재 브랜치에서는 이 구성이 안전한 기본값이 아니므로 `docker-compose.yml`에는 n8n service를 추가하지 않고, host n8n 실행을 문서화합니다.
+
+이 단계는 preview JSON/HTML이 생성되는지만 확인합니다. 실제 이메일 발송은 아직 구현하지 않으며, credential, 실제 수신자, Gmail/SMTP 설정을 요구하지 않습니다.
+
 ## Dry-Run Workflow Stage
 
 현재 n8n integration의 첫 목표는 실제 발송이 아니라, n8n이 로컬 dry-run command를 실행해 preview 산출물을 만들 수 있는지 확인하는 것입니다.
