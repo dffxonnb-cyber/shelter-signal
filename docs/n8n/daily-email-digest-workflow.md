@@ -78,10 +78,12 @@ n8n HTTP Request node는 다음 local endpoint를 호출합니다.
 
 ```text
 Method: POST
-URL: http://127.0.0.1:8787/dry-run
+URL: http://host.docker.internal:8787/dry-run
 ```
 
-응답은 `status`, `dry_run_result`, `alert_candidate_count`, `json_export_path`, `html_export_path`, `message`를 포함하는 JSON입니다.
+검증된 local n8n 설정에서는 `Authentication: None`, query/header/body 전송 off 상태로 `http://host.docker.internal:8787/dry-run`을 호출했고, `status: ok`, `dry_run_result.result: PASS`, `db_connection_status: PASS`, `alert_candidates_status: PASS`, `alert_candidate_count: 5`, JSON/HTML export PASS 응답을 확인했습니다. `127.0.0.1`과 `localhost`는 n8n 실행 방식에 따라 n8n container 자신을 가리킬 수 있으므로, Docker 기반 local n8n에서는 `host.docker.internal`을 사용합니다.
+
+응답은 `status`, `dry_run_result`, `alert_candidate_count`, `json_export_path`, `html_export_path`, `message`를 포함하는 JSON입니다. 이 검증에서도 실제 이메일은 발송되지 않았습니다.
 
 Execute Command 방식은 node가 사용 가능한 환경에서만 optional/legacy 경로로 둡니다. 이 경우 command는 저장소 루트에서 실행되는 것을 전제로 `python scripts/run_daily_digest_dry_run.py`를 호출합니다.
 

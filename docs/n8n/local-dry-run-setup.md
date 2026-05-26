@@ -154,6 +154,40 @@ Authentication: none
 Body: none
 ```
 
+## 검증된 n8n HTTP Request 설정
+
+The working local n8n configuration used this HTTP Request node setup:
+
+```text
+Method: POST
+URL: http://host.docker.internal:8787/dry-run
+Authentication: None
+Send Query Parameters: Off
+Send Headers: Off
+Send Body: Off
+```
+
+`127.0.0.1` and `localhost` may fail depending on how n8n is running. If n8n runs in Docker, `127.0.0.1` points to the n8n container itself, not the host process running `scripts/serve_daily_digest_dry_run.py`. In the confirmed local setup, `host.docker.internal` reached the host machine and successfully called the bridge.
+
+Confirmed n8n result:
+
+```json
+{
+  "status": "ok",
+  "dry_run_result": {
+    "result": "PASS",
+    "db_connection_status": "PASS",
+    "alert_candidates_status": "PASS",
+    "json_export_status": "PASS data/exports/email_digest_preview.json",
+    "html_export_status": "PASS data/exports/email_digest_preview.html"
+  },
+  "alert_candidate_count": 5,
+  "message": "PASS daily digest preview dry-run complete. No email was sent."
+}
+```
+
+This confirms generation only. It does not enable email sending, credentials, recipients, SMS, auth, or a production backend.
+
 Import the HTTP workflow draft:
 
 ```text
