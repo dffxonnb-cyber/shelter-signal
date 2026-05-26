@@ -85,6 +85,8 @@ URL: http://host.docker.internal:8787/dry-run
 
 응답은 `status`, `dry_run_result`, `alert_candidate_count`, `json_export_path`, `html_export_path`, `message`를 포함하는 JSON입니다. 이 검증에서도 실제 이메일은 발송되지 않았습니다.
 
+V2-3 단계에서는 `POST http://host.docker.internal:8787/dry-run?include_html=true` 응답의 `email_html` 필드를 manual test email step의 HTML body로 사용할 예정입니다. 이 값은 생성된 preview HTML을 n8n으로 전달하기 위한 payload일 뿐이며, 현재 단계에서 발송, credential, 실제 수신자는 추가하지 않습니다.
+
 Execute Command 방식은 node가 사용 가능한 환경에서만 optional/legacy 경로로 둡니다. 이 경우 command는 저장소 루트에서 실행되는 것을 전제로 `python scripts/run_daily_digest_dry_run.py`를 호출합니다.
 
 Docker 안에서 n8n을 실행하려면 프로젝트 디렉터리 mount, Python 설치, `data/exports/` write 권한, Docker Compose 접근이 모두 필요합니다. 현재 브랜치에서는 이 구성이 안전한 기본값이 아니므로 `docker-compose.yml`에는 n8n service를 추가하지 않고, host n8n 실행을 문서화합니다.

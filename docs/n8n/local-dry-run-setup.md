@@ -218,6 +218,49 @@ On failure, the response uses `status: "error"` and returns a non-200 HTTP statu
 
 Keep the bridge running while n8n executes the workflow. Stop it with `Ctrl+C` when the local test is done.
 
+## n8n Email Send 준비용 HTML payload
+
+The dry-run bridge can optionally include the generated email HTML body in the response. This is for a later manual Email Send node test, where n8n needs the HTML body content without reading the local file directly.
+
+Default `/dry-run` responses stay compact and do not include `email_html`.
+
+To include the generated HTML:
+
+```text
+Method: POST
+URL: http://host.docker.internal:8787/dry-run?include_html=true
+Authentication: None
+Send Query Parameters: Off
+Send Headers: Off
+Send Body: Off
+```
+
+Equivalent JSON body option:
+
+```json
+{
+  "include_html": true
+}
+```
+
+When enabled, the bridge runs the same dry-run, reads `data/exports/email_digest_preview.html` after the preview is generated, and adds `email_html` to the JSON response:
+
+```json
+{
+  "status": "ok",
+  "dry_run_result": {
+    "result": "PASS"
+  },
+  "alert_candidate_count": 5,
+  "json_export_path": "data/exports/email_digest_preview.json",
+  "html_export_path": "data/exports/email_digest_preview.html",
+  "email_html": "<!doctype html>...",
+  "message": "PASS daily digest preview dry-run complete. No email was sent."
+}
+```
+
+This still does not send email by itself. It does not add credentials, recipients, SMTP/Gmail settings, SMS, auth, or production backend behavior. If the generated HTML file is missing or empty, the bridge returns `status: "error"` with a non-200 response.
+
 ## Execute Command 방식 (optional/legacy)
 
 Use this only when your n8n setup exposes a working Execute Command node. If n8n shows the command node as unknown or unavailable, use the HTTP Request 방식 above.
