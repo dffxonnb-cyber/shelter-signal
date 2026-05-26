@@ -1,0 +1,89 @@
+{
+  "name": "Shelter Signal V2 Daily Digest HTTP Dry-Run",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8787/dry-run",
+        "sendBody": false,
+        "options": {}
+      },
+      "id": "post-dry-run-http-bridge",
+      "name": "POST Local Dry-Run Bridge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -200,
+        -80
+      ],
+      "notesInFlow": true,
+      "notes": "Start the local bridge first with: python scripts/serve_daily_digest_dry_run.py. This request calls POST http://127.0.0.1:8787/dry-run and returns JSON. No credentials, recipients, SMTP settings, or email sending are used."
+    },
+    {
+      "parameters": {
+        "content": "Expected response\n\nThe HTTP Request node should return JSON like:\n\n{\n  \"status\": \"ok\",\n  \"dry_run_result\": { \"result\": \"PASS\" },\n  \"alert_candidate_count\": 12,\n  \"json_export_path\": \"data/exports/email_digest_preview.json\",\n  \"html_export_path\": \"data/exports/email_digest_preview.html\",\n  \"message\": \"PASS daily digest preview dry-run complete. No email was sent.\"\n}\n\nIf status is error, inspect message and the local bridge terminal logs.",
+        "height": 380,
+        "width": 420,
+        "color": 4
+      },
+      "id": "response-inspection-note",
+      "name": "Response Inspection Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        120,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Email sending intentionally omitted\n\nThis HTTP dry-run workflow only verifies preview generation through the local bridge. Do not add Gmail/SMTP credentials, recipients, SMS, auth, API keys, or real sending behavior in this stage.",
+        "height": 220,
+        "width": 360,
+        "color": 3
+      },
+      "id": "email-omitted-note",
+      "name": "Email Omitted Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        120,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "POST Local Dry-Run Bridge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-26T00:00:00.000Z",
+  "versionId": "00000000-0000-4000-8000-000000000002",
+  "active": false
+}

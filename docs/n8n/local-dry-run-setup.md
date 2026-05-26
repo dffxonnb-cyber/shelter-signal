@@ -21,7 +21,7 @@ The current Compose file only starts PostgreSQL. It intentionally does not start
 
 ## What This Stage Proves
 
-The local n8n dry-run verifies that n8n can call the existing repository script:
+The local n8n dry-run verifies that n8n can call the existing repository script, either through the recommended local HTTP bridge or through an optional Execute Command node:
 
 ```powershell
 python scripts/run_daily_digest_dry_run.py
@@ -77,9 +77,11 @@ After Postgres is up, run the existing validation once:
 python scripts/validate_pipeline.py
 ```
 
-## Why n8n Needs Repository Access
+## Why The Local Runner Needs Repository Access
 
-n8n's Execute Command node runs on the same machine or container where n8n itself is running. For this dry-run, that environment must be able to see:
+The process that actually runs the dry-run command must be able to see the repository. In the recommended HTTP Request 방식, that process is `scripts/serve_daily_digest_dry_run.py`. In the optional Execute Command 방식, it is the n8n process itself.
+
+For this dry-run, the runner environment must be able to see:
 
 - `scripts/run_daily_digest_dry_run.py`
 - `scripts/export_email_digest.py`
@@ -88,7 +90,7 @@ n8n's Execute Command node runs on the same machine or container where n8n itsel
 - Docker Compose and the running PostgreSQL service
 - `data/exports/` so the preview JSON/HTML can be written
 
-The simplest local setup is to start n8n from the repository root. Then the workflow command can use the same relative path that developers already use:
+The simplest local setup is to start the bridge from the repository root. Then the bridge can use the same relative paths that developers already use:
 
 ```powershell
 python scripts/run_daily_digest_dry_run.py
@@ -115,9 +117,76 @@ data/exports/email_digest_preview.html
 
 No email is sent by this script.
 
-## Run n8n On The Host
+## HTTP Request 방식
 
-The recommended local path is to run n8n directly on the host machine from the repository root.
+Some local n8n setups do not expose a usable Execute Command node. In that case, importable workflows may show the command node as an unknown/question-mark node. The local HTTP bridge exists so n8n can use a standard HTTP Request node instead.
+
+Start the bridge from the repository root:
+
+```powershell
+python scripts/serve_daily_digest_dry_run.py
+```
+
+By default, it listens only on local loopback:
+
+```text
+http://127.0.0.1:8787
+```
+
+Health check:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8787/health
+```
+
+Run the dry-run through HTTP:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8787/dry-run
+```
+
+In n8n, use an HTTP Request node:
+
+```text
+Method: POST
+URL: http://127.0.0.1:8787/dry-run
+Authentication: none
+Body: none
+```
+
+Import the HTTP workflow draft:
+
+```text
+docs/n8n/daily-digest-http-dry-run.workflow.json
+```
+
+Expected successful response:
+
+```json
+{
+  "status": "ok",
+  "dry_run_result": {
+    "result": "PASS",
+    "db_connection_status": "PASS",
+    "alert_candidates_status": "PASS",
+    "preview_rows_exported": 12,
+    "json_export_status": "PASS data/exports/email_digest_preview.json",
+    "html_export_status": "PASS data/exports/email_digest_preview.html"
+  },
+  "alert_candidate_count": 12,
+  "json_export_path": "data/exports/email_digest_preview.json",
+  "html_export_path": "data/exports/email_digest_preview.html",
+  "message": "PASS daily digest preview dry-run complete. No email was sent."
+}
+```
+
+On failure, the response uses `status: "error"` and returns a non-200 HTTP status with a message explaining the failed local step. Check the bridge terminal logs and n8n execution output.
+
+Keep the bridge running while n8n executes the workflow. Stop it with `Ctrl+C` when the local test is done.
+
+## Execute Command 방식 (optional/legacy)
+
+Use this only when your n8n setup exposes a working Execute Command node. If n8n shows the command node as unknown or unavailable, use the HTTP Request 방식 above.
 
 Then start n8n locally from the same repository root:
 
@@ -171,11 +240,19 @@ For the existing command to work from inside an n8n container, the container wou
 
 Because `scripts/run_daily_digest_dry_run.py` shells out to Docker Compose to query PostgreSQL, a containerized n8n runner may also need access to the host Docker daemon. Mounting Docker access into a generic automation container is not a safe minimal default, so this repository does not add an n8n service to `docker-compose.yml` yet.
 
-For now, use host n8n for the dry-run execution setup and keep Docker Compose focused on PostgreSQL.
+For now, use host n8n plus the local HTTP bridge for the most practical dry-run setup, and keep Docker Compose focused on PostgreSQL.
 
 ## Workflow Draft Behavior
 
-The local workflow draft uses:
+The recommended local fallback workflow draft uses:
+
+- Manual Trigger for development runs
+- HTTP Request node for `POST http://127.0.0.1:8787/dry-run`
+- sticky notes for response inspection and safety expectations
+- no credentials and no recipients
+- no Email Send node
+
+The optional/legacy Execute Command workflow draft uses:
 
 - Manual Trigger for development runs
 - disabled Schedule Trigger note for a later stage
@@ -183,13 +260,14 @@ The local workflow draft uses:
 - sticky notes for success and failure expectations
 - disabled Email Send placeholder with no credentials and no recipients
 
-The workflow does not send email. The disabled Email Send node exists only to show where a later, separately approved sending stage might be designed.
+Neither workflow sends email. The disabled Email Send node in the legacy command workflow exists only to show where a later, separately approved sending stage might be designed.
 
 ## Why No Email Is Sent
 
 Email sending is intentionally out of scope for this stage.
 
 - `scripts/run_daily_digest_dry_run.py` never sends email.
+- `scripts/serve_daily_digest_dry_run.py` only exposes the dry-run over local HTTP.
 - The workflow command only generates local preview files.
 - The workflow contains no Gmail, SMTP, OAuth, or API credentials.
 - The workflow contains no real recipients.
@@ -211,6 +289,7 @@ Known local caveats:
 - If host port `5432` is busy, set `POSTGRES_PORT=5433` before starting the Postgres service.
 - Windows command quoting differs between PowerShell and `cmd.exe`; start with the simple relative command by launching n8n from the repository root.
 - If `python` opens the Microsoft Store launcher, use `py -3` or the full path to your Python executable in the Execute Command node.
+- If n8n runs in Docker, `127.0.0.1` points at the n8n container rather than the host. Prefer host n8n for this dry-run bridge. Do not broaden the bridge binding beyond local development unless you have a deliberate, temporary networking reason.
 - Bind mounts from OneDrive paths or non-ASCII paths can be fragile in Docker Desktop. Running n8n as a host process avoids most of that path mapping trouble.
 - A future Docker-based n8n setup should use a deliberate custom image or controlled runner design rather than mounting Docker access into a generic n8n container by default.
 

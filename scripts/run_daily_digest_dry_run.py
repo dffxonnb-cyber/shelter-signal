@@ -8,6 +8,7 @@ does not need API keys, and does not include recipients.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import export_email_digest as digest_export
 
@@ -33,7 +34,7 @@ ALERT_CANDIDATES_COUNT_SQL = """
 
 
 def relative_path(path: Path) -> str:
-    return str(path.relative_to(digest_export.PROJECT_ROOT))
+    return path.relative_to(digest_export.PROJECT_ROOT).as_posix()
 
 
 def check_alert_candidates_exists() -> bool:
@@ -67,10 +68,7 @@ def verify_output_file(path: Path) -> None:
         raise RuntimeError(f"expected output file is empty: {relative_path(path)}")
 
 
-def main() -> int:
-    print("Running Shelter Signal V2 daily digest dry-run...")
-    print("No email will be sent. No recipients or email credentials are required.")
-
+def run_dry_run() -> dict[str, Any]:
     db_status = "FAIL"
     model_status = "not checked"
     json_status = "not verified"
@@ -99,21 +97,50 @@ def main() -> int:
     except Exception as exc:
         error_message = str(exc)
 
-    print("\nDaily digest dry-run summary:")
-    print(f"  DB connection status: {db_status}")
-    print(f"  alert_candidates status: {model_status}")
-    print(f"  alert candidate count: {candidate_count if candidate_count is not None else '-'}")
-    if preview_count is not None:
-        print(f"  preview rows exported: {preview_count}")
-    print(f"  JSON export path: {json_status}")
-    print(f"  HTML export path: {html_status}")
+    dry_run_result = {
+        "result": "FAIL" if error_message else "PASS",
+        "db_connection_status": db_status,
+        "alert_candidates_status": model_status,
+        "preview_rows_exported": preview_count,
+        "json_export_status": json_status,
+        "html_export_status": html_status,
+    }
 
-    if error_message:
-        print(f"  Result: FAIL - {error_message}")
+    return {
+        "status": "error" if error_message else "ok",
+        "dry_run_result": dry_run_result,
+        "alert_candidate_count": candidate_count,
+        "json_export_path": relative_path(digest_export.JSON_OUTPUT),
+        "html_export_path": relative_path(digest_export.HTML_OUTPUT),
+        "message": error_message or "PASS daily digest preview dry-run complete. No email was sent.",
+    }
+
+
+def main() -> int:
+    print("Running Shelter Signal V2 daily digest dry-run...")
+    print("No email will be sent. No recipients or email credentials are required.")
+
+    result = run_dry_run()
+    dry_run_result = result["dry_run_result"]
+
+    print("\nDaily digest dry-run summary:")
+    print(f"  DB connection status: {dry_run_result['db_connection_status']}")
+    print(f"  alert_candidates status: {dry_run_result['alert_candidates_status']}")
+    print(
+        "  alert candidate count: "
+        f"{result['alert_candidate_count'] if result['alert_candidate_count'] is not None else '-'}"
+    )
+    if dry_run_result["preview_rows_exported"] is not None:
+        print(f"  preview rows exported: {dry_run_result['preview_rows_exported']}")
+    print(f"  JSON export path: {dry_run_result['json_export_status']}")
+    print(f"  HTML export path: {dry_run_result['html_export_status']}")
+
+    if result["status"] == "error":
+        print(f"  Result: FAIL - {result['message']}")
         return 1
 
     print("  Result: PASS")
-    print("PASS daily digest preview dry-run complete. No email was sent.")
+    print(result["message"])
     return 0
 
 

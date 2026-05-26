@@ -1,5 +1,5 @@
 {
-  "name": "Shelter Signal V2 Daily Digest Dry-Run",
+  "name": "Shelter Signal V2 Daily Digest Dry-Run (Execute Command Optional)",
   "nodes": [
     {
       "parameters": {},
@@ -49,7 +49,7 @@
         -80
       ],
       "notesInFlow": true,
-      "notes": "Host n8n path: start n8n from the repository root so this relative command can find scripts/, docker-compose.yml, and data/exports/. If n8n runs in Docker, mount the project directory, ensure Python is available, and account for Docker Compose access before using this command."
+      "notes": "Optional/legacy path. Use only when Execute Command is available in your local n8n setup. If this node imports as unknown, use docs/n8n/daily-digest-http-dry-run.workflow.json instead. Host n8n path: start n8n from the repository root so this relative command can find scripts/, docker-compose.yml, and data/exports/."
     },
     {
       "parameters": {

@@ -52,12 +52,18 @@ EMAIL_PREVIEW_RECIPIENT_DISABLED
 python scripts/run_daily_digest_dry_run.py
 ```
 
-권장 흐름은 Docker Desktop을 켠 뒤 PostgreSQL만 Compose로 시작하고, n8n은 저장소 루트에서 host process로 실행하는 방식입니다.
+권장 흐름은 Docker Desktop을 켠 뒤 PostgreSQL만 Compose로 시작하고, local HTTP bridge를 저장소 루트에서 실행한 다음 n8n HTTP Request node로 호출하는 방식입니다. 이 방식은 n8n local UI에서 Execute Command node가 보이지 않거나 unknown node로 표시될 때도 사용할 수 있습니다.
 
 ```powershell
 docker compose up -d postgres
 python scripts/validate_pipeline.py
 python scripts/run_daily_digest_dry_run.py
+python scripts/serve_daily_digest_dry_run.py
+```
+
+별도 터미널에서 n8n을 실행하고 HTTP workflow draft를 import합니다.
+
+```powershell
 npx n8n@latest start
 ```
 
@@ -68,7 +74,16 @@ $env:POSTGRES_PORT = "5433"
 docker compose up -d postgres
 ```
 
-n8n의 Execute Command node는 저장소 루트에서 실행되는 것을 전제로 `python scripts/run_daily_digest_dry_run.py`를 호출합니다. n8n을 다른 디렉터리에서 시작했다면 command에서 먼저 저장소 루트로 이동해야 합니다.
+n8n HTTP Request node는 다음 local endpoint를 호출합니다.
+
+```text
+Method: POST
+URL: http://127.0.0.1:8787/dry-run
+```
+
+응답은 `status`, `dry_run_result`, `alert_candidate_count`, `json_export_path`, `html_export_path`, `message`를 포함하는 JSON입니다.
+
+Execute Command 방식은 node가 사용 가능한 환경에서만 optional/legacy 경로로 둡니다. 이 경우 command는 저장소 루트에서 실행되는 것을 전제로 `python scripts/run_daily_digest_dry_run.py`를 호출합니다.
 
 Docker 안에서 n8n을 실행하려면 프로젝트 디렉터리 mount, Python 설치, `data/exports/` write 권한, Docker Compose 접근이 모두 필요합니다. 현재 브랜치에서는 이 구성이 안전한 기본값이 아니므로 `docker-compose.yml`에는 n8n service를 추가하지 않고, host n8n 실행을 문서화합니다.
 
@@ -78,12 +93,13 @@ Docker 안에서 n8n을 실행하려면 프로젝트 디렉터리 mount, Python 
 
 현재 n8n integration의 첫 목표는 실제 발송이 아니라, n8n이 로컬 dry-run command를 실행해 preview 산출물을 만들 수 있는지 확인하는 것입니다.
 
-로컬 dry-run workflow 초안은 [daily-digest-dry-run.workflow.json](daily-digest-dry-run.workflow.json)에 두고, 실행 방법은 [local-dry-run-setup.md](local-dry-run-setup.md)에 정리합니다.
+HTTP Request 기반 로컬 dry-run workflow 초안은 [daily-digest-http-dry-run.workflow.json](daily-digest-http-dry-run.workflow.json)에 두고, Execute Command 기반 초안은 optional/legacy 용도로 [daily-digest-dry-run.workflow.json](daily-digest-dry-run.workflow.json)에 둡니다. 실행 방법은 [local-dry-run-setup.md](local-dry-run-setup.md)에 정리합니다.
 
 이 단계의 workflow는 다음만 검증합니다.
 
 - n8n Manual Trigger가 workflow를 시작할 수 있음
-- Execute Command node가 `python scripts/run_daily_digest_dry_run.py`를 실행할 수 있음
+- HTTP Request node가 `POST http://127.0.0.1:8787/dry-run`을 호출할 수 있음
+- local bridge가 `python scripts/run_daily_digest_dry_run.py` dry-run logic을 실행할 수 있음
 - `mart.alert_candidates`를 읽어 digest preview JSON/HTML을 생성할 수 있음
 - 생성된 `data/exports/email_digest_preview.json`과 `data/exports/email_digest_preview.html` 파일이 존재함
 
