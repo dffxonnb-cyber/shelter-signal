@@ -44,6 +44,23 @@ EMAIL_PREVIEW_RECIPIENT_DISABLED
 - 생성 파일은 `data/exports/email_digest_preview.json`과 `data/exports/email_digest_preview.html`입니다.
 - `data/exports/*.json`과 `data/exports/*.html`은 Git에 커밋하지 않습니다.
 
+## Dry-Run Workflow Stage
+
+현재 n8n integration의 첫 목표는 실제 발송이 아니라, n8n이 로컬 dry-run command를 실행해 preview 산출물을 만들 수 있는지 확인하는 것입니다.
+
+로컬 dry-run workflow 초안은 [daily-digest-dry-run.workflow.json](daily-digest-dry-run.workflow.json)에 두고, 실행 방법은 [local-dry-run-setup.md](local-dry-run-setup.md)에 정리합니다.
+
+이 단계의 workflow는 다음만 검증합니다.
+
+- n8n Manual Trigger가 workflow를 시작할 수 있음
+- Execute Command node가 `python scripts/run_daily_digest_dry_run.py`를 실행할 수 있음
+- `mart.alert_candidates`를 읽어 digest preview JSON/HTML을 생성할 수 있음
+- 생성된 `data/exports/email_digest_preview.json`과 `data/exports/email_digest_preview.html` 파일이 존재함
+
+이 단계는 실제 수신자, Gmail/SMTP credential, SMS, 사용자 계정, auth, API key를 요구하지 않습니다. Email Send node는 placeholder로만 두며 disabled 상태를 유지합니다.
+
+실제 이메일 발송은 preview 품질 확인, 안전 문구 검토, credential 관리, 수신자 동의, unsubscribe, bounce 처리, 발송 제한 기준이 준비된 뒤 별도 단계에서 다룹니다.
+
 ## Production Caution Notes
 
 이 workflow는 production-ready 알림 시스템이 아닙니다.
