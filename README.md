@@ -8,15 +8,22 @@ Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를
 
 ## 화면 미리보기
 
-| 홈 | 골든타임 | 공고 |
-| --- | --- | --- |
-| ![오늘의 보호 종료 신호와 우선 확인 공고가 보이는 홈 화면](docs/screenshots/01-home.png) | ![보호 종료가 가까운 공고를 정리한 골든타임 화면](docs/screenshots/02-golden-time.png) | ![Rescue Window, 축종, 지역 필터와 표시 수 조절이 보이는 공고 화면](docs/screenshots/03-notices.png) |
-| 오늘의 보호 종료 신호와 우선 확인 공고 | 보호 종료가 가까운 골든타임 공고 | 필터와 표시 수 조절이 있는 공고 목록 |
+현재 화면은 반응형 제품 랜딩 페이지 안에 PWA 앱 미리보기를 배치한 구조입니다. 첫 화면에서 서비스 목적을 소개하고, 이어지는 앱 preview shell 안에서 기존 탭 기능을 그대로 확인할 수 있습니다.
 
-| 상세 시트 | 지역 탐색 | 저장 |
+| 랜딩 히어로 |
+| --- |
+| ![Shelter Signal 랜딩 히어로와 Static JSON Demo 상태 칩, 주요 CTA가 보이는 화면](docs/screenshots/01-landing-hero.png) |
+| 보호 종료가 가까운 공고를 먼저 확인한다는 제품 메시지 |
+
+| 앱 preview 홈 | 골든타임 | 공고 필터 |
 | --- | --- | --- |
-| ![공식 공고 정보와 동물 정보가 정리된 상세 시트](docs/screenshots/04-detail-sheet.png) | ![권역과 개별 지역 신호를 살펴보는 지역 탐색 화면](docs/screenshots/05-region-explorer.png) | ![관심 공고 저장 준비 상태를 보여주는 저장 화면](docs/screenshots/06-saved.png) |
-| 공식 공고 정보와 보호소 연락처 확인 | 권역과 개별 지역의 공고 신호 탐색 | 관심 공고 저장 기능을 위한 자리 |
+| ![제품 페이지 안에 삽입된 Shelter Signal 앱 preview 홈 화면](docs/screenshots/02-app-preview-home.png) | ![보호 종료가 가까운 공고를 정리한 골든타임 탭 화면](docs/screenshots/03-golden-time.png) | ![Rescue Window 필터와 표시 수 조절이 보이는 공고 탭 화면](docs/screenshots/04-notices-filter.png) |
+| 오늘의 공고 신호와 기존 탭 인터페이스 | 보호 종료가 가까운 공고 중심 리스트 | 필터와 표시 수 조절이 있는 공고 목록 |
+
+| 지역 탐색 | 상세 시트 | 데이터 파이프라인 |
+| --- | --- | --- |
+| ![권역과 개별 지역 신호를 살펴보는 지역 탐색 화면](docs/screenshots/05-region-explorer.png) | ![공식 공고 정보와 동물 정보가 정리된 상세 시트](docs/screenshots/06-detail-sheet.png) | ![Public API에서 PWA까지 이어지는 정적 JSON 데이터 파이프라인 섹션](docs/screenshots/07-data-pipeline.png) |
+| 권역과 개별 지역의 공고 신호 탐색 | 공식 공고 정보와 보호소 연락처 확인 | static JSON 기반 배포 구조 |
 
 이 저장소는 공공데이터 API 점검, PostgreSQL 적재, SQL 모델링, 정적 JSON export, React PWA 화면까지 이어지는 데이터 제품형 MVP입니다. 운영 서비스로 완성된 상태는 아니며, 포트폴리오와 다음 단계 구현을 위한 검증 가능한 기반을 목표로 합니다.
 

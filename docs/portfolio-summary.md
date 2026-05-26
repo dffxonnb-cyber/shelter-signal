@@ -6,20 +6,21 @@ Shelter Signal
 
 배포 링크: https://shelter-signal-ebon.vercel.app/
 
-현재 배포된 앱은 export된 정적 JSON 데이터를 사용하는 포트폴리오 시연용 PWA입니다.
+현재 배포된 앱은 export된 정적 JSON 데이터를 사용하는 포트폴리오 시연용 PWA이며, 반응형 제품 랜딩 페이지와 앱 미리보기 형태로 정리했습니다.
 
 ## Portfolio Card Copy
 
-“구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고를 정리하는 공공데이터 기반 PWA”
+“보호 종료가 가까운 구조동물 공고를 먼저 확인하도록 돕는 공공데이터 기반 PWA”
 
 ## Screenshot References
 
-- 홈: `docs/screenshots/01-home.png`
-- 골든타임: `docs/screenshots/02-golden-time.png`
-- 공고 필터: `docs/screenshots/03-notices.png`
-- 상세 시트: `docs/screenshots/04-detail-sheet.png`
+- 랜딩 히어로: `docs/screenshots/01-landing-hero.png`
+- 앱 preview 홈: `docs/screenshots/02-app-preview-home.png`
+- 골든타임: `docs/screenshots/03-golden-time.png`
+- 공고 필터: `docs/screenshots/04-notices-filter.png`
 - 지역 탐색: `docs/screenshots/05-region-explorer.png`
-- 저장 화면: `docs/screenshots/06-saved.png`
+- 상세 시트: `docs/screenshots/06-detail-sheet.png`
+- 데이터 파이프라인: `docs/screenshots/07-data-pipeline.png`
 
 ## One-line Description
 
@@ -31,7 +32,7 @@ Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를
 
 ## Solution
 
-공공데이터 API 또는 mock 데이터를 PostgreSQL에 적재하고, SQL 모델에서 Rescue Window Score와 summary view를 만든 뒤, 정적 JSON export를 통해 PWA가 데이터를 읽도록 구성했습니다. 앱에서는 홈 신호, 골든타임 공고, 필터, 표시 수 조절, 지역 신호 탐색기, 상세 시트를 제공합니다.
+공공데이터 API 또는 mock 데이터를 PostgreSQL에 적재하고, SQL 모델에서 Rescue Window Score와 summary view를 만든 뒤, 정적 JSON export를 통해 PWA가 데이터를 읽도록 구성했습니다. 현재 화면 구성은 제품 랜딩 페이지 안에 앱 미리보기를 배치하고, 홈 신호, 골든타임 공고, 필터, 표시 수 조절, 지역 신호 탐색기, 상세 시트를 보여줍니다.
 
 ## Technical Stack
 
