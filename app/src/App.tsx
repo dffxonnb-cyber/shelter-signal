@@ -12,6 +12,7 @@ import {
   fallbackAppData,
   loadExportedAppData,
 } from "./data/exportedData";
+import { fetchSheltersByRegion, type Shelter } from "./data/shelters";
 
 type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
 type NoticeLimit = 5 | 10 | 20 | "all";
@@ -41,6 +42,7 @@ const labelOrder: Record<RescueWindowLabel, number> = {
 };
 
 type DataSourceState = "loading" | "exported" | "fallback";
+type ShelterLoadState = "idle" | "loading" | "success" | "error";
 
 interface RuntimeAppData extends ExportedAppData {
   source: DataSourceState;
@@ -756,18 +758,52 @@ function AnimalCards({
 function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] }) {
   const [selectedSido, setSelectedSido] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [shelterStatus, setShelterStatus] = useState<ShelterLoadState>("idle");
+  const [shelters, setShelters] = useState<Shelter[]>([]);
   const regionGroups = useMemo(() => buildRegionSelectorGroups(regionSignals), [regionSignals]);
   const selectedGroup = regionGroups.find((group) => group.sido === selectedSido);
   const districtOptions = selectedGroup?.districts ?? [];
   const selectedDistrictOption = districtOptions.find((option) => option.value === selectedDistrict);
   const selectedRegionSignal = selectedDistrictOption?.signal;
   const hasCompletedSelection = Boolean(selectedSido && selectedDistrict);
+  const selectedSigunguLabel = selectedDistrictOption?.label ?? "";
   const selectedTotals = selectedRegionSignal
     ? summarizeRegionSignals([selectedRegionSignal])
     : undefined;
-  const selectedRegionLabel = selectedRegionSignal?.region ?? [selectedSido, selectedDistrictOption?.label]
-    .filter(Boolean)
-    .join(" ");
+  const selectedRegionLabel =
+    selectedRegionSignal?.region ??
+    [selectedSido, selectedDistrictOption?.label].filter(Boolean).join(" ");
+
+  useEffect(() => {
+    if (!selectedSido || !selectedSigunguLabel) {
+      setShelterStatus("idle");
+      setShelters([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    setShelterStatus("loading");
+    setShelters([]);
+
+    fetchSheltersByRegion({
+      sido: selectedSido,
+      sigungu: selectedSigunguLabel,
+      signal: controller.signal,
+    })
+      .then((nextShelters) => {
+        setShelters(nextShelters);
+        setShelterStatus("success");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        setShelters([]);
+        setShelterStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [selectedSido, selectedSigunguLabel]);
 
   const handleSidoChange = (value: string) => {
     setSelectedSido(value);
@@ -775,43 +811,50 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
   };
 
   const regionResult = !hasCompletedSelection ? (
-    <section className="empty-state region-empty-state" role="status">
-      <strong>지역을 선택하면 보호소 정보가 여기에 표시됩니다.</strong>
-      <p>시/도와 시/군/구를 차례로 선택해 주세요.</p>
-    </section>
-  ) : selectedRegionSignal && selectedTotals ? (
-    <>
-      <section className="selected-region-panel" aria-label="선택한 지역 요약">
-        <div>
-          <span className="section-kicker">선택한 지역</span>
-          <h3>{selectedRegionLabel}</h3>
-          <p>
-            현재 정적 공고 데이터 기준으로 공고 {selectedTotals.total}건을 확인하고 있어요.
-          </p>
-        </div>
-        <dl className="selected-region-metrics">
-          <SummaryNumber label="긴급" value={selectedTotals.urgent} />
-          <SummaryNumber label="곧 종료" value={selectedTotals.endingSoon} />
-          <SummaryNumber label="평균 점수" value={selectedTotals.averageScore} />
-        </dl>
-        <p className="region-limit-note">
-          보호소 홈페이지, 운영시간, 좌표 정보는 아직 지원하지 않습니다. 공공데이터 제공 여부와
-          API 권한을 확인한 뒤 업데이트할 예정입니다.
-        </p>
-      </section>
-
-      <section className="region-card-list" aria-label="선택한 지역 공고 요약">
-        <RegionCard summary={selectedRegionSignal} />
-      </section>
-    </>
+    <ShelterDataPanel status="idle" shelters={[]} selectedRegionLabel="" />
   ) : (
-    <section className="empty-state region-empty-state" role="status">
-      <strong>
-        현재 선택한 지역의 보호소 정보는 준비 중입니다. 공공데이터 제공 여부를 확인한 뒤
-        업데이트할 예정입니다.
-      </strong>
-      <p>지원하지 않는 API 정보를 임의로 표시하지 않습니다.</p>
-    </section>
+    <>
+      {selectedRegionSignal && selectedTotals ? (
+        <>
+          <section className="selected-region-panel" aria-label="선택한 지역 요약">
+            <div>
+              <span className="section-kicker">선택한 지역</span>
+              <h3>{selectedRegionLabel}</h3>
+              <p>
+                현재 정적 공고 데이터 기준으로 공고 {selectedTotals.total}건을 확인하고 있어요.
+              </p>
+            </div>
+            <dl className="selected-region-metrics">
+              <SummaryNumber label="긴급" value={selectedTotals.urgent} />
+              <SummaryNumber label="곧 종료" value={selectedTotals.endingSoon} />
+              <SummaryNumber label="평균 점수" value={selectedTotals.averageScore} />
+            </dl>
+            <p className="region-limit-note">
+              보호소 홈페이지, 운영시간, 좌표 정보는 아직 지원하지 않습니다. 공공데이터 제공 여부와
+              API 권한을 확인한 뒤 업데이트할 예정입니다.
+            </p>
+          </section>
+
+          <section className="region-card-list" aria-label="선택한 지역 공고 요약">
+            <RegionCard summary={selectedRegionSignal} />
+          </section>
+        </>
+      ) : (
+        <section className="empty-state region-empty-state" role="status">
+          <strong>
+            현재 선택한 지역의 보호소 정보는 준비 중입니다. 공공데이터 제공 여부를 확인한 뒤
+            업데이트할 예정입니다.
+          </strong>
+          <p>지원하지 않는 API 정보를 임의로 표시하지 않습니다.</p>
+        </section>
+      )}
+
+      <ShelterDataPanel
+        status={shelterStatus}
+        shelters={shelters}
+        selectedRegionLabel={selectedRegionLabel}
+      />
+    </>
   );
 
   return (
@@ -1206,6 +1249,102 @@ function summarizeRegionSignals(regionSignals: RegionSignal[]): RegionSignalTota
     averageScore: total ? Math.round(weightedScore / total) : 0,
     regionCount: regionSignals.length,
   };
+}
+
+function ShelterDataPanel({
+  status,
+  shelters,
+  selectedRegionLabel,
+}: {
+  status: ShelterLoadState;
+  shelters: Shelter[];
+  selectedRegionLabel: string;
+}) {
+  if (status === "idle") {
+    return (
+      <section className="empty-state region-empty-state" role="status">
+        <strong>지역을 선택하면 보호소 정보가 여기에 표시됩니다.</strong>
+        <p>시/도와 시/군/구를 차례로 선택해 주세요.</p>
+      </section>
+    );
+  }
+
+  if (status === "loading") {
+    return (
+      <section className="shelter-data-panel" role="status" aria-busy="true">
+        <span className="section-kicker">보호소 조회</span>
+        <h3>보호소 데이터를 불러오는 중입니다.</h3>
+        <p>{selectedRegionLabel}의 공공데이터 응답을 확인하고 있어요.</p>
+      </section>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <section className="shelter-data-panel is-error" role="alert">
+        <span className="section-kicker">보호소 조회</span>
+        <h3>공공데이터 API 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.</h3>
+        <p>서비스 키, API 권한, 또는 일시적인 공공데이터 응답 상태를 확인해야 합니다.</p>
+      </section>
+    );
+  }
+
+  if (!shelters.length) {
+    return (
+      <section className="shelter-data-panel" role="status">
+        <span className="section-kicker">보호소 조회</span>
+        <h3>선택한 지역의 보호소 데이터가 아직 확인되지 않았습니다.</h3>
+        <p>
+          현재 선택한 지역의 보호소 정보는 준비 중입니다. 공공데이터 제공 여부를 확인한 뒤
+          업데이트할 예정입니다.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="shelter-data-panel" aria-label={`${selectedRegionLabel} 보호소 데이터`}>
+      <div className="shelter-data-heading">
+        <div>
+          <span className="section-kicker">보호소 조회</span>
+          <h3>{selectedRegionLabel} 보호소 데이터</h3>
+        </div>
+        <span>{shelters.length}곳</span>
+      </div>
+      <div className="shelter-card-list">
+        {shelters.map((shelter) => (
+          <ShelterCard key={shelter.id} shelter={shelter} />
+        ))}
+      </div>
+      <p className="shelter-api-note">
+        현재 화면은 공공데이터 응답에서 확인된 보호소명, 주소, 연락처, 관할 정보만 표시합니다.
+      </p>
+    </section>
+  );
+}
+
+function ShelterCard({ shelter }: { shelter: Shelter }) {
+  return (
+    <article className="shelter-card">
+      <h4>{shelter.name}</h4>
+      <dl className="shelter-meta-list">
+        {shelter.address && <ShelterMetaItem label="주소" value={shelter.address} />}
+        {shelter.phone && (
+          <ShelterMetaItem label="전화" value={shelter.phone} href={telLink(shelter.phone)} />
+        )}
+        {shelter.jurisdiction && <ShelterMetaItem label="관할" value={shelter.jurisdiction} />}
+      </dl>
+    </article>
+  );
+}
+
+function ShelterMetaItem({ label, value, href }: { label: string; value: string; href?: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{href ? <a href={href}>{value}</a> : value}</dd>
+    </div>
+  );
 }
 
 function buildRegionSelectorGroups(regionSignals: RegionSignal[]): RegionSelectorGroup[] {
