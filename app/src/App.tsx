@@ -63,30 +63,6 @@ const REGION_CLUSTERS: Array<{
   { key: "other", label: "그 외", matchers: [] },
 ];
 
-const productValues = [
-  {
-    title: "보호 종료 신호",
-    description: "보호 종료일까지 남은 시간을 기준으로 오늘 먼저 확인할 공고를 정리합니다.",
-  },
-  {
-    title: "Rescue Window Score",
-    description: "사진, 연락처, 공고 상태 같은 데이터 신호를 함께 보며 확인 순서를 돕습니다.",
-  },
-  {
-    title: "지역별 공고 흐름",
-    description: "지역 단위로 긴급 확인과 곧 종료 공고의 흐름을 빠르게 살펴봅니다.",
-  },
-];
-
-const pipelineSteps = [
-  "Public API",
-  "PostgreSQL",
-  "SQL models",
-  "Rescue Window Score",
-  "Static JSON",
-  "PWA",
-];
-
 type DataSourceState = "loading" | "exported" | "fallback";
 
 interface RuntimeAppData extends ExportedAppData {
@@ -218,227 +194,65 @@ function App() {
   };
 
   return (
-    <div className="site-shell">
-      <ProductHero
+    <div className="app-shell">
+      <AppHeader
         dataSource={runtimeData.source}
+        errorMessage={runtimeData.errorMessage}
         animalCount={animals.length}
-        urgentCount={urgentAnimals.length}
-        soonEndingCount={soonEndingAnimals.length}
-        topAnimals={topPriorityAnimals}
       />
 
-      <ProductValueSection />
+      <AppNavigation activeView={activeView} placement="top" onChange={setActiveView} />
 
-      <section className="app-preview-section" id="app-preview" aria-labelledby="app-preview-title">
-        <div className="landing-section-header app-preview-heading">
-          <p className="section-kicker">공공데이터 기반 PWA</p>
-          <h2 id="app-preview-title">오늘의 공고 신호</h2>
-          <p>
-            오늘 확인할 공고를 정리했어요. 기존 탭 흐름은 유지하면서, 데스크톱에서는
-            제품 미리보기처럼 좁고 집중된 화면으로 확인할 수 있습니다.
-          </p>
-        </div>
+      <main className="app-main">
+        {activeView === "overview" && (
+          <HomeScreen
+            activeCount={activeAnimals.length}
+            urgentCount={urgentAnimals.length}
+            soonEndingCount={soonEndingAnimals.length}
+            goldenCount={goldenTimeAnimals.length}
+            topAnimals={topPriorityAnimals}
+            regionSignals={regionSignals}
+            rescueWindowSummaries={runtimeData.rescueWindowSummaries}
+            onOpenGoldenTime={() => setActiveView("golden")}
+            onOpenNotices={() => setActiveView("notices")}
+            onOpenRegions={() => setActiveView("regions")}
+            onOpenSaved={() => setActiveView("saved")}
+            onOpenDetail={openDetail}
+          />
+        )}
+        {activeView === "golden" && (
+          <GoldenTimeScreen
+            animals={goldenTimeAnimals}
+            selectedAnimalId={detailAnimal?.id}
+            onSelect={openDetail}
+          />
+        )}
+        {activeView === "notices" && (
+          <NoticeListScreen
+            animals={filteredAnimals}
+            selectedAnimalId={detailAnimal?.id}
+            labelFilter={labelFilter}
+            typeFilter={typeFilter}
+            regionFilter={regionFilter}
+            animalTypes={animalTypes}
+            regions={regions}
+            onLabelFilter={setLabelFilter}
+            onTypeFilter={setTypeFilter}
+            onRegionFilter={setRegionFilter}
+            onResetFilters={resetFilters}
+            onSelect={openDetail}
+          />
+        )}
+        {activeView === "regions" && <RegionSummaryScreen regionSignals={regionSignals} />}
+        {activeView === "saved" && <SavedNoticesScreen />}
+      </main>
 
-        <div className="app-preview-layout">
-          <aside className="preview-context" aria-label="앱 미리보기 설명">
-            <span className="status-chip">V1 배포 버전</span>
-            <h3>앱 기능은 그대로, 화면은 더 넓은 맥락 안에.</h3>
-            <p>
-              공고 탐색, 골든타임 카드, 지역 신호, 상세 시트는 동일하게 동작합니다.
-              현재 배포 앱은 exported static JSON을 먼저 읽고, 실패하면 mock 데이터로
-              안전하게 fallback합니다.
-            </p>
-            <dl className="preview-metrics">
-              <SummaryNumber label="표시 공고" value={animals.length} />
-              <SummaryNumber label="긴급 확인" value={urgentAnimals.length} />
-              <SummaryNumber label="곧 종료" value={soonEndingAnimals.length} />
-            </dl>
-          </aside>
-
-          <div className="app-shell" data-testid="app-preview-shell">
-            <AppHeader
-              dataSource={runtimeData.source}
-              errorMessage={runtimeData.errorMessage}
-              animalCount={animals.length}
-            />
-
-            <AppNavigation activeView={activeView} placement="top" onChange={setActiveView} />
-
-            <main className="app-main">
-              {activeView === "overview" && (
-                <HomeScreen
-                  activeCount={activeAnimals.length}
-                  urgentCount={urgentAnimals.length}
-                  soonEndingCount={soonEndingAnimals.length}
-                  goldenCount={goldenTimeAnimals.length}
-                  topAnimals={topPriorityAnimals}
-                  regionSignals={regionSignals}
-                  rescueWindowSummaries={runtimeData.rescueWindowSummaries}
-                  onOpenGoldenTime={() => setActiveView("golden")}
-                  onOpenRegions={() => setActiveView("regions")}
-                  onOpenSaved={() => setActiveView("saved")}
-                  onOpenDetail={openDetail}
-                />
-              )}
-              {activeView === "golden" && (
-                <GoldenTimeScreen
-                  animals={goldenTimeAnimals}
-                  selectedAnimalId={detailAnimal?.id}
-                  onSelect={openDetail}
-                />
-              )}
-              {activeView === "notices" && (
-                <NoticeListScreen
-                  animals={filteredAnimals}
-                  selectedAnimalId={detailAnimal?.id}
-                  labelFilter={labelFilter}
-                  typeFilter={typeFilter}
-                  regionFilter={regionFilter}
-                  animalTypes={animalTypes}
-                  regions={regions}
-                  onLabelFilter={setLabelFilter}
-                  onTypeFilter={setTypeFilter}
-                  onRegionFilter={setRegionFilter}
-                  onResetFilters={resetFilters}
-                  onSelect={openDetail}
-                />
-              )}
-              {activeView === "regions" && <RegionSummaryScreen regionSignals={regionSignals} />}
-              {activeView === "saved" && <SavedNoticesScreen />}
-            </main>
-
-            <AppNavigation activeView={activeView} placement="bottom" onChange={setActiveView} />
-          </div>
-        </div>
-      </section>
-
-      <DataPipelineSection />
-      <ResponsibleUseSection />
+      <AppNavigation activeView={activeView} placement="bottom" onChange={setActiveView} />
 
       {detailAnimal && (
         <NoticeDetailSheet animal={detailAnimal} onClose={() => setDetailAnimalId(null)} />
       )}
     </div>
-  );
-}
-
-function ProductHero({
-  dataSource,
-  animalCount,
-  urgentCount,
-  soonEndingCount,
-  topAnimals,
-}: {
-  dataSource: DataSourceState;
-  animalCount: number;
-  urgentCount: number;
-  soonEndingCount: number;
-  topAnimals: MockAnimal[];
-}) {
-  return (
-    <header className="product-hero">
-      <div className="hero-content">
-        <div className="hero-brand-row">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Shelter Signal</span>
-        </div>
-        <span className="status-chip">{heroStatusCopy(dataSource)}</span>
-        <h1>보호 종료가 가까운 공고를 먼저 확인합니다.</h1>
-        <p>
-          공공 구조동물 데이터를 수집·정제하고, 보호 종료일까지 남은 시간과 데이터
-          신호를 바탕으로 우선 확인 공고를 정리합니다.
-        </p>
-        <div className="hero-actions" aria-label="주요 이동">
-          <a className="primary-action" href="#app-preview" data-testid="hero-primary-cta">
-            공고 확인하기
-          </a>
-          <a className="secondary-action" href="#score-section" data-testid="hero-secondary-cta">
-            Rescue Window Score 보기
-          </a>
-        </div>
-      </div>
-
-      <div className="hero-preview-panel" aria-label="오늘의 공고 신호 미리보기">
-        <div className="preview-panel-top">
-          <span>오늘 확인할 공고를 정리했어요.</span>
-          <strong>{animalCount}건</strong>
-        </div>
-        <div className="hero-signal-grid">
-          <SignalStat label="긴급 확인" value={urgentCount} hint="우선 확인" tone="urgent" />
-          <SignalStat label="곧 종료" value={soonEndingCount} hint="종료 임박" tone="soon" />
-        </div>
-        <div className="hero-priority-list">
-          {topAnimals.slice(0, 2).map((animal) => (
-            <article key={animal.id}>
-              <span>{animal.ddayText}</span>
-              <strong>{animal.kindFullName}</strong>
-              <small>{animal.region}</small>
-            </article>
-          ))}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function ProductValueSection() {
-  return (
-    <section className="value-section" aria-labelledby="value-heading">
-      <div className="landing-section-header">
-        <p className="section-kicker">서비스 관점</p>
-        <h2 id="value-heading">차분하게 먼저 볼 공고를 좁힙니다.</h2>
-      </div>
-      <div className="value-grid">
-        {productValues.map((value, index) => (
-          <article
-            className="value-card"
-            id={value.title === "Rescue Window Score" ? "score-section" : undefined}
-            key={value.title}
-          >
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <h3>{value.title}</h3>
-            <p>{value.description}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function DataPipelineSection() {
-  return (
-    <section className="pipeline-section" aria-labelledby="pipeline-title">
-      <div className="landing-section-header">
-        <p className="section-kicker">데이터 흐름</p>
-        <h2 id="pipeline-title">정적 JSON까지 이어지는 검증 가능한 파이프라인</h2>
-        <p>
-          현재 배포는 live backend가 아니라 로컬 파이프라인에서 만든 정적 데이터를
-          PWA가 읽는 구조입니다.
-        </p>
-      </div>
-      <ol className="pipeline-flow">
-        {pipelineSteps.map((step) => (
-          <li key={step}>{step}</li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function ResponsibleUseSection() {
-  return (
-    <section className="responsible-section" aria-labelledby="responsible-title">
-      <div>
-        <p className="section-kicker">Responsible use</p>
-        <h2 id="responsible-title">공식 확인을 돕는 preview입니다.</h2>
-      </div>
-      <p>
-        현재 배포 앱은 exported static JSON을 사용하는 데모이며 production live backend가
-        아닙니다. Rescue Window Score는 공식 위험 점수나 결과 예측 모델이 아니고, 공고를
-        살펴보는 순서를 돕는 내부 탐색 신호입니다.
-      </p>
-      <strong>공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.</strong>
-    </section>
   );
 }
 
@@ -457,7 +271,7 @@ function AppHeader({
         <span className="brand-mark" aria-hidden="true" data-testid="brand-logo" />
         <div className="brand-copy">
           <h1>Shelter Signal</h1>
-          <p className="brand-tagline">보호 종료가 가까운 공고를 먼저 확인합니다.</p>
+          <p className="brand-tagline">공공데이터 기반 보호소 정보 탐색 PWA</p>
         </div>
       </div>
       <DataSourceNote source={dataSource} errorMessage={errorMessage} animalCount={animalCount} />
@@ -500,6 +314,7 @@ function HomeScreen({
   regionSignals,
   rescueWindowSummaries,
   onOpenGoldenTime,
+  onOpenNotices,
   onOpenRegions,
   onOpenSaved,
   onOpenDetail,
@@ -512,6 +327,7 @@ function HomeScreen({
   regionSignals: RegionSignal[];
   rescueWindowSummaries: RescueWindowSummaryRecord[];
   onOpenGoldenTime: () => void;
+  onOpenNotices: () => void;
   onOpenRegions: () => void;
   onOpenSaved: () => void;
   onOpenDetail: (id: string) => void;
@@ -522,14 +338,28 @@ function HomeScreen({
     <div className="screen-stack" data-testid="screen-home">
       <section className="daily-hero">
         <div className="hero-copy">
-          <p className="eyebrow">오늘의 신호</p>
-          <h2>오늘의 보호 종료 신호</h2>
-          <p>보호 종료가 가까운 공고를 먼저 확인합니다.</p>
+          <p className="eyebrow">공공데이터 기반 PWA</p>
+          <h2>Shelter Signal</h2>
+          <p className="hero-lead">
+            공공데이터 기반 유기동물 보호소 정보 탐색 PWA. 보호소 정보의 접근성을 높이기
+            위한 모바일 중심 서비스 실험입니다.
+          </p>
+          <div className="hero-actions" aria-label="주요 탐색">
+            <button className="primary-action" type="button" onClick={onOpenNotices}>
+              공고 살펴보기
+            </button>
+            <button className="secondary-action" type="button" onClick={onOpenRegions}>
+              지역 신호 보기
+            </button>
+          </div>
         </div>
-        <div className="hero-count" aria-label="오늘 먼저 확인할 골든타임 공고 수">
-          <span>우선 확인</span>
-          <strong>{goldenCount}</strong>
-          <small>공고</small>
+        <div className="hero-card-stack">
+          <div className="hero-count" aria-label="오늘 먼저 확인할 골든타임 공고 수">
+            <span>우선 확인</span>
+            <strong>{goldenCount}</strong>
+            <small>골든타임 공고</small>
+          </div>
+          <p className="hero-footnote">정적 JSON 데이터로 안정적으로 시연합니다.</p>
         </div>
       </section>
 
@@ -542,8 +372,8 @@ function HomeScreen({
       <section className="priority-section">
         <SectionHeader
           kicker="우선 확인"
-          title="먼저 볼 공고"
-          actionLabel="목록 보기"
+          title="보호 종료 임박 공고"
+          actionLabel="골든타임 보기"
           onAction={onOpenGoldenTime}
         />
         <PriorityAnimalList animals={topAnimals} onSelect={onOpenDetail} />
@@ -567,15 +397,18 @@ function HomeScreen({
         </button>
 
         <button className="saved-preview-card" type="button" onClick={onOpenSaved}>
-          <span className="section-kicker">저장 준비</span>
-          <strong>관심 공고</strong>
-          <p>관심 공고를 저장하면 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요.</p>
+          <span className="section-kicker">다음 단계</span>
+          <strong>저장과 알림 준비</strong>
+          <p>저장 기능은 아직 준비 중입니다. 현재는 공고 탐색과 공식 연락처 확인에 집중합니다.</p>
         </button>
       </section>
 
       <section className="info-note">
         <strong>Rescue Window Score</strong>
-        <p>공고 종료일과 데이터 신호를 바탕으로 먼저 확인할 순서를 정리합니다.</p>
+        <p>
+          공고 종료일과 데이터 신호를 바탕으로 먼저 확인할 순서를 정리합니다. 공식 위험
+          점수나 예측 모델은 아닙니다.
+        </p>
         <MiniWindowSummary summaries={rescueWindowSummaries} />
       </section>
     </div>
@@ -652,7 +485,12 @@ function PriorityAnimalList({
   onSelect: (id: string) => void;
 }) {
   if (!animals.length) {
-    return <EmptyState title="표시할 공고가 없습니다." description="데이터를 다시 확인해 주세요." />;
+    return (
+      <EmptyState
+        title="먼저 확인할 공고가 없습니다."
+        description="정적 데이터 로딩 상태를 확인하거나 잠시 후 다시 시도해 주세요."
+      />
+    );
   }
 
   return (
@@ -699,7 +537,8 @@ function GoldenTimeScreen({
         description="오늘 먼저 확인할 공고부터 정리했어요."
       />
       <section className="signal-note">
-        공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
+        이 화면은 공고 확인 순서를 돕기 위한 탐색용입니다. 공식 문의와 최종 확인은 보호소
+        또는 관할기관을 통해 진행해주세요.
       </section>
       <AnimalCards
         animals={animals}
@@ -891,7 +730,7 @@ function AnimalCards({
     return (
       <EmptyState
         title="조건에 맞는 공고가 없습니다."
-        description="필터를 줄이거나 다른 지역을 선택해보세요."
+        description="필터를 줄이거나 전체 지역으로 다시 확인해보세요."
       />
     );
   }
@@ -1031,7 +870,10 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
             <RegionCard key={summary.region} summary={summary} />
           ))
         ) : (
-          <EmptyState title="선택한 지역의 공고가 없습니다." description="전체 지역을 다시 선택해보세요." />
+          <EmptyState
+            title="선택한 지역에서 표시할 공고가 없습니다."
+            description="전체 지역을 선택하거나 다른 권역을 살펴보세요."
+          />
         )}
       </section>
     </div>
@@ -1074,15 +916,15 @@ function SavedNoticesScreen() {
       <ScreenHeader
         kicker="관심 공고"
         title="저장한 공고"
-        description="관심 공고를 저장하면 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요."
+        description="저장과 알림은 다음 단계로 준비 중인 흐름입니다."
       />
       <section className="saved-empty">
         <div className="saved-icon" aria-hidden="true">
           저장
         </div>
         <div>
-          <strong>아직 저장한 공고가 없습니다.</strong>
-          <p>관심 공고를 저장하면 보호 종료일 변화와 알림 준비 상태를 이곳에서 확인할 수 있어요.</p>
+          <strong>저장 기능은 아직 구현 전입니다.</strong>
+          <p>현재 버전은 공고 탐색, 지역 신호, 보호소 연락처 확인 흐름을 안정적으로 보여줍니다.</p>
         </div>
       </section>
     </div>
@@ -1228,7 +1070,7 @@ function ScreenHeader({
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <section className="empty-state">
+    <section className="empty-state" role="status">
       <strong>{title}</strong>
       <p>{description}</p>
     </section>
@@ -1441,22 +1283,12 @@ function signalStyle(urgent: number, endingSoon: number): CSSProperties & { "--s
 
 function dataSourceCopy(source: DataSourceState, animalCount: number): string {
   if (source === "loading") {
-    return "데이터 확인 중";
+    return "정적 데이터 확인 중";
   }
   if (source === "exported") {
-    return `Static JSON · 공고 ${animalCount}건`;
+    return `정적 데이터 ${animalCount}건`;
   }
-  return `Mock fallback · 기준일 ${MOCK_REFERENCE_DATE}`;
-}
-
-function heroStatusCopy(source: DataSourceState): string {
-  if (source === "loading") {
-    return "데이터 확인 중";
-  }
-  if (source === "exported") {
-    return "Static JSON Demo";
-  }
-  return "Mock fallback";
+  return `예시 데이터 표시 중 · ${MOCK_REFERENCE_DATE}`;
 }
 
 function labelClass(label: RescueWindowLabel) {

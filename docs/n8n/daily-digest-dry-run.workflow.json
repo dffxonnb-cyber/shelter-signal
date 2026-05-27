@@ -1,0 +1,130 @@
+{
+  "name": "Shelter Signal V2 Daily Digest Dry-Run (Execute Command Optional)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -580,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-disabled",
+      "name": "Schedule Trigger (disabled - later)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -580,
+        120
+      ],
+      "disabled": true,
+      "notesInFlow": true,
+      "notes": "Later-stage placeholder only. Keep disabled until dry-run behavior, review process, and sending policy are approved."
+    },
+    {
+      "parameters": {
+        "command": "python scripts/run_daily_digest_dry_run.py"
+      },
+      "id": "run-daily-digest-dry-run",
+      "name": "Run Daily Digest Dry-Run",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -280,
+        -80
+      ],
+      "notesInFlow": true,
+      "notes": "Optional/legacy path. Use only when Execute Command is available in your local n8n setup. If this node imports as unknown, use docs/n8n/daily-digest-http-dry-run.workflow.json instead. Host n8n path: start n8n from the repository root so this relative command can find scripts/, docker-compose.yml, and data/exports/."
+    },
+    {
+      "parameters": {
+        "content": "Success expectation\n\nThe Execute Command node should finish with the dry-run summary and write:\n\n- data/exports/email_digest_preview.json\n- data/exports/email_digest_preview.html\n\nNo email is sent.",
+        "height": 240,
+        "width": 320,
+        "color": 4
+      },
+      "id": "success-note",
+      "name": "Success Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Failure handling placeholder\n\nFor this stage, inspect the n8n execution log and local terminal output. Common causes are Docker Desktop not running, PostgreSQL not ready, host port 5432 needing POSTGRES_PORT=5433, missing mart.alert_candidates, Python not being available, or n8n not being started from the repository root.\n\nDocker n8n also needs the project mounted, Python available, and Docker Compose access. Do not add external failure notifications yet.",
+        "height": 300,
+        "width": 340,
+        "color": 3
+      },
+      "id": "failure-note",
+      "name": "Failure Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "",
+        "toEmail": "",
+        "subject": "",
+        "emailFormat": "html",
+        "html": ""
+      },
+      "id": "email-send-placeholder-disabled",
+      "name": "Email Send Placeholder (disabled)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        420,
+        120
+      ],
+      "disabled": true,
+      "notesInFlow": true,
+      "notes": "Placeholder only. Do not add credentials, recipients, SMTP settings, Gmail OAuth, or real sending behavior in this dry-run stage."
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run Daily Digest Dry-Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-26T00:00:00.000Z",
+  "versionId": "00000000-0000-4000-8000-000000000001",
+  "active": false
+}

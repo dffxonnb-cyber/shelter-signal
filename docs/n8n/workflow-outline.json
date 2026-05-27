@@ -1,0 +1,134 @@
+{
+  "name": "Shelter Signal V2 Daily Email Digest Outline",
+  "type": "documentation-only",
+  "productionReady": false,
+  "emailSendingEnabled": false,
+  "containsSecrets": false,
+  "containsRecipients": false,
+  "notes": [
+    "This is a safe workflow outline, not a production-ready n8n export.",
+    "Do not add API keys, SMTP credentials, OAuth tokens, or recipient emails to this file.",
+    "The current V2 phase generates preview JSON/HTML only and does not send email."
+  ],
+  "environmentVariables": [
+    "ANIMAL_API_KEY",
+    "POSTGRES_DB",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_HOST",
+    "POSTGRES_PORT",
+    "POSTGRES_SERVICE",
+    "EMAIL_FROM",
+    "EMAIL_PREVIEW_RECIPIENT_DISABLED"
+  ],
+  "nodes": [
+    {
+      "id": "cron-trigger",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.cron",
+      "disabled": false,
+      "purpose": "Start the preview workflow once per day.",
+      "parameters": {
+        "scheduleConcept": "Daily at 08:00 in the configured workflow timezone",
+        "timezone": "CONFIGURE_IN_N8N_UI"
+      }
+    },
+    {
+      "id": "ingestion-step",
+      "name": "Ingestion Step",
+      "type": "n8n-nodes-base.executeCommand",
+      "disabled": false,
+      "purpose": "Run or document the rescued animal ingestion step before validation.",
+      "parameters": {
+        "command": "python ingestion/run_animal_ingestion.py --load-db",
+        "usesSecrets": "ANIMAL_API_KEY from n8n credential or environment only"
+      }
+    },
+    {
+      "id": "validate-pipeline",
+      "name": "Validate SQL Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "disabled": false,
+      "purpose": "Apply SQL models and tests, including mart.alert_candidates.",
+      "parameters": {
+        "command": "python scripts/validate_pipeline.py"
+      }
+    },
+    {
+      "id": "export-digest-preview",
+      "name": "Export Email Digest Preview",
+      "type": "n8n-nodes-base.executeCommand",
+      "disabled": false,
+      "purpose": "Generate local preview JSON and HTML without sending email.",
+      "parameters": {
+        "command": "python scripts/export_email_digest.py",
+        "outputs": [
+          "data/exports/email_digest_preview.json",
+          "data/exports/email_digest_preview.html"
+        ]
+      }
+    },
+    {
+      "id": "read-preview-html",
+      "name": "Read Generated Email Digest HTML",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "disabled": false,
+      "purpose": "Read the generated preview HTML for human review or later placeholder handoff.",
+      "parameters": {
+        "filePath": "data/exports/email_digest_preview.html"
+      }
+    },
+    {
+      "id": "email-send-placeholder",
+      "name": "Email Send Placeholder",
+      "type": "placeholder.emailSend",
+      "disabled": true,
+      "purpose": "Document the future email send step. This must remain disabled in the preview phase.",
+      "parameters": {
+        "from": "DO_NOT_CONFIGURE_IN_DOCUMENTATION",
+        "to": "DO_NOT_CONFIGURE_IN_DOCUMENTATION",
+        "credential": "DO_NOT_CONFIGURE_IN_DOCUMENTATION",
+        "sendEmail": false
+      }
+    },
+    {
+      "id": "error-handling-placeholder",
+      "name": "Error Handling Placeholder",
+      "type": "placeholder.errorHandling",
+      "disabled": true,
+      "purpose": "Document future failure notification behavior without sending external notifications.",
+      "parameters": {
+        "notifyExternally": false,
+        "reviewLocation": "n8n execution log"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "cron-trigger",
+      "to": "ingestion-step"
+    },
+    {
+      "from": "ingestion-step",
+      "to": "validate-pipeline"
+    },
+    {
+      "from": "validate-pipeline",
+      "to": "export-digest-preview"
+    },
+    {
+      "from": "export-digest-preview",
+      "to": "read-preview-html"
+    },
+    {
+      "from": "read-preview-html",
+      "to": "email-send-placeholder",
+      "condition": "future-only-disabled"
+    },
+    {
+      "from": "any-node-error",
+      "to": "error-handling-placeholder",
+      "condition": "future-only-disabled"
+    }
+  ]
+}
