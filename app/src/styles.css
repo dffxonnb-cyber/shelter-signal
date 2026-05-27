@@ -1015,8 +1015,8 @@ select:focus-visible {
 
 .region-explorer {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 14px;
+  padding: 15px;
   background: var(--color-surface);
 }
 
@@ -1030,6 +1030,55 @@ select:focus-visible {
 .region-map-panel {
   display: grid;
   gap: 10px;
+}
+
+.region-selector-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.region-select-control {
+  display: grid;
+  gap: 7px;
+}
+
+.region-select-control span,
+.selected-region-inline span {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.region-select-control select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.region-select-control select:disabled {
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
+.selected-region-inline {
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+}
+
+.selected-region-inline strong {
+  color: var(--color-primary);
+  font-size: 1rem;
+  line-height: 1.35;
+  word-break: keep-all;
 }
 
 .region-all-tile,
@@ -1154,6 +1203,17 @@ select:focus-visible {
   color: var(--color-primary);
   font-size: 1.12rem;
   font-weight: 780;
+}
+
+.region-limit-note {
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.82rem;
+}
+
+.region-empty-state strong {
+  max-width: 38rem;
+  word-break: keep-all;
 }
 
 .region-card.has-urgent {
@@ -1457,7 +1517,8 @@ select:focus-visible {
   }
 
   .home-split,
-  .filter-panel {
+  .filter-panel,
+  .region-selector-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

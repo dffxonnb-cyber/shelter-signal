@@ -15,15 +15,6 @@ import {
 
 type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
 type NoticeLimit = 5 | 10 | 20 | "all";
-type RegionClusterKey =
-  | "capital"
-  | "gangwon"
-  | "chungcheong"
-  | "jeolla"
-  | "gyeongsang"
-  | "jeju"
-  | "other";
-type RegionSelectionKey = "all" | `cluster:${RegionClusterKey}` | `region:${string}`;
 
 const ALL_FILTER = "전체";
 const NOTICE_LIMIT_OPTIONS: Array<{ value: NoticeLimit; label: string }> = [
@@ -49,20 +40,6 @@ const labelOrder: Record<RescueWindowLabel, number> = {
   "종료/확인 필요": 5,
 };
 
-const REGION_CLUSTERS: Array<{
-  key: RegionClusterKey;
-  label: string;
-  matchers: string[];
-}> = [
-  { key: "capital", label: "수도권", matchers: ["서울", "경기", "인천"] },
-  { key: "gangwon", label: "강원", matchers: ["강원"] },
-  { key: "chungcheong", label: "충청", matchers: ["충청", "충북", "충남", "대전", "세종"] },
-  { key: "jeolla", label: "전라", matchers: ["전라", "전북", "전남", "광주"] },
-  { key: "gyeongsang", label: "경상", matchers: ["경상", "경북", "경남", "부산", "대구", "울산"] },
-  { key: "jeju", label: "제주", matchers: ["제주"] },
-  { key: "other", label: "그 외", matchers: [] },
-];
-
 type DataSourceState = "loading" | "exported" | "fallback";
 
 interface RuntimeAppData extends ExportedAppData {
@@ -78,9 +55,7 @@ interface RegionSignal {
   averageScore: number;
 }
 
-interface RegionClusterSignal {
-  key: RegionClusterKey;
-  label: string;
+interface RegionSignalTotals {
   total: number;
   urgent: number;
   endingSoon: number;
@@ -88,12 +63,15 @@ interface RegionClusterSignal {
   regionCount: number;
 }
 
-interface RegionSignalTotals {
-  total: number;
-  urgent: number;
-  endingSoon: number;
-  averageScore: number;
-  regionCount: number;
+interface RegionDistrictOption {
+  label: string;
+  value: string;
+  signal: RegionSignal;
+}
+
+interface RegionSelectorGroup {
+  sido: string;
+  districts: RegionDistrictOption[];
 }
 
 function App() {
@@ -776,85 +754,39 @@ function AnimalCards({
 }
 
 function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] }) {
-  const [selectedRegion, setSelectedRegion] = useState<RegionSelectionKey>("all");
-  const clusterSignals = useMemo(() => buildRegionClusterSignals(regionSignals), [regionSignals]);
-  const visibleRegionSignals = useMemo(
-    () => filterRegionSignals(regionSignals, selectedRegion),
-    [regionSignals, selectedRegion]
-  );
-  const selectedTotals = useMemo(
-    () => summarizeRegionSignals(visibleRegionSignals),
-    [visibleRegionSignals]
-  );
-  const selectedLabel = regionSelectionLabel(selectedRegion);
+  const [selectedSido, setSelectedSido] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const regionGroups = useMemo(() => buildRegionSelectorGroups(regionSignals), [regionSignals]);
+  const selectedGroup = regionGroups.find((group) => group.sido === selectedSido);
+  const districtOptions = selectedGroup?.districts ?? [];
+  const selectedDistrictOption = districtOptions.find((option) => option.value === selectedDistrict);
+  const selectedRegionSignal = selectedDistrictOption?.signal;
+  const hasCompletedSelection = Boolean(selectedSido && selectedDistrict);
+  const selectedTotals = selectedRegionSignal
+    ? summarizeRegionSignals([selectedRegionSignal])
+    : undefined;
+  const selectedRegionLabel = selectedRegionSignal?.region ?? [selectedSido, selectedDistrictOption?.label]
+    .filter(Boolean)
+    .join(" ");
 
-  return (
-    <div className="screen-stack" data-testid="screen-regions">
-      <ScreenHeader
-        kicker="지역 신호"
-        title="관심 지역의 흐름"
-        description="관심 지역의 신호를 선택해 확인해보세요."
-      />
+  const handleSidoChange = (value: string) => {
+    setSelectedSido(value);
+    setSelectedDistrict("");
+  };
 
-      <section className="region-explorer" aria-label="지역 신호 선택">
-        <div className="region-explorer-copy">
-          <span className="section-kicker">전체 지역</span>
-          <p>지역별로 보호 종료가 가까운 공고 흐름을 볼 수 있어요.</p>
-        </div>
-
-        <div className="region-map-panel">
-          <button
-            className={`region-all-tile ${selectedRegion === "all" ? "is-selected" : ""}`}
-            type="button"
-            data-testid="region-select-all"
-            onClick={() => setSelectedRegion("all")}
-          >
-            <span>전체</span>
-            <strong>{regionSignals.length}</strong>
-            <small>지역</small>
-          </button>
-
-          <div className="region-cluster-grid">
-            {clusterSignals.map((cluster) => (
-              <button
-                key={cluster.key}
-                className={`region-cluster-tile ${
-                  selectedRegion === `cluster:${cluster.key}` ? "is-selected" : ""
-                }`}
-                type="button"
-                data-testid={`region-cluster-${cluster.key}`}
-                disabled={cluster.total === 0}
-                onClick={() => setSelectedRegion(`cluster:${cluster.key}`)}
-              >
-                <span>{cluster.label}</span>
-                <strong>{cluster.total}</strong>
-                <small>긴급 {cluster.urgent} · 곧 종료 {cluster.endingSoon}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="region-chip-row" aria-label="개별 지역 선택">
-          {regionSignals.map((summary) => (
-            <button
-              key={summary.region}
-              className={selectedRegion === `region:${summary.region}` ? "is-selected" : ""}
-              type="button"
-              data-testid="region-chip"
-              onClick={() => setSelectedRegion(`region:${summary.region}`)}
-            >
-              {summary.region}
-            </button>
-          ))}
-        </div>
-      </section>
-
+  const regionResult = !hasCompletedSelection ? (
+    <section className="empty-state region-empty-state" role="status">
+      <strong>지역을 선택하면 보호소 정보가 여기에 표시됩니다.</strong>
+      <p>시/도와 시/군/구를 차례로 선택해 주세요.</p>
+    </section>
+  ) : selectedRegionSignal && selectedTotals ? (
+    <>
       <section className="selected-region-panel" aria-label="선택한 지역 요약">
         <div>
           <span className="section-kicker">선택한 지역</span>
-          <h3>{selectedLabel}</h3>
+          <h3>{selectedRegionLabel}</h3>
           <p>
-            {selectedTotals.regionCount}개 지역, 공고 {selectedTotals.total}건을 확인하고 있어요.
+            현재 정적 공고 데이터 기준으로 공고 {selectedTotals.total}건을 확인하고 있어요.
           </p>
         </div>
         <dl className="selected-region-metrics">
@@ -862,20 +794,85 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
           <SummaryNumber label="곧 종료" value={selectedTotals.endingSoon} />
           <SummaryNumber label="평균 점수" value={selectedTotals.averageScore} />
         </dl>
+        <p className="region-limit-note">
+          보호소 홈페이지, 운영시간, 좌표 정보는 아직 지원하지 않습니다. 공공데이터 제공 여부와
+          API 권한을 확인한 뒤 업데이트할 예정입니다.
+        </p>
       </section>
 
-      <section className="region-card-list" aria-label="지역별 공고 요약">
-        {visibleRegionSignals.length ? (
-          visibleRegionSignals.map((summary) => (
-            <RegionCard key={summary.region} summary={summary} />
-          ))
-        ) : (
-          <EmptyState
-            title="선택한 지역에서 표시할 공고가 없습니다."
-            description="전체 지역을 선택하거나 다른 권역을 살펴보세요."
-          />
-        )}
+      <section className="region-card-list" aria-label="선택한 지역 공고 요약">
+        <RegionCard summary={selectedRegionSignal} />
       </section>
+    </>
+  ) : (
+    <section className="empty-state region-empty-state" role="status">
+      <strong>
+        현재 선택한 지역의 보호소 정보는 준비 중입니다. 공공데이터 제공 여부를 확인한 뒤
+        업데이트할 예정입니다.
+      </strong>
+      <p>지원하지 않는 API 정보를 임의로 표시하지 않습니다.</p>
+    </section>
+  );
+
+  return (
+    <div className="screen-stack" data-testid="screen-regions">
+      <ScreenHeader
+        kicker="지역 신호"
+        title="관심 지역의 흐름"
+        description="시/도와 시/군/구를 선택해 현재 데이터에 포함된 보호소 공고 흐름을 확인해보세요."
+      />
+
+      <section className="region-explorer" aria-label="지역 신호 선택">
+        <div className="region-explorer-copy">
+          <span className="section-kicker">지역 선택</span>
+          <p>
+            현재 export된 공공데이터 기반 공고 지역만 표시합니다. 보호소 상세 정보는 API 제공
+            범위가 확인된 항목부터 차례로 확장합니다.
+          </p>
+        </div>
+
+        <div className="region-selector-grid">
+          <label className="region-select-control">
+            <span>시/도 선택</span>
+            <select
+              value={selectedSido}
+              data-testid="region-sido-select"
+              onChange={(event) => handleSidoChange(event.target.value)}
+            >
+              <option value="">시/도 선택</option>
+              {regionGroups.map((group) => (
+                <option key={group.sido} value={group.sido}>
+                  {group.sido}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="region-select-control">
+            <span>시/군/구 선택</span>
+            <select
+              value={selectedDistrict}
+              disabled={!selectedSido}
+              data-testid="region-district-select"
+              onChange={(event) => setSelectedDistrict(event.target.value)}
+            >
+              <option value="">{selectedSido ? "시/군/구 선택" : "시/도를 먼저 선택"}</option>
+              {districtOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="selected-region-inline" aria-live="polite">
+          <span>선택 지역</span>
+          <strong>{selectedRegionLabel || "아직 선택되지 않음"}</strong>
+        </div>
+      </section>
+
+      {regionResult}
     </div>
   );
 }
@@ -1195,40 +1192,6 @@ function limitNotices(animals: MockAnimal[], limit: NoticeLimit): MockAnimal[] {
   return animals.slice(0, limit);
 }
 
-function buildRegionClusterSignals(regionSignals: RegionSignal[]): RegionClusterSignal[] {
-  return REGION_CLUSTERS.map((cluster) => {
-    const signals = regionSignals.filter((signal) => regionClusterFor(signal.region) === cluster.key);
-    const totals = summarizeRegionSignals(signals);
-
-    return {
-      key: cluster.key,
-      label: cluster.label,
-      total: totals.total,
-      urgent: totals.urgent,
-      endingSoon: totals.endingSoon,
-      averageScore: totals.averageScore,
-      regionCount: totals.regionCount,
-    };
-  }).filter((cluster) => cluster.key !== "other" || cluster.total > 0);
-}
-
-function filterRegionSignals(
-  regionSignals: RegionSignal[],
-  selection: RegionSelectionKey
-): RegionSignal[] {
-  if (selection === "all") {
-    return regionSignals;
-  }
-
-  if (selection.startsWith("cluster:")) {
-    const clusterKey = selection.replace("cluster:", "") as RegionClusterKey;
-    return regionSignals.filter((signal) => regionClusterFor(signal.region) === clusterKey);
-  }
-
-  const regionName = selection.replace("region:", "");
-  return regionSignals.filter((signal) => signal.region === regionName);
-}
-
 function summarizeRegionSignals(regionSignals: RegionSignal[]): RegionSignalTotals {
   const total = regionSignals.reduce((sum, signal) => sum + signal.total, 0);
   const weightedScore = regionSignals.reduce(
@@ -1245,26 +1208,33 @@ function summarizeRegionSignals(regionSignals: RegionSignal[]): RegionSignalTota
   };
 }
 
-function regionClusterFor(region: string): RegionClusterKey {
-  const cluster = REGION_CLUSTERS.find(
-    (definition) =>
-      definition.key !== "other" && definition.matchers.some((matcher) => region.includes(matcher))
-  );
+function buildRegionSelectorGroups(regionSignals: RegionSignal[]): RegionSelectorGroup[] {
+  const groups = new Map<string, RegionDistrictOption[]>();
 
-  return cluster?.key ?? "other";
+  regionSignals.forEach((signal) => {
+    const { sido, district } = splitRegionName(signal.region);
+    const districts = groups.get(sido) ?? [];
+    districts.push({ label: district, value: signal.region, signal });
+    groups.set(sido, districts);
+  });
+
+  return Array.from(groups.entries())
+    .map(([sido, districts]) => ({
+      sido,
+      districts: districts.sort((a, b) => a.label.localeCompare(b.label, "ko")),
+    }))
+    .sort((a, b) => a.sido.localeCompare(b.sido, "ko"));
 }
 
-function regionSelectionLabel(selection: RegionSelectionKey): string {
-  if (selection === "all") {
-    return "전체 지역";
+function splitRegionName(region: string): { sido: string; district: string } {
+  const parts = region.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    return { sido: "지역 미상", district: "상세 지역 미상" };
   }
-
-  if (selection.startsWith("cluster:")) {
-    const clusterKey = selection.replace("cluster:", "") as RegionClusterKey;
-    return REGION_CLUSTERS.find((cluster) => cluster.key === clusterKey)?.label ?? "선택한 권역";
+  if (parts.length === 1) {
+    return { sido: parts[0], district: "전체" };
   }
-
-  return selection.replace("region:", "");
+  return { sido: parts[0], district: parts.slice(1).join(" ") };
 }
 
 function telLink(tel: string | null): string | undefined {
