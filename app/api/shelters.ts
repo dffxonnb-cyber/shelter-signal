@@ -27,8 +27,69 @@ type PublicApiParseResult = {
   upstreamError?: string;
 };
 
-const SHELTER_API_URL = "https://apis.data.go.kr/1543061/animalShelterSrvc_v2/shelterInfo_v2";
+type PublicApiResult = {
+  url: string;
+  status: number;
+  contentType: string;
+  parsed: PublicApiParseResult;
+};
+
+type RegionCodes = {
+  uprCd?: string;
+  orgCd?: string;
+  source: "query" | "static" | "lookup" | "mixed" | "unresolved";
+  warnings: string[];
+};
+
+type ShelterDiagnostics = {
+  hasServiceKey: boolean;
+  received: {
+    sido: string;
+    district: string;
+    uprCd?: string;
+    orgCd?: string;
+  };
+  upstreamUrlWithoutServiceKey?: string;
+  upstreamStatus?: number;
+  upstreamContentType?: string;
+  parsedItemCount?: number;
+  publicDataMessage?: string;
+  regionCodeSource?: RegionCodes["source"];
+  regionCodeWarnings?: string[];
+};
+
+const API_BASE_URL = "https://apis.data.go.kr/1543061";
+const SHELTER_API_URL = `${API_BASE_URL}/animalShelterSrvc_v2/shelterInfo_v2`;
+const SIDO_API_URL = `${API_BASE_URL}/abandonmentPublicService_v2/sido_v2`;
+const SIGUNGU_API_URL = `${API_BASE_URL}/abandonmentPublicService_v2/sigungu_v2`;
 const NUM_OF_ROWS = "1000";
+
+const SIDO_CODES: Record<string, string> = {
+  서울특별시: "6110000",
+  부산광역시: "6260000",
+  대구광역시: "6270000",
+  인천광역시: "6280000",
+  광주광역시: "6290000",
+  대전광역시: "6300000",
+  울산광역시: "6310000",
+  세종특별자치시: "5690000",
+  경기도: "6410000",
+  강원특별자치도: "6420000",
+  충청북도: "6430000",
+  충청남도: "6440000",
+  전라북도: "6450000",
+  전북특별자치도: "6450000",
+  전라남도: "6460000",
+  경상북도: "6470000",
+  경상남도: "6480000",
+  제주특별자치도: "6500000",
+};
+
+const SIGUNGU_CODES: Record<string, string> = {
+  "경기도 화성시": "5530000",
+  "경기도 수원시": "3740000",
+  "경기도 성남시": "3780000",
+};
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   if (request.method && request.method !== "GET") {
@@ -36,49 +97,95 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     return;
   }
 
+  const sido = firstQueryValue(request.query?.sido);
+  const sigungu = firstQueryValue(request.query?.sigungu);
+  const queryUprCd =
+    firstQueryValue(request.query?.uprCd) || firstQueryValue(request.query?.upr_cd);
+  const queryOrgCd =
+    firstQueryValue(request.query?.orgCd) || firstQueryValue(request.query?.org_cd);
   const serviceKey = process.env.DATA_GO_KR_SERVICE_KEY;
+  const baseDiagnostics: ShelterDiagnostics = {
+    hasServiceKey: Boolean(serviceKey),
+    received: {
+      sido,
+      district: sigungu,
+      ...(queryUprCd ? { uprCd: queryUprCd } : {}),
+      ...(queryOrgCd ? { orgCd: queryOrgCd } : {}),
+    },
+  };
+
   if (!serviceKey) {
+    logShelterWarning("missing-service-key", baseDiagnostics);
     sendError(response, 503, { ok: false, code: "MISSING_SERVICE_KEY", shelters: [] });
     return;
   }
 
-  const sido = firstQueryValue(request.query?.sido);
-  const sigungu = firstQueryValue(request.query?.sigungu);
-
   try {
-    const upstreamResponse = await fetch(buildPublicApiUrl(serviceKey), {
-      headers: {
-        Accept: "application/json, application/xml;q=0.9, text/plain;q=0.8",
-        "User-Agent": "shelter-signal-vercel-function/0.1",
-      },
+    const regionCodes = await resolveRegionCodes({
+      serviceKey,
+      sido,
+      sigungu,
+      queryUprCd,
+      queryOrgCd,
     });
-    const upstreamText = await upstreamResponse.text();
+    const upstreamResult = await requestPublicApi(SHELTER_API_URL, serviceKey, {
+      pageNo: "1",
+      numOfRows: NUM_OF_ROWS,
+      _type: "json",
+      ...(regionCodes.uprCd ? { upr_cd: regionCodes.uprCd } : {}),
+      ...(regionCodes.orgCd ? { org_cd: regionCodes.orgCd } : {}),
+    });
+    const diagnostics: ShelterDiagnostics = {
+      ...baseDiagnostics,
+      received: {
+        ...baseDiagnostics.received,
+        ...(regionCodes.uprCd ? { uprCd: regionCodes.uprCd } : {}),
+        ...(regionCodes.orgCd ? { orgCd: regionCodes.orgCd } : {}),
+      },
+      upstreamUrlWithoutServiceKey: withoutServiceKey(upstreamResult.url),
+      upstreamStatus: upstreamResult.status,
+      upstreamContentType: upstreamResult.contentType,
+      parsedItemCount: upstreamResult.parsed.items.length,
+      publicDataMessage: upstreamResult.parsed.upstreamError,
+      regionCodeSource: regionCodes.source,
+      regionCodeWarnings: regionCodes.warnings,
+    };
 
-    if (!upstreamResponse.ok) {
+    if (upstreamResult.status < 200 || upstreamResult.status >= 300) {
+      logShelterWarning("upstream-http-error", diagnostics);
       sendError(response, 502, {
         ok: false,
         code: "UPSTREAM_ERROR",
-        status: upstreamResponse.status,
+        status: upstreamResult.status,
         shelters: [],
       });
       return;
     }
 
-    const parsed = parsePublicApiPayload(upstreamText);
-    if (parsed.upstreamError) {
+    if (upstreamResult.parsed.upstreamError) {
+      logShelterWarning("upstream-public-data-error", diagnostics);
       sendError(response, 502, {
         ok: false,
         code: "UPSTREAM_RESPONSE_ERROR",
-        message: parsed.upstreamError,
+        message: upstreamResult.parsed.upstreamError,
         shelters: [],
       });
       return;
     }
 
-    const shelters = parsed.items
+    const hasPreciseRegionCode = Boolean(regionCodes.orgCd) || !sigungu || sigungu === "전체";
+    const shelters = upstreamResult.parsed.items
       .map(normalizeShelter)
       .filter((shelter): shelter is Shelter => Boolean(shelter))
-      .filter((shelter) => matchesRegion(shelter, sido, sigungu));
+      .filter((shelter) =>
+        hasPreciseRegionCode ? true : matchesRegion(shelter, sido, sigungu)
+      );
+
+    if (!shelters.length) {
+      logShelterWarning("empty-shelter-result", diagnostics);
+    } else if (regionCodes.warnings.length) {
+      logShelterWarning("region-code-warning", diagnostics);
+    }
 
     response.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=1800");
     response.status(200).json({
@@ -86,13 +193,162 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       shelters,
       meta: {
         source: "animalShelterSrvc_v2/shelterInfo_v2",
-        filters: { sido, sigungu },
+        filters: {
+          sido,
+          sigungu,
+          ...(regionCodes.uprCd ? { uprCd: regionCodes.uprCd } : {}),
+          ...(regionCodes.orgCd ? { orgCd: regionCodes.orgCd } : {}),
+        },
+        regionCodeSource: regionCodes.source,
         returnedCount: shelters.length,
       },
     });
-  } catch {
+  } catch (error) {
+    logShelterWarning("upstream-request-failed", {
+      ...baseDiagnostics,
+      publicDataMessage: error instanceof Error ? error.message : "unknown request failure",
+    });
     sendError(response, 502, { ok: false, code: "UPSTREAM_REQUEST_FAILED", shelters: [] });
   }
+}
+
+async function resolveRegionCodes({
+  serviceKey,
+  sido,
+  sigungu,
+  queryUprCd,
+  queryOrgCd,
+}: {
+  serviceKey: string;
+  sido: string;
+  sigungu: string;
+  queryUprCd: string;
+  queryOrgCd: string;
+}): Promise<RegionCodes> {
+  const warnings: string[] = [];
+  let source: RegionCodes["source"] = "unresolved";
+  let uprCd = queryUprCd;
+  let orgCd = queryOrgCd;
+
+  if (uprCd || orgCd) {
+    source = "query";
+  }
+
+  if (!uprCd && sido) {
+    uprCd = SIDO_CODES[normalizeRegionText(sido)] ?? "";
+    if (uprCd) {
+      source = source === "unresolved" ? "static" : "mixed";
+    }
+  }
+
+  if (!uprCd && sido) {
+    const lookupCode = await lookupSidoCode(serviceKey, sido, warnings);
+    if (lookupCode) {
+      uprCd = lookupCode;
+      source = source === "unresolved" ? "lookup" : "mixed";
+    }
+  }
+
+  if (!orgCd && shouldResolveSigungu(sigungu)) {
+    orgCd = SIGUNGU_CODES[`${normalizeRegionText(sido)} ${normalizeRegionText(sigungu)}`] ?? "";
+    if (orgCd) {
+      source = source === "unresolved" ? "static" : source === "query" ? "mixed" : source;
+    }
+  }
+
+  if (!orgCd && uprCd && shouldResolveSigungu(sigungu)) {
+    const lookupCode = await lookupSigunguCode(serviceKey, uprCd, sigungu, warnings);
+    if (lookupCode) {
+      orgCd = lookupCode;
+      source = source === "unresolved" ? "lookup" : source === "static" ? "mixed" : source;
+    }
+  }
+
+  if (sido && !uprCd) {
+    warnings.push(`No upr_cd resolved for ${sido}`);
+  }
+  if (shouldResolveSigungu(sigungu) && !orgCd) {
+    warnings.push(`No org_cd resolved for ${sido} ${sigungu}`);
+  }
+
+  return {
+    ...(uprCd ? { uprCd } : {}),
+    ...(orgCd ? { orgCd } : {}),
+    source,
+    warnings,
+  };
+}
+
+async function lookupSidoCode(
+  serviceKey: string,
+  sido: string,
+  warnings: string[]
+): Promise<string> {
+  const result = await requestPublicApi(SIDO_API_URL, serviceKey, {
+    _type: "json",
+    pageNo: "1",
+    numOfRows: NUM_OF_ROWS,
+  });
+
+  if (result.status < 200 || result.status >= 300 || result.parsed.upstreamError) {
+    warnings.push(`sido_v2 lookup failed: ${result.parsed.upstreamError ?? result.status}`);
+    return "";
+  }
+
+  const aliases = getSidoAliases(sido);
+  const match = result.parsed.items.find((item) =>
+    aliases.includes(normalizeRegionText(readTextField(item, ["orgdownNm", "orgDownNm", "name"]) ?? ""))
+  );
+  return match ? readTextField(match, ["orgCd", "org_cd", "uprCd"]) ?? "" : "";
+}
+
+async function lookupSigunguCode(
+  serviceKey: string,
+  uprCd: string,
+  sigungu: string,
+  warnings: string[]
+): Promise<string> {
+  const result = await requestPublicApi(SIGUNGU_API_URL, serviceKey, {
+    _type: "json",
+    pageNo: "1",
+    numOfRows: NUM_OF_ROWS,
+    upr_cd: uprCd,
+  });
+
+  if (result.status < 200 || result.status >= 300 || result.parsed.upstreamError) {
+    warnings.push(`sigungu_v2 lookup failed: ${result.parsed.upstreamError ?? result.status}`);
+    return "";
+  }
+
+  const normalizedSigungu = normalizeRegionText(sigungu);
+  const match = result.parsed.items.find(
+    (item) =>
+      normalizeRegionText(readTextField(item, ["orgdownNm", "orgDownNm", "name"]) ?? "") ===
+      normalizedSigungu
+  );
+  return match ? readTextField(match, ["orgCd", "org_cd"]) ?? "" : "";
+}
+
+async function requestPublicApi(
+  endpoint: string,
+  serviceKey: string,
+  params: Record<string, string | undefined>
+): Promise<PublicApiResult> {
+  const url = buildPublicApiUrl(endpoint, serviceKey, params);
+  const upstreamResponse = await fetch(url, {
+    headers: {
+      Accept: "application/json, application/xml;q=0.9, text/plain;q=0.8",
+      "User-Agent": "shelter-signal-vercel-function/0.1",
+    },
+  });
+  const upstreamText = await upstreamResponse.text();
+
+  return {
+    url,
+    status: upstreamResponse.status,
+    contentType: upstreamResponse.headers.get("content-type") ?? "",
+    parsed: parsePublicApiPayload(upstreamText),
+  };
 }
 
 function sendError(response: ApiResponse, statusCode: number, body: unknown): void {
@@ -100,13 +356,24 @@ function sendError(response: ApiResponse, statusCode: number, body: unknown): vo
   response.status(statusCode).json(body);
 }
 
-function buildPublicApiUrl(serviceKey: string): string {
-  const query = new URLSearchParams({
-    pageNo: "1",
-    numOfRows: NUM_OF_ROWS,
-    _type: "json",
+function buildPublicApiUrl(
+  endpoint: string,
+  serviceKey: string,
+  params: Record<string, string | undefined>
+): string {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      query.set(key, value);
+    }
   });
-  return `${SHELTER_API_URL}?serviceKey=${encodeServiceKey(serviceKey)}&${query.toString()}`;
+  return `${endpoint}?serviceKey=${encodeServiceKey(serviceKey)}&${query.toString()}`;
+}
+
+function withoutServiceKey(url: string): string {
+  const safeUrl = new URL(url);
+  safeUrl.searchParams.delete("serviceKey");
+  return safeUrl.toString();
 }
 
 function encodeServiceKey(serviceKey: string): string {
@@ -149,7 +416,10 @@ function parsePublicApiPayload(text: string): PublicApiParseResult {
   } catch {
     const resultCode = extractXmlTagText(trimmed, "resultCode");
     const errorCode = extractXmlTagText(trimmed, "returnReasonCode");
-    const serviceError = extractXmlTagText(trimmed, "errMsg") ?? extractXmlTagText(trimmed, "returnAuthMsg");
+    const serviceError =
+      extractXmlTagText(trimmed, "errMsg") ??
+      extractXmlTagText(trimmed, "returnAuthMsg") ??
+      extractXmlTagText(trimmed, "resultMsg");
     const reportedCode = resultCode ?? errorCode;
 
     if ((reportedCode && !isSuccessfulResultCode(reportedCode)) || serviceError) {
@@ -252,11 +522,17 @@ function matchesRegion(shelter: Shelter, sido: string, sigungu: string): boolean
   }
 
   const normalizedSigungu = normalizeRegionText(sigungu);
-  const sigunguMatch = !normalizedSigungu || regionText.includes(normalizedSigungu);
+  const sigunguMatch =
+    !shouldResolveSigungu(normalizedSigungu) || regionText.includes(normalizedSigungu);
   const sidoAliases = getSidoAliases(sido);
   const sidoMatch = !sidoAliases.length || sidoAliases.some((alias) => regionText.includes(alias));
 
   return sidoMatch && sigunguMatch;
+}
+
+function shouldResolveSigungu(sigungu: string): boolean {
+  const normalized = normalizeRegionText(sigungu);
+  return Boolean(normalized && normalized !== "전체");
 }
 
 function getSidoAliases(sido: string): string[] {
@@ -350,6 +626,10 @@ function decodeXmlEntities(value: string): string {
 
 function isSuccessfulResultCode(resultCode: string): boolean {
   return ["0", "00", "INFO-000"].includes(resultCode.trim());
+}
+
+function logShelterWarning(event: string, diagnostics: ShelterDiagnostics): void {
+  console.warn("[shelter-api]", event, diagnostics);
 }
 
 function textOrEmpty(value: unknown): string {

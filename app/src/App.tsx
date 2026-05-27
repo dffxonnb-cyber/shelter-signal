@@ -12,6 +12,7 @@ import {
   fallbackAppData,
   loadExportedAppData,
 } from "./data/exportedData";
+import { getRegionCodes } from "./data/regionCodes";
 import { fetchSheltersByRegion, type Shelter } from "./data/shelters";
 
 type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
@@ -773,6 +774,10 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
   const selectedRegionLabel =
     selectedRegionSignal?.region ??
     [selectedSido, selectedDistrictOption?.label].filter(Boolean).join(" ");
+  const selectedRegionCodes = useMemo(
+    () => getRegionCodes(selectedSido, selectedSigunguLabel),
+    [selectedSido, selectedSigunguLabel]
+  );
 
   useEffect(() => {
     if (!selectedSido || !selectedSigunguLabel) {
@@ -788,6 +793,7 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
     fetchSheltersByRegion({
       sido: selectedSido,
       sigungu: selectedSigunguLabel,
+      ...selectedRegionCodes,
       signal: controller.signal,
     })
       .then((nextShelters) => {
@@ -803,7 +809,7 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
       });
 
     return () => controller.abort();
-  }, [selectedSido, selectedSigunguLabel]);
+  }, [selectedRegionCodes, selectedSido, selectedSigunguLabel]);
 
   const handleSidoChange = (value: string) => {
     setSelectedSido(value);

@@ -10,15 +10,24 @@ export type Shelter = {
 type FetchShelterParams = {
   sido: string;
   sigungu: string;
+  uprCd?: string;
+  orgCd?: string;
   signal?: AbortSignal;
 };
 
 export async function fetchSheltersByRegion({
   sido,
   sigungu,
+  uprCd,
+  orgCd,
   signal,
 }: FetchShelterParams): Promise<Shelter[]> {
-  const query = new URLSearchParams({ sido, sigungu });
+  const query = new URLSearchParams({
+    sido,
+    sigungu,
+    ...(uprCd ? { uprCd } : {}),
+    ...(orgCd ? { orgCd } : {}),
+  });
   const response = await fetch(`/api/shelters?${query.toString()}`, {
     headers: { Accept: "application/json" },
     signal,

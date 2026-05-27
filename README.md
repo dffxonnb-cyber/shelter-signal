@@ -107,6 +107,8 @@ For live shelter lookup, Shelter Signal uses:
 
 The service key must be configured in Vercel as `DATA_GO_KR_SERVICE_KEY`. Do not prefix it with `VITE_` or expose it in frontend code. Local secret files such as `.env` should remain uncommitted; `.env.example` only documents required keys.
 
+The shelter endpoint supports region code parameters such as `upr_cd` and `org_cd`. Shelter Signal keeps the UI labels in Korean, sends known stable codes when available, and lets the internal API route resolve missing codes through the public `sido_v2` and `sigungu_v2` helper endpoints before calling `shelterInfo_v2`.
+
 The internal API route normalizes shelter responses into this frontend shape:
 
 ```ts
