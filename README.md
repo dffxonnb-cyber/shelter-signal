@@ -98,21 +98,30 @@ The app currently uses public rescue animal notice fields that are already prese
 - `careAddr`
 - `orgNm`
 
-For live shelter lookup, Shelter Signal uses:
+For live shelter lookup, Shelter Signal uses rescued-animal notice rows as the primary source:
 
 - Public data source: 농림축산식품부 농림축산검역본부_국가동물보호정보시스템 구조동물 조회 서비스
-- Shelter endpoint used by the serverless route: `animalShelterSrvc_v2/shelterInfo_v2`
+- Notice endpoint used by the serverless route: `abandonmentPublicService_v2/abandonmentPublic_v2`
 - Server-only environment variable: `DATA_GO_KR_SERVICE_KEY`
 - Frontend entrypoint: `/api/shelters?sido=...&sigungu=...`
 
 The service key must be configured in Vercel as `DATA_GO_KR_SERVICE_KEY`. Do not prefix it with `VITE_` or expose it in frontend code. Local secret files such as `.env` should remain uncommitted; `.env.example` only documents required keys.
 
-The shelter endpoint supports region code parameters such as `upr_cd` and `org_cd`. Shelter Signal keeps the UI labels in Korean, sends known stable codes when available, and lets the internal API route resolve missing codes through the public `sido_v2` and `sigungu_v2` helper endpoints before calling `shelterInfo_v2`.
+The route derives shelter-like summaries from notice fields already present in rescued-animal rows:
+
+- `careNm`
+- `careTel`
+- `careAddr`
+- `orgNm`
+
+Rows are deduplicated by `careNm + careTel + careAddr`. This avoids blocking the app on the separate shelter-center endpoint when that endpoint returns `403`.
+
+The notice endpoint supports region code parameters such as `upr_cd` and `org_cd`. Shelter Signal keeps the UI labels in Korean, sends known stable codes when available, and lets the internal API route resolve missing codes through the public `sido_v2` and `sigungu_v2` helper endpoints before calling `abandonmentPublic_v2`.
 
 The route returns JSON with a stable shape:
 
 ```json
-{ "ok": true, "shelters": [], "source": "data.go.kr" }
+{ "ok": true, "shelters": [], "source": "rescued-animal-notice-derived" }
 ```
 
 If the key is missing, it returns:
@@ -126,7 +135,7 @@ If the upstream public-data API fails, it returns:
 ```json
 {
   "ok": false,
-  "code": "UPSTREAM_FORBIDDEN",
+  "code": "UPSTREAM_ERROR",
   "upstreamStatus": 403,
   "message": "...",
   "upstreamError": {
@@ -136,7 +145,7 @@ If the upstream public-data API fails, it returns:
 }
 ```
 
-`UPSTREAM_FORBIDDEN` is used for HTTP `403`. Other non-2xx or upstream parsing failures use `UPSTREAM_ERROR`. The upstream diagnostic body is sanitized and never includes the raw service key.
+The upstream diagnostic body is sanitized and never includes the raw service key.
 
 The internal API route normalizes shelter responses into this frontend shape:
 
@@ -147,11 +156,13 @@ type Shelter = {
   address?: string;
   phone?: string;
   jurisdiction?: string;
+  orgName?: string;
+  source: "rescued-animal-notice-derived";
   raw?: unknown;
 };
 ```
 
-The public shelter API is still being evaluated in practice. Missing service keys, permission errors such as `403`, XML responses, empty lists, and network failures are handled as loading/error/empty states in the UI instead of crashing the app.
+This notice-derived list is not a complete official shelter directory. It is shelter/contact context extracted from rescued-animal notices. Missing service keys, permission errors such as `403`, XML responses, empty lists, and network failures are handled as loading/error/empty states in the UI instead of crashing the app.
 
 Do not assume support for shelter homepage URLs, operating hours, latitude/longitude coordinates, or detailed facility metadata until the actual API response shape and permissions are confirmed. Shelter Signal does not include real API keys, and `.env` files should remain local.
 
@@ -214,9 +225,10 @@ After adding or changing Vercel environment variables, redeploy Production so th
 - Confirm the variable is enabled for the Production environment.
 - Redeploy Production after adding or changing the variable.
 - Test the route directly: https://shelter-signal-ebon.vercel.app/api/shelters
-- `UPSTREAM_ERROR` means the function has a key, but data.go.kr rejected or failed the request. Check service approval/permission for the shelter endpoint before assuming live data is unavailable.
+- `UPSTREAM_ERROR` means the function has a key, but data.go.kr rejected or failed the rescued-animal notice request. Check service approval/permission for the notice endpoint before assuming live data is unavailable.
 - `UPSTREAM_FORBIDDEN` means data.go.kr returned `403`. Common causes include service-specific approval not yet active, wrong endpoint or operation path, missing required parameters, Encoding/Decoding key mismatch, double-encoded `serviceKey`, or extra spaces/quotes in the environment value.
-- Use `python scripts/test_shelter_upstream_request.py` to compare the local upstream request shape without printing the key.
+- If the separate shelter-center API is blocked, `/api/shelters` still uses the rescued-animal notice API and derives shelter summaries from `careNm`, `careTel`, `careAddr`, and `orgNm`.
+- Use `python scripts/test_shelter_upstream_request.py` to compare the local rescued-animal notice upstream request shape without printing the key.
 
 No database connection is required for this live shelter lookup route. The browser calls the internal Vercel API route, and only that serverless function calls data.go.kr.
 

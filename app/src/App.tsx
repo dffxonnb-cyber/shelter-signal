@@ -1332,18 +1332,19 @@ function ShelterDataPanel({
       <div className="shelter-data-heading">
         <div>
           <span className="section-kicker">보호소 조회</span>
-          <h3>{selectedRegionLabel} 보호소 데이터</h3>
+          <h3>{selectedRegionLabel} 보호소 정보</h3>
         </div>
         <span>{shelters.length}곳</span>
       </div>
-      <p className="shelter-source-note">Live API</p>
+      <p className="shelter-source-note">공고 기반 보호소 정보</p>
       <div className="shelter-card-list">
         {shelters.map((shelter) => (
           <ShelterCard key={shelter.id} shelter={shelter} />
         ))}
       </div>
       <p className="shelter-api-note">
-        현재 화면은 공공데이터 응답에서 확인된 보호소명, 주소, 연락처, 관할 정보만 표시합니다.
+        구조동물 공고에 포함된 보호소 정보를 기준으로 정리했어요. 보호소 정보는 공고 데이터
+        기준이며, 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
       </p>
     </section>
   );

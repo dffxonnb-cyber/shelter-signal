@@ -4,6 +4,8 @@ export type Shelter = {
   address?: string;
   phone?: string;
   jurisdiction?: string;
+  orgName?: string;
+  source?: "rescued-animal-notice-derived";
   raw?: unknown;
 };
 
@@ -81,7 +83,10 @@ function normalizeShelter(value: unknown, index: number): Shelter | null {
   const id = textOrEmpty(value.id) || `shelter-${index}`;
   const address = textOrEmpty(value.address);
   const phone = textOrEmpty(value.phone);
-  const jurisdiction = textOrEmpty(value.jurisdiction);
+  const orgName = textOrEmpty(value.orgName);
+  const jurisdiction = textOrEmpty(value.jurisdiction) || orgName;
+  const source =
+    value.source === "rescued-animal-notice-derived" ? value.source : undefined;
 
   return {
     id,
@@ -89,6 +94,8 @@ function normalizeShelter(value: unknown, index: number): Shelter | null {
     ...(address ? { address } : {}),
     ...(phone ? { phone } : {}),
     ...(jurisdiction ? { jurisdiction } : {}),
+    ...(orgName ? { orgName } : {}),
+    ...(source ? { source } : {}),
     raw: value.raw,
   };
 }

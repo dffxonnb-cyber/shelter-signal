@@ -1,4 +1,4 @@
-"""Diagnose the data.go.kr shelter upstream request without printing the key."""
+"""Diagnose the data.go.kr rescued-animal notice request without printing the key."""
 
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = PROJECT_ROOT / ".env"
-ENDPOINT = "https://apis.data.go.kr/1543061/animalShelterSrvc_v2/shelterInfo_v2"
+ENDPOINT = "https://apis.data.go.kr/1543061/abandonmentPublicService_v2/abandonmentPublic_v2"
 DEFAULT_PARAMS = {
     "pageNo": "1",
-    "numOfRows": "10",
+    "numOfRows": "20",
     "_type": "json",
     "upr_cd": "6410000",
     "org_cd": "3780000",
@@ -75,7 +75,7 @@ def request_once(url: str) -> tuple[int, str, str]:
         url,
         headers={
             "Accept": "application/json, application/xml;q=0.9, text/plain;q=0.8",
-            "User-Agent": "shelter-signal-shelter-upstream-diagnostic/0.1",
+            "User-Agent": "shelter-signal-rescue-notice-upstream-diagnostic/0.1",
         },
     )
     try:

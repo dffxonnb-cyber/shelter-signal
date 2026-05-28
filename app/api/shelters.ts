@@ -19,6 +19,8 @@ type Shelter = {
   address?: string;
   phone?: string;
   jurisdiction?: string;
+  orgName?: string;
+  source: "rescued-animal-notice-derived";
   raw?: unknown;
 };
 
@@ -74,10 +76,11 @@ type ErrorResponseBody = {
 };
 
 const API_BASE_URL = "https://apis.data.go.kr/1543061";
-const SHELTER_API_URL = `${API_BASE_URL}/animalShelterSrvc_v2/shelterInfo_v2`;
+const RESCUE_NOTICE_API_URL = `${API_BASE_URL}/abandonmentPublicService_v2/abandonmentPublic_v2`;
 const SIDO_API_URL = `${API_BASE_URL}/abandonmentPublicService_v2/sido_v2`;
 const SIGUNGU_API_URL = `${API_BASE_URL}/abandonmentPublicService_v2/sigungu_v2`;
 const NUM_OF_ROWS = "1000";
+const SHELTER_SOURCE = "rescued-animal-notice-derived";
 
 const SIDO_CODES: Record<string, string> = {
   서울특별시: "6110000",
@@ -143,7 +146,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       queryUprCd,
       queryOrgCd,
     });
-    const upstreamResult = await requestPublicApi(SHELTER_API_URL, serviceKey, {
+    const upstreamResult = await requestPublicApi(RESCUE_NOTICE_API_URL, serviceKey, {
       pageNo: "1",
       numOfRows: NUM_OF_ROWS,
       _type: "json",
@@ -170,7 +173,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       logShelterWarning("upstream-http-error", diagnostics);
       sendError(response, 502, {
         ok: false,
-        code: upstreamResult.status === 403 ? "UPSTREAM_FORBIDDEN" : "UPSTREAM_ERROR",
+        code: "UPSTREAM_ERROR",
         upstreamStatus: upstreamResult.status,
         message: upstreamErrorMessage(upstreamResult.status, upstreamResult.parsed.upstreamError),
         upstreamError: buildUpstreamErrorDetail(upstreamResult),
@@ -193,12 +196,14 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     }
 
     const hasPreciseRegionCode = Boolean(regionCodes.orgCd) || !sigungu || sigungu === "전체";
-    const shelters = upstreamResult.parsed.items
-      .map(normalizeShelter)
-      .filter((shelter): shelter is Shelter => Boolean(shelter))
-      .filter((shelter) =>
-        hasPreciseRegionCode ? true : matchesRegion(shelter, sido, sigungu)
-      );
+    const shelters = dedupeShelters(
+      upstreamResult.parsed.items
+        .map(normalizeShelterFromNotice)
+        .filter((shelter): shelter is Shelter => Boolean(shelter))
+        .filter((shelter) =>
+          hasPreciseRegionCode ? true : matchesRegion(shelter, sido, sigungu)
+        )
+    );
 
     if (!shelters.length) {
       logShelterWarning("empty-shelter-result", diagnostics);
@@ -210,9 +215,10 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     response.status(200).json({
       ok: true,
       shelters,
-      source: "data.go.kr",
+      source: SHELTER_SOURCE,
       meta: {
-        source: "animalShelterSrvc_v2/shelterInfo_v2",
+        source: "abandonmentPublicService_v2/abandonmentPublic_v2",
+        derivation: "careNm/careTel/careAddr/orgNm",
         filters: {
           sido,
           sigungu,
@@ -521,34 +527,49 @@ function extractXmlRecord(text: string): Record<string, unknown> {
   return record;
 }
 
-function normalizeShelter(item: Record<string, unknown>, index: number): Shelter | null {
-  const name = readTextField(item, ["careNm", "care_nm", "name", "shelterName"]);
+function normalizeShelterFromNotice(item: Record<string, unknown>, index: number): Shelter | null {
+  const name = readTextField(item, ["careNm", "care_nm"]);
   if (!name) {
     return null;
   }
 
-  const id =
-    readTextField(item, ["careRegNo", "care_reg_no", "id", "shelterId"]) ??
-    `shelter-${index}-${slugify(name)}`;
-  const address = readTextField(item, [
-    "careAddr",
-    "care_addr",
-    "roadAddr",
-    "jibunAddr",
-    "addr",
-    "address",
-  ]);
-  const phone = readTextField(item, ["careTel", "care_tel", "tel", "phone"]);
-  const jurisdiction = readTextField(item, ["orgNm", "org_nm", "jurisdiction"]);
+  const address = readTextField(item, ["careAddr", "care_addr"]);
+  const phone = readTextField(item, ["careTel", "care_tel"]);
+  const orgName = readTextField(item, ["orgNm", "org_nm"]);
+  const dedupeKey = shelterDedupeKey({ name, phone, address });
 
   return {
-    id,
+    id: `derived-${slugify(dedupeKey) || index}`,
     name,
     ...(address ? { address } : {}),
     ...(phone ? { phone } : {}),
-    ...(jurisdiction ? { jurisdiction } : {}),
+    ...(orgName ? { jurisdiction: orgName, orgName } : {}),
+    source: SHELTER_SOURCE,
     raw: item,
   };
+}
+
+function dedupeShelters(shelters: Shelter[]): Shelter[] {
+  const seen = new Map<string, Shelter>();
+  shelters.forEach((shelter) => {
+    const key = shelterDedupeKey(shelter);
+    if (!seen.has(key)) {
+      seen.set(key, shelter);
+    }
+  });
+  return Array.from(seen.values());
+}
+
+function shelterDedupeKey({
+  name,
+  phone,
+  address,
+}: {
+  name: string;
+  phone?: string;
+  address?: string;
+}): string {
+  return [name, phone ?? "", address ?? ""].map(normalizeRegionText).join("|");
 }
 
 function matchesRegion(shelter: Shelter, sido: string, sigungu: string): boolean {
