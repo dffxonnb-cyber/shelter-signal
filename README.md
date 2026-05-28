@@ -109,6 +109,24 @@ The service key must be configured in Vercel as `DATA_GO_KR_SERVICE_KEY`. Do not
 
 The shelter endpoint supports region code parameters such as `upr_cd` and `org_cd`. Shelter Signal keeps the UI labels in Korean, sends known stable codes when available, and lets the internal API route resolve missing codes through the public `sido_v2` and `sigungu_v2` helper endpoints before calling `shelterInfo_v2`.
 
+The route returns JSON with a stable shape:
+
+```json
+{ "ok": true, "shelters": [], "source": "data.go.kr" }
+```
+
+If the key is missing, it returns:
+
+```json
+{ "ok": false, "code": "MISSING_SERVICE_KEY", "shelters": [] }
+```
+
+If the upstream public-data API fails, it returns:
+
+```json
+{ "ok": false, "code": "UPSTREAM_ERROR", "message": "...", "shelters": [] }
+```
+
 The internal API route normalizes shelter responses into this frontend shape:
 
 ```ts
@@ -175,6 +193,19 @@ Output Directory: dist
 ```
 
 Production shelter lookup requires the `DATA_GO_KR_SERVICE_KEY` environment variable in Vercel. Without it, the static PWA still renders, but selected-region shelter lookup shows a safe API error state. The deployed app does not require DB, auth, n8n, email, or SMS configuration.
+
+After adding or changing Vercel environment variables, redeploy Production so the serverless function receives the new value.
+
+### Troubleshooting `/api/shelters`
+
+- `MISSING_SERVICE_KEY` means the Vercel Function cannot see `DATA_GO_KR_SERVICE_KEY`.
+- Confirm the exact variable name: `DATA_GO_KR_SERVICE_KEY`.
+- Confirm the variable is enabled for the Production environment.
+- Redeploy Production after adding or changing the variable.
+- Test the route directly: https://shelter-signal-ebon.vercel.app/api/shelters
+- `UPSTREAM_ERROR` means the function has a key, but data.go.kr rejected or failed the request. Check service approval/permission for the shelter endpoint before assuming live data is unavailable.
+
+No database connection is required for this live shelter lookup route. The browser calls the internal Vercel API route, and only that serverless function calls data.go.kr.
 
 ## Portfolio Summary
 

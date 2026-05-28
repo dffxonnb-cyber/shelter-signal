@@ -7,6 +7,18 @@ export type Shelter = {
   raw?: unknown;
 };
 
+export type ShelterApiErrorCode = "MISSING_SERVICE_KEY" | "UPSTREAM_ERROR" | "UNKNOWN";
+
+export class ShelterApiError extends Error {
+  code: ShelterApiErrorCode;
+
+  constructor(code: ShelterApiErrorCode, message: string) {
+    super(message);
+    this.name = "ShelterApiError";
+    this.code = code;
+  }
+}
+
 type FetchShelterParams = {
   sido: string;
   sigungu: string;
@@ -37,11 +49,13 @@ export async function fetchSheltersByRegion({
   try {
     payload = await response.json();
   } catch (error) {
-    throw new Error(`Shelter API did not return JSON: ${errorMessage(error)}`);
+    throw new ShelterApiError("UPSTREAM_ERROR", `Shelter API did not return JSON: ${errorMessage(error)}`);
   }
 
   if (!response.ok || !isRecord(payload) || payload.ok === false) {
-    throw new Error("Shelter API request failed");
+    const code = normalizeErrorCode(isRecord(payload) ? payload.code : undefined);
+    const message = textOrEmpty(isRecord(payload) ? payload.message : undefined) || "Shelter API request failed";
+    throw new ShelterApiError(code, message);
   }
 
   const shelters = Array.isArray(payload.shelters) ? payload.shelters : [];
@@ -77,6 +91,13 @@ function normalizeShelter(value: unknown, index: number): Shelter | null {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "unknown error";
+}
+
+function normalizeErrorCode(value: unknown): ShelterApiErrorCode {
+  if (value === "MISSING_SERVICE_KEY" || value === "UPSTREAM_ERROR") {
+    return value;
+  }
+  return "UNKNOWN";
 }
 
 function textOrEmpty(value: unknown): string {

@@ -58,6 +58,13 @@ type ShelterDiagnostics = {
   regionCodeWarnings?: string[];
 };
 
+type ErrorResponseBody = {
+  ok: false;
+  code: "MISSING_SERVICE_KEY" | "UPSTREAM_ERROR" | "METHOD_NOT_ALLOWED";
+  message?: string;
+  shelters: [];
+};
+
 const API_BASE_URL = "https://apis.data.go.kr/1543061";
 const SHELTER_API_URL = `${API_BASE_URL}/animalShelterSrvc_v2/shelterInfo_v2`;
 const SIDO_API_URL = `${API_BASE_URL}/abandonmentPublicService_v2/sido_v2`;
@@ -156,7 +163,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       sendError(response, 502, {
         ok: false,
         code: "UPSTREAM_ERROR",
-        status: upstreamResult.status,
+        message: upstreamResult.parsed.upstreamError ?? `Public data API returned ${upstreamResult.status}`,
         shelters: [],
       });
       return;
@@ -166,7 +173,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       logShelterWarning("upstream-public-data-error", diagnostics);
       sendError(response, 502, {
         ok: false,
-        code: "UPSTREAM_RESPONSE_ERROR",
+        code: "UPSTREAM_ERROR",
         message: upstreamResult.parsed.upstreamError,
         shelters: [],
       });
@@ -191,6 +198,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     response.status(200).json({
       ok: true,
       shelters,
+      source: "data.go.kr",
       meta: {
         source: "animalShelterSrvc_v2/shelterInfo_v2",
         filters: {
@@ -208,7 +216,12 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       ...baseDiagnostics,
       publicDataMessage: error instanceof Error ? error.message : "unknown request failure",
     });
-    sendError(response, 502, { ok: false, code: "UPSTREAM_REQUEST_FAILED", shelters: [] });
+    sendError(response, 502, {
+      ok: false,
+      code: "UPSTREAM_ERROR",
+      message: error instanceof Error ? error.message : "Public data API request failed",
+      shelters: [],
+    });
   }
 }
 
@@ -351,7 +364,7 @@ async function requestPublicApi(
   };
 }
 
-function sendError(response: ApiResponse, statusCode: number, body: unknown): void {
+function sendError(response: ApiResponse, statusCode: number, body: ErrorResponseBody): void {
   response.setHeader("Cache-Control", "no-store");
   response.status(statusCode).json(body);
 }

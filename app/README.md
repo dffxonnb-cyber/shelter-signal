@@ -4,9 +4,11 @@ Vite + React + TypeScript 기반 Shelter Signal PWA입니다.
 
 배포 링크: https://shelter-signal-ebon.vercel.app/
 
-현재 배포된 앱은 export된 정적 JSON 데이터를 사용합니다. 운영용 실시간 backend, 인증, 알림 기능이 붙은 production-ready 서비스는 아닙니다.
+현재 배포된 앱은 공고와 지역 신호에 export된 정적 JSON 데이터를 사용하고, 지역 보호소 조회는 Vercel serverless API route인 `/api/shelters`를 통해 공공데이터 API를 호출합니다. 운영용 실시간 backend, 인증, 알림 기능이 붙은 production-ready 서비스는 아닙니다.
 
 앱은 `public/data/*.json`에 export된 정적 JSON을 먼저 읽고, 로딩에 실패하면 `src/data/mockAnimals.ts`의 mock 데이터로 fallback합니다. 브라우저에서 PostgreSQL이나 공공 API에 직접 연결하지 않습니다.
+
+보호소 조회의 서비스 키는 브라우저 번들에 포함하지 않습니다. Vercel Production 환경 변수에 `DATA_GO_KR_SERVICE_KEY`를 설정해야 하며, 추가 또는 변경 후에는 Production을 다시 배포해야 합니다. 이 live shelter API route에는 Supabase/Postgres 같은 DB 연결이 필요하지 않습니다.
 
 ## 실행
 
@@ -35,6 +37,12 @@ Output Directory: dist
 ```
 
 `public/data/*.json` 파일은 현재 앱이 읽는 정적 export 데이터입니다. 배포 결과물에는 이 JSON 파일들이 `/data/*.json` 경로의 정적 자산으로 포함됩니다.
+
+`/api/shelters` 문제를 볼 때:
+
+- `MISSING_SERVICE_KEY`: Vercel Function이 `DATA_GO_KR_SERVICE_KEY`를 보지 못하는 상태입니다.
+- `UPSTREAM_ERROR`: 함수는 키를 받았지만 data.go.kr 응답이나 권한에서 실패한 상태입니다.
+- 직접 확인 URL: https://shelter-signal-ebon.vercel.app/api/shelters
 
 ## 현재 화면
 

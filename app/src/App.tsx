@@ -13,7 +13,12 @@ import {
   loadExportedAppData,
 } from "./data/exportedData";
 import { getRegionCodes } from "./data/regionCodes";
-import { fetchSheltersByRegion, type Shelter } from "./data/shelters";
+import {
+  ShelterApiError,
+  fetchSheltersByRegion,
+  type Shelter,
+  type ShelterApiErrorCode,
+} from "./data/shelters";
 
 type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
 type NoticeLimit = 5 | 10 | 20 | "all";
@@ -761,6 +766,7 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [shelterStatus, setShelterStatus] = useState<ShelterLoadState>("idle");
   const [shelters, setShelters] = useState<Shelter[]>([]);
+  const [shelterErrorCode, setShelterErrorCode] = useState<ShelterApiErrorCode | null>(null);
   const regionGroups = useMemo(() => buildRegionSelectorGroups(regionSignals), [regionSignals]);
   const selectedGroup = regionGroups.find((group) => group.sido === selectedSido);
   const districtOptions = selectedGroup?.districts ?? [];
@@ -783,12 +789,14 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
     if (!selectedSido || !selectedSigunguLabel) {
       setShelterStatus("idle");
       setShelters([]);
+      setShelterErrorCode(null);
       return;
     }
 
     const controller = new AbortController();
     setShelterStatus("loading");
     setShelters([]);
+    setShelterErrorCode(null);
 
     fetchSheltersByRegion({
       sido: selectedSido,
@@ -805,6 +813,7 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
           return;
         }
         setShelters([]);
+        setShelterErrorCode(error instanceof ShelterApiError ? error.code : "UNKNOWN");
         setShelterStatus("error");
       });
 
@@ -858,6 +867,7 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
       <ShelterDataPanel
         status={shelterStatus}
         shelters={shelters}
+        errorCode={shelterErrorCode}
         selectedRegionLabel={selectedRegionLabel}
       />
     </>
@@ -1260,10 +1270,12 @@ function summarizeRegionSignals(regionSignals: RegionSignal[]): RegionSignalTota
 function ShelterDataPanel({
   status,
   shelters,
+  errorCode,
   selectedRegionLabel,
 }: {
   status: ShelterLoadState;
   shelters: Shelter[];
+  errorCode?: ShelterApiErrorCode | null;
   selectedRegionLabel: string;
 }) {
   if (status === "idle") {
@@ -1279,18 +1291,23 @@ function ShelterDataPanel({
     return (
       <section className="shelter-data-panel" role="status" aria-busy="true">
         <span className="section-kicker">보호소 조회</span>
-        <h3>보호소 데이터를 불러오는 중입니다.</h3>
+        <h3>보호소 정보를 불러오고 있어요.</h3>
         <p>{selectedRegionLabel}의 공공데이터 응답을 확인하고 있어요.</p>
       </section>
     );
   }
 
   if (status === "error") {
+    const message =
+      errorCode === "MISSING_SERVICE_KEY"
+        ? "보호소 정보를 확인할 수 없습니다. 배포 환경 변수를 확인해주세요."
+        : "공공데이터 API 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+
     return (
       <section className="shelter-data-panel is-error" role="alert">
         <span className="section-kicker">보호소 조회</span>
-        <h3>공공데이터 API 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.</h3>
-        <p>서비스 키, API 권한, 또는 일시적인 공공데이터 응답 상태를 확인해야 합니다.</p>
+        <h3>{message}</h3>
+        <p>공식 문의와 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.</p>
       </section>
     );
   }
@@ -1317,6 +1334,7 @@ function ShelterDataPanel({
         </div>
         <span>{shelters.length}곳</span>
       </div>
+      <p className="shelter-source-note">Live API</p>
       <div className="shelter-card-list">
         {shelters.map((shelter) => (
           <ShelterCard key={shelter.id} shelter={shelter} />
