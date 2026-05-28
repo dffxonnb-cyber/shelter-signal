@@ -111,6 +111,71 @@ HTTP Request 기반 로컬 dry-run workflow 초안은 [daily-digest-http-dry-run
 
 실제 이메일 발송은 preview 품질 확인, 안전 문구 검토, credential 관리, 수신자 동의, unsubscribe, bounce 처리, 발송 제한 기준이 준비된 뒤 별도 단계에서 다룹니다.
 
+## V2-3. Manual test email send
+
+V2-3의 목표는 자동 발송이 아니라, 사람이 n8n에서 수동 실행으로 preview HTML을 한 번 확인하고 한 명의 테스트 수신자에게만 보내는 안전한 로컬 테스트 흐름을 문서화하는 것입니다.
+
+Intended n8n flow:
+
+```text
+Manual Trigger
+→ HTTP Request
+→ Email Send node
+```
+
+HTTP Request node settings:
+
+```text
+Method: POST
+URL: http://host.docker.internal:8787/dry-run?include_html=true
+Authentication: None
+Send Query Parameters: Off
+Send Headers: Off
+Send Body: Off
+```
+
+Expected HTTP Request output:
+
+```json
+{
+  "status": "ok",
+  "dry_run_result": {
+    "result": "PASS"
+  },
+  "alert_candidate_count": 5,
+  "email_html": "<!doctype html>...",
+  "message": "PASS daily digest preview dry-run complete. No email was sent."
+}
+```
+
+The Email Send node must be added only after the HTTP Request output visibly includes `email_html`.
+
+Email node safety rules:
+
+- Use only one test recipient.
+- Prefer sending to the project owner's own email address.
+- Use a subject that starts with `[TEST] Shelter Signal Daily Digest`.
+- Use `email_html` as the body.
+- Enable Send as HTML / HTML email mode.
+- Do not use a Schedule Trigger yet.
+- Do not publish or activate the workflow yet.
+- Do not add real recipients or credentials to committed workflow JSON.
+- Do not treat a successful manual test email as production readiness.
+
+Suggested body expression:
+
+```text
+{{$json.email_html}}
+```
+
+Alternative expression when the Email Send node needs to reference the HTTP node by name:
+
+```text
+{{$node["HTTP Request"].json["email_html"]}}
+```
+
+The importable outline for this manual step is [manual-test-email.workflow.json](manual-test-email.workflow.json). It keeps the Email Send step as a disabled placeholder so importing the workflow cannot send email by itself.
+
 ## Production Caution Notes
 
 이 workflow는 production-ready 알림 시스템이 아닙니다.

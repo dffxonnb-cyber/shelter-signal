@@ -1,0 +1,123 @@
+{
+  "name": "Shelter Signal V2 Manual Test Email Outline",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8787/dry-run?include_html=true",
+        "authentication": "none",
+        "sendQuery": false,
+        "sendHeaders": false,
+        "sendBody": false,
+        "options": {}
+      },
+      "id": "post-dry-run-include-html",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        -80
+      ],
+      "notesInFlow": true,
+      "notes": "Start the local bridge first with: python scripts/serve_daily_digest_dry_run.py. This request calls POST http://host.docker.internal:8787/dry-run?include_html=true and should return email_html. No credentials, recipients, SMTP settings, SMS, auth, or production behavior are used by this node."
+    },
+    {
+      "parameters": {
+        "fromEmail": "test-sender@example.com",
+        "toEmail": "test-recipient@example.com",
+        "subject": "[TEST] Shelter Signal Daily Digest - manual local test",
+        "emailFormat": "html",
+        "html": "={{$json.email_html}}"
+      },
+      "id": "email-send-placeholder-disabled",
+      "name": "Email Send Placeholder (disabled)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        20,
+        -80
+      ],
+      "disabled": true,
+      "notesInFlow": true,
+      "notes": "Disabled placeholder only. Before any manual send, replace placeholder addresses locally, add credentials only inside local n8n, confirm email_html exists, use one test recipient, keep the subject prefixed with [TEST] Shelter Signal Daily Digest, and do not activate or schedule the workflow. Do not commit real recipients or credentials."
+    },
+    {
+      "parameters": {
+        "content": "Manual test email safety checklist\n\n1. Run the HTTP Request node first.\n2. Confirm status is ok and dry_run_result.result is PASS.\n3. Confirm email_html exists and is not empty.\n4. Enable/configure Email Send only in local n8n.\n5. Use exactly one test recipient, preferably the project owner's own email.\n6. Keep the workflow inactive and unscheduled.\n7. Do not commit credentials or real recipient addresses.",
+        "height": 360,
+        "width": 420,
+        "color": 3
+      },
+      "id": "manual-test-safety-note",
+      "name": "Manual Test Safety Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Expected HTTP output\n\n{\n  \"status\": \"ok\",\n  \"dry_run_result\": { \"result\": \"PASS\" },\n  \"alert_candidate_count\": 5,\n  \"email_html\": \"<!doctype html>...\",\n  \"message\": \"PASS daily digest preview dry-run complete. No email was sent.\"\n}\n\nHTML body expression:\n{{$json.email_html}}\n\nAlternative:\n{{$node[\"HTTP Request\"].json[\"email_html\"]}}",
+        "height": 360,
+        "width": 420,
+        "color": 4
+      },
+      "id": "expected-output-note",
+      "name": "Expected Output Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Email Send Placeholder (disabled)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-28T00:00:00.000Z",
+  "versionId": "00000000-0000-4000-8000-000000000003",
+  "active": false
+}

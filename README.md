@@ -84,6 +84,18 @@ Not implemented:
 - n8n automation in the deployed app
 - Shelter homepage, operating-hours, or coordinate enrichment
 
+## V2 n8n Manual Test Status
+
+The `v2/n8n-email-alerts` branch has a validated local n8n HTTP dry-run path. The bridge exposes `POST /dry-run`, and `POST /dry-run?include_html=true` can return the generated digest preview as `email_html` for n8n to use in a later manual Email Send node.
+
+The next V2 manual step is a one-recipient test email from local n8n using the `email_html` field. Real automated sending is not enabled: there are no committed credentials, no real recipients, no schedule trigger, no SMS, no auth, and no subscription flow.
+
+See:
+
+- `docs/n8n/daily-email-digest-workflow.md`
+- `docs/n8n/local-dry-run-setup.md`
+- `docs/n8n/manual-test-email.workflow.json`
+
 ## API/Data Notes
 
 The app currently uses public rescue animal notice fields that are already present in the notice data, including:

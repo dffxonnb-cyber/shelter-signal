@@ -261,6 +261,106 @@ When enabled, the bridge runs the same dry-run, reads `data/exports/email_digest
 
 This still does not send email by itself. It does not add credentials, recipients, SMTP/Gmail settings, SMS, auth, or production backend behavior. If the generated HTML file is missing or empty, the bridge returns `status: "error"` with a non-200 response.
 
+## Manual Test Email Send 준비 절차
+
+This is the V2-3 manual local test path. It prepares one human-triggered email send from n8n only after the bridge returns `email_html`. It does not add schedules, credentials, real recipients, SMS, auth, user accounts, or production subscription behavior to the repository.
+
+Step 1. Start the local dry-run bridge.
+
+Open PowerShell and run:
+
+```powershell
+cd C:\Users\msi\OneDrive\문서\GitHub\shelter-signal
+git checkout v2/n8n-email-alerts
+git pull
+$env:POSTGRES_PORT="5433"
+docker compose up -d
+python scripts/serve_daily_digest_dry_run.py
+```
+
+Leave this terminal open while n8n runs. The bridge should expose:
+
+```text
+GET  http://127.0.0.1:8787/health
+POST http://127.0.0.1:8787/dry-run
+```
+
+Step 2. Open n8n:
+
+```text
+http://localhost:5678
+```
+
+Step 3. Create or open the manual test workflow.
+
+You can build it manually or import the outline:
+
+```text
+docs/n8n/manual-test-email.workflow.json
+```
+
+Step 4. Set the HTTP Request node URL to:
+
+```text
+http://host.docker.internal:8787/dry-run?include_html=true
+```
+
+Use these HTTP Request settings:
+
+```text
+Method: POST
+Authentication: None
+Send Query Parameters: Off
+Send Headers: Off
+Send Body: Off
+```
+
+Step 5. Run the HTTP Request node and confirm `email_html` exists.
+
+The expected response shape includes:
+
+```json
+{
+  "status": "ok",
+  "dry_run_result": {
+    "result": "PASS"
+  },
+  "alert_candidate_count": 5,
+  "email_html": "<!doctype html>...",
+  "message": "PASS daily digest preview dry-run complete. No email was sent."
+}
+```
+
+Do not continue to the Email Send node if `status` is not `ok`, `dry_run_result.result` is not `PASS`, or `email_html` is missing/empty.
+
+Step 6. Add an Email Send node only after `email_html` is visible.
+
+Safety settings:
+
+- Use only one test recipient.
+- Prefer the project owner's own email address.
+- Use placeholder addresses in any exported workflow JSON.
+- Subject must start with `[TEST] Shelter Signal Daily Digest`.
+- Enable Send as HTML / HTML email mode.
+- Do not add a Schedule Trigger.
+- Do not publish or activate the workflow yet.
+
+Step 7. Use this expression for the HTML body:
+
+```text
+{{$json.email_html}}
+```
+
+If the Email Send node needs to reference the HTTP Request node directly, use:
+
+```text
+{{$node["HTTP Request"].json["email_html"]}}
+```
+
+Step 8. Send only one manual test email.
+
+After the test, leave the workflow inactive and keep any real credentials/recipient values in local n8n only. Do not commit generated preview files, credentials, or real recipient addresses.
+
 ## Execute Command 방식 (optional/legacy)
 
 Use this only when your n8n setup exposes a working Execute Command node. If n8n shows the command node as unknown or unavailable, use the HTTP Request 방식 above.
