@@ -31,12 +31,12 @@
         -80
       ],
       "notesInFlow": true,
-      "notes": "Start the local bridge first with: python scripts/serve_daily_digest_dry_run.py. This request calls POST http://host.docker.internal:8787/dry-run?include_html=true and should return email_html. No credentials, recipients, SMTP settings, SMS, auth, or production behavior are used by this node."
+      "notes": "Start Mailpit and the local bridge first with: docker compose up -d; python scripts/serve_daily_digest_dry_run.py. This request calls POST http://host.docker.internal:8787/dry-run?include_html=true and should return email_html. No Gmail, Google Cloud, real recipients, SMS, auth, or production behavior are used by this node."
     },
     {
       "parameters": {
-        "fromEmail": "test-sender@example.com",
-        "toEmail": "test-recipient@example.com",
+        "fromEmail": "shelter-signal@test.local",
+        "toEmail": "test-recipient@example.local",
         "subject": "[TEST] Shelter Signal Daily Digest - manual local test",
         "emailFormat": "html",
         "html": "={{$json.email_html}}"
@@ -51,11 +51,11 @@
       ],
       "disabled": true,
       "notesInFlow": true,
-      "notes": "Disabled placeholder only. Before any manual send, replace placeholder addresses locally, add credentials only inside local n8n, confirm email_html exists, use one test recipient, keep the subject prefixed with [TEST] Shelter Signal Daily Digest, and do not activate or schedule the workflow. Do not commit real recipients or credentials."
+      "notes": "Disabled placeholder only. Configure SMTP credentials locally in n8n for Mailpit: host host.docker.internal, port 1025, secure false, no username/password unless n8n requires harmless placeholders test/test. Confirm email_html exists, use one local Mailpit recipient, keep the subject prefixed with [TEST] Shelter Signal Daily Digest, and do not activate or schedule the workflow. Do not use Gmail OAuth, Google Cloud, app passwords, real recipients, or production credentials."
     },
     {
       "parameters": {
-        "content": "Manual test email safety checklist\n\n1. Run the HTTP Request node first.\n2. Confirm status is ok and dry_run_result.result is PASS.\n3. Confirm email_html exists and is not empty.\n4. Enable/configure Email Send only in local n8n.\n5. Use exactly one test recipient, preferably the project owner's own email.\n6. Keep the workflow inactive and unscheduled.\n7. Do not commit credentials or real recipient addresses.",
+        "content": "Manual test email safety checklist\n\n1. Run docker compose up -d so Mailpit is available.\n2. Run the HTTP Request node first.\n3. Confirm status is ok and dry_run_result.result is PASS.\n4. Confirm email_html exists and is not empty.\n5. Configure Email Send only for local Mailpit SMTP.\n6. Use exactly one placeholder recipient: test-recipient@example.local.\n7. View the captured email at http://localhost:8025.\n8. Keep the workflow inactive and unscheduled.\n9. Do not commit credentials or real recipient addresses.",
         "height": 360,
         "width": 420,
         "color": 3
@@ -71,7 +71,7 @@
     },
     {
       "parameters": {
-        "content": "Expected HTTP output\n\n{\n  \"status\": \"ok\",\n  \"dry_run_result\": { \"result\": \"PASS\" },\n  \"alert_candidate_count\": 5,\n  \"email_html\": \"<!doctype html>...\",\n  \"message\": \"PASS daily digest preview dry-run complete. No email was sent.\"\n}\n\nHTML body expression:\n{{$json.email_html}}\n\nAlternative:\n{{$node[\"HTTP Request\"].json[\"email_html\"]}}",
+        "content": "Expected HTTP output\n\n{\n  \"status\": \"ok\",\n  \"dry_run_result\": { \"result\": \"PASS\" },\n  \"alert_candidate_count\": 5,\n  \"email_html\": \"<!doctype html>...\",\n  \"message\": \"PASS daily digest preview dry-run complete. No email was sent.\"\n}\n\nMailpit SMTP settings\nHost: host.docker.internal\nPort: 1025\nSecure: false\nUser/Password: empty, or test/test if n8n requires values\n\nHTML body expression:\n{{$json.email_html}}\n\nAlternative:\n{{$node[\"HTTP Request\"].json[\"email_html\"]}}",
         "height": 360,
         "width": 420,
         "color": 4

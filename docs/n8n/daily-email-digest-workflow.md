@@ -52,7 +52,7 @@ EMAIL_PREVIEW_RECIPIENT_DISABLED
 python scripts/run_daily_digest_dry_run.py
 ```
 
-권장 흐름은 Docker Desktop을 켠 뒤 PostgreSQL만 Compose로 시작하고, local HTTP bridge를 저장소 루트에서 실행한 다음 n8n HTTP Request node로 호출하는 방식입니다. 이 방식은 n8n local UI에서 Execute Command node가 보이지 않거나 unknown node로 표시될 때도 사용할 수 있습니다.
+권장 흐름은 Docker Desktop을 켠 뒤 PostgreSQL과 Mailpit을 Compose로 시작하고, local HTTP bridge를 저장소 루트에서 실행한 다음 n8n HTTP Request node로 호출하는 방식입니다. 이 방식은 n8n local UI에서 Execute Command node가 보이지 않거나 unknown node로 표시될 때도 사용할 수 있습니다.
 
 ```powershell
 docker compose up -d postgres
@@ -91,7 +91,7 @@ Execute Command 방식은 node가 사용 가능한 환경에서만 optional/lega
 
 Docker 안에서 n8n을 실행하려면 프로젝트 디렉터리 mount, Python 설치, `data/exports/` write 권한, Docker Compose 접근이 모두 필요합니다. 현재 브랜치에서는 이 구성이 안전한 기본값이 아니므로 `docker-compose.yml`에는 n8n service를 추가하지 않고, host n8n 실행을 문서화합니다.
 
-이 단계는 preview JSON/HTML이 생성되는지만 확인합니다. 실제 이메일 발송은 아직 구현하지 않으며, credential, 실제 수신자, Gmail/SMTP 설정을 요구하지 않습니다.
+이 단계는 preview JSON/HTML이 생성되는지만 확인합니다. 실제 외부 이메일 발송은 아직 구현하지 않으며, credential, 실제 수신자, Gmail 또는 외부 SMTP 설정을 요구하지 않습니다.
 
 ## Dry-Run Workflow Stage
 
@@ -107,7 +107,7 @@ HTTP Request 기반 로컬 dry-run workflow 초안은 [daily-digest-http-dry-run
 - `mart.alert_candidates`를 읽어 digest preview JSON/HTML을 생성할 수 있음
 - 생성된 `data/exports/email_digest_preview.json`과 `data/exports/email_digest_preview.html` 파일이 존재함
 
-이 단계는 실제 수신자, Gmail/SMTP credential, SMS, 사용자 계정, auth, API key를 요구하지 않습니다. Email Send node는 placeholder로만 두며 disabled 상태를 유지합니다.
+이 단계는 실제 수신자, Gmail 또는 외부 SMTP credential, SMS, 사용자 계정, auth, API key를 요구하지 않습니다. Email Send node는 placeholder로만 두며 disabled 상태를 유지합니다.
 
 실제 이메일 발송은 preview 품질 확인, 안전 문구 검토, credential 관리, 수신자 동의, unsubscribe, bounce 처리, 발송 제한 기준이 준비된 뒤 별도 단계에서 다룹니다.
 
@@ -115,12 +115,15 @@ HTTP Request 기반 로컬 dry-run workflow 초안은 [daily-digest-http-dry-run
 
 V2-3의 목표는 자동 발송이 아니라, 사람이 n8n에서 수동 실행으로 preview HTML을 한 번 확인하고 한 명의 테스트 수신자에게만 보내는 안전한 로컬 테스트 흐름을 문서화하는 것입니다.
 
+Gmail OAuth, Google Cloud OAuth Client setup, and Gmail SMTP app passwords are intentionally avoided for this local test. Use Mailpit as a local SMTP capture inbox instead, so the message renders locally without leaving the machine.
+
 Intended n8n flow:
 
 ```text
 Manual Trigger
 → HTTP Request
-→ Email Send node
+→ Send an Email
+→ Mailpit inbox
 ```
 
 HTTP Request node settings:
@@ -148,18 +151,54 @@ Expected HTTP Request output:
 }
 ```
 
-The Email Send node must be added only after the HTTP Request output visibly includes `email_html`.
+The Send an Email node must be added only after the HTTP Request output visibly includes `email_html`.
+
+Mailpit local SMTP target:
+
+```text
+SMTP: localhost:1025
+Web inbox: http://localhost:8025
+```
+
+When n8n runs in Docker, use `host.docker.internal` for the SMTP host so the n8n container can reach the host-published Mailpit port.
+
+Send an Email node settings for Mailpit:
+
+```text
+Credential type: SMTP
+Host: host.docker.internal
+Port: 1025
+Secure: false
+User: leave empty if allowed
+Password: leave empty if allowed
+From Email: shelter-signal@test.local
+To Email: test-recipient@example.local
+Subject: [TEST] Shelter Signal Daily Digest
+Email Format: HTML
+HTML: {{$json.email_html}}
+```
+
+If n8n requires a username and password for the SMTP credential form, use harmless local placeholders:
+
+```text
+User: test
+Password: test
+```
+
+Mailpit does not authenticate by default in this local capture setup. These placeholder values are not production credentials.
 
 Email node safety rules:
 
 - Use only one test recipient.
-- Prefer sending to the project owner's own email address.
+- Use a local placeholder recipient such as `test-recipient@example.local` when sending to Mailpit.
 - Use a subject that starts with `[TEST] Shelter Signal Daily Digest`.
 - Use `email_html` as the body.
 - Enable Send as HTML / HTML email mode.
+- View the captured message at `http://localhost:8025`.
 - Do not use a Schedule Trigger yet.
 - Do not publish or activate the workflow yet.
 - Do not add real recipients or credentials to committed workflow JSON.
+- Do not use Gmail OAuth, Google Cloud OAuth Client credentials, Gmail SMTP, or app passwords for this local test.
 - Do not treat a successful manual test email as production readiness.
 
 Suggested body expression:

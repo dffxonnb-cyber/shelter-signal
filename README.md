@@ -88,7 +88,9 @@ Not implemented:
 
 The `v2/n8n-email-alerts` branch has a validated local n8n HTTP dry-run path. The bridge exposes `POST /dry-run`, and `POST /dry-run?include_html=true` can return the generated digest preview as `email_html` for n8n to use in a later manual Email Send node.
 
-The next V2 manual step is a one-recipient test email from local n8n using the `email_html` field. Real automated sending is not enabled: there are no committed credentials, no real recipients, no schedule trigger, no SMS, no auth, and no subscription flow.
+The next V2 manual step is a one-recipient test email from local n8n using the `email_html` field and Mailpit local email capture. Mailpit lets the email render at `http://localhost:8025` without sending real external email. Gmail OAuth, Google Cloud setup, Gmail SMTP, and production email sending are intentionally deferred.
+
+Real automated sending is not enabled: there are no committed credentials, no real recipients, no schedule trigger, no SMS, no auth, and no subscription flow.
 
 See:
 

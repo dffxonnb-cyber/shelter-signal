@@ -2,7 +2,7 @@
 
 This guide connects Shelter Signal V2's existing daily digest dry-run command to a local n8n workflow. It is a generation-only stage: n8n runs the local preview command, verifies that preview files are created, and stops before any real email sending.
 
-This setup does not add Gmail, SMTP, SMS, auth, user accounts, real recipients, or API keys.
+This setup does not add Gmail, external SMTP, SMS, auth, user accounts, real recipients, or API keys. Manual email rendering can be tested locally with Mailpit, which captures messages instead of sending real external email.
 
 ## Local Prerequisites
 
@@ -15,9 +15,10 @@ Local requirements:
 - PostgreSQL started from this repository's `docker-compose.yml`
 - Python available as `python` or, on Windows, `py -3`
 - n8n running locally, preferably as a host process from the repository root
-- no email credentials, recipients, SMTP settings, or API keys in the workflow
+- no Gmail, external SMTP credentials, real recipients, or API keys in the workflow
+- optional Mailpit local SMTP capture for manual rendering checks
 
-The current Compose file only starts PostgreSQL. It intentionally does not start n8n, because this dry-run command needs access to the repository files, local Python, Docker Compose, and the running Postgres service.
+The current Compose file starts PostgreSQL and Mailpit only. It intentionally does not start n8n, because this dry-run command needs access to the repository files, local Python, Docker Compose, and the running Postgres service.
 
 ## What This Stage Proves
 
@@ -259,11 +260,92 @@ When enabled, the bridge runs the same dry-run, reads `data/exports/email_digest
 }
 ```
 
-This still does not send email by itself. It does not add credentials, recipients, SMTP/Gmail settings, SMS, auth, or production backend behavior. If the generated HTML file is missing or empty, the bridge returns `status: "error"` with a non-200 response.
+This still does not send email by itself. It does not add credentials, recipients, Gmail or external SMTP settings, SMS, auth, or production backend behavior. If the generated HTML file is missing or empty, the bridge returns `status: "error"` with a non-200 response.
+
+## 로컬 메일 캡처로 테스트 이메일 확인하기
+
+Use Mailpit for the V2-3 manual email rendering test. This avoids Gmail OAuth, Google Cloud OAuth Client setup, Gmail SMTP app passwords, and real external email delivery.
+
+Mailpit is a local email capture inbox:
+
+```text
+SMTP: localhost:1025
+Web inbox: http://localhost:8025
+```
+
+n8n sends the test message to Mailpit SMTP, and Mailpit shows the captured message in the browser. It does not send the email to the public internet.
+
+Start the local services and dry-run bridge from PowerShell:
+
+```powershell
+cd C:\Users\msi\OneDrive\문서\GitHub\shelter-signal
+git checkout v2/n8n-email-alerts
+git pull
+$env:POSTGRES_PORT="5433"
+docker compose up -d
+python scripts/serve_daily_digest_dry_run.py
+```
+
+Open the Mailpit inbox:
+
+```text
+http://localhost:8025
+```
+
+Then open n8n:
+
+```text
+http://localhost:5678
+```
+
+Use the manual workflow:
+
+```text
+Manual Trigger
+→ HTTP Request
+→ Send an Email
+→ Mailpit inbox
+```
+
+HTTP Request node:
+
+```text
+Method: POST
+URL: http://host.docker.internal:8787/dry-run?include_html=true
+Authentication: None
+Send Query Parameters: Off
+Send Headers: Off
+Send Body: Off
+```
+
+Send an Email node SMTP settings:
+
+```text
+Credential type: SMTP
+Host: host.docker.internal
+Port: 1025
+Secure: false
+User: leave empty if allowed
+Password: leave empty if allowed
+From Email: shelter-signal@test.local
+To Email: test-recipient@example.local
+Subject: [TEST] Shelter Signal Daily Digest
+Email Format: HTML
+HTML: {{$json.email_html}}
+```
+
+If n8n requires a username/password in the SMTP credential form, use harmless local placeholders:
+
+```text
+User: test
+Password: test
+```
+
+Mailpit does not authenticate by default in this local capture setup. Do not use Gmail OAuth, Google Cloud credentials, Gmail SMTP, real recipients, or production credentials.
 
 ## Manual Test Email Send 준비 절차
 
-This is the V2-3 manual local test path. It prepares one human-triggered email send from n8n only after the bridge returns `email_html`. It does not add schedules, credentials, real recipients, SMS, auth, user accounts, or production subscription behavior to the repository.
+This is the V2-3 manual local test path. It prepares one human-triggered email send from n8n only after the bridge returns `email_html`. Use Mailpit for local capture so no real external email is sent. It does not add schedules, real credentials, real recipients, SMS, auth, user accounts, or production subscription behavior to the repository.
 
 Step 1. Start the local dry-run bridge.
 
@@ -285,7 +367,18 @@ GET  http://127.0.0.1:8787/health
 POST http://127.0.0.1:8787/dry-run
 ```
 
-Step 2. Open n8n:
+Mailpit should expose:
+
+```text
+SMTP: localhost:1025
+Inbox: http://localhost:8025
+```
+
+Step 2. Open Mailpit and n8n:
+
+```text
+http://localhost:8025
+```
 
 ```text
 http://localhost:5678
@@ -337,13 +430,15 @@ Step 6. Add an Email Send node only after `email_html` is visible.
 
 Safety settings:
 
-- Use only one test recipient.
-- Prefer the project owner's own email address.
+- Use only one local test recipient.
+- Use `test-recipient@example.local` for Mailpit capture.
 - Use placeholder addresses in any exported workflow JSON.
 - Subject must start with `[TEST] Shelter Signal Daily Digest`.
 - Enable Send as HTML / HTML email mode.
+- Use Mailpit SMTP on `host.docker.internal:1025`.
 - Do not add a Schedule Trigger.
 - Do not publish or activate the workflow yet.
+- Do not use Gmail OAuth, Google Cloud credentials, Gmail SMTP, or app passwords.
 
 Step 7. Use this expression for the HTML body:
 
@@ -357,9 +452,9 @@ If the Email Send node needs to reference the HTTP Request node directly, use:
 {{$node["HTTP Request"].json["email_html"]}}
 ```
 
-Step 8. Send only one manual test email.
+Step 8. Send only one manual test email to Mailpit.
 
-After the test, leave the workflow inactive and keep any real credentials/recipient values in local n8n only. Do not commit generated preview files, credentials, or real recipient addresses.
+After the test, confirm the captured message appears at `http://localhost:8025`. Leave the workflow inactive and keep any local n8n credential placeholders out of Git. Do not commit generated preview files, credentials, or real recipient addresses.
 
 ## Execute Command 방식 (optional/legacy)
 
@@ -417,7 +512,7 @@ For the existing command to work from inside an n8n container, the container wou
 
 Because `scripts/run_daily_digest_dry_run.py` shells out to Docker Compose to query PostgreSQL, a containerized n8n runner may also need access to the host Docker daemon. Mounting Docker access into a generic automation container is not a safe minimal default, so this repository does not add an n8n service to `docker-compose.yml` yet.
 
-For now, use host n8n plus the local HTTP bridge for the most practical dry-run setup, and keep Docker Compose focused on PostgreSQL.
+For now, use host n8n plus the local HTTP bridge for the most practical dry-run setup, and keep Docker Compose focused on PostgreSQL plus Mailpit local capture.
 
 ## Workflow Draft Behavior
 
@@ -437,24 +532,33 @@ The optional/legacy Execute Command workflow draft uses:
 - sticky notes for success and failure expectations
 - disabled Email Send placeholder with no credentials and no recipients
 
-Neither workflow sends email. The disabled Email Send node in the legacy command workflow exists only to show where a later, separately approved sending stage might be designed.
+The manual Mailpit test outline uses:
 
-## Why No Email Is Sent
+- Manual Trigger for local runs
+- HTTP Request node for `POST http://host.docker.internal:8787/dry-run?include_html=true`
+- disabled Email Send placeholder with Mailpit SMTP notes
+- placeholder sender and recipient values only
+- no Gmail, Google Cloud, app password, real recipient, or production credential setup
 
-Email sending is intentionally out of scope for this stage.
+The dry-run workflows do not send email. The manual Mailpit outline is designed for one local capture test only, and the Email Send placeholder stays disabled until a human configures local Mailpit SMTP inside n8n.
+
+## Why No Real Email Is Sent
+
+External email sending is intentionally out of scope for this stage.
 
 - `scripts/run_daily_digest_dry_run.py` never sends email.
 - `scripts/serve_daily_digest_dry_run.py` only exposes the dry-run over local HTTP.
-- The workflow command only generates local preview files.
-- The workflow contains no Gmail, SMTP, OAuth, or API credentials.
+- The dry-run workflow command only generates local preview files.
+- Mailpit captures local SMTP messages instead of delivering them externally.
+- The workflow contains no Gmail, Google Cloud, OAuth, app password, or production SMTP credentials.
 - The workflow contains no real recipients.
-- The Email Send node is disabled and should remain disconnected during this stage.
+- The Email Send node is disabled in the committed workflow outline.
 
-Actual email sending comes later, after preview quality, safety language, credential handling, recipient consent, unsubscribe behavior, bounce handling, and rate limits are designed.
+Actual external email sending comes later, after preview quality, safety language, credential handling, recipient consent, unsubscribe behavior, bounce handling, and rate limits are designed.
 
 ## Windows And Docker Limitations
 
-The current `docker-compose.yml` is left focused on PostgreSQL. Adding an n8n Docker service now would be misleading because the dry-run script calls Docker Compose from the repository root:
+The current `docker-compose.yml` is left focused on PostgreSQL plus Mailpit local email capture. Adding an n8n Docker service now would be misleading because the dry-run script calls Docker Compose from the repository root:
 
 ```text
 python script -> docker compose exec postgres -> psql
@@ -464,6 +568,7 @@ Known local caveats:
 
 - Docker Desktop must be running before the dry-run command can query PostgreSQL.
 - If host port `5432` is busy, set `POSTGRES_PORT=5433` before starting the Postgres service.
+- Mailpit uses host ports `1025` for SMTP and `8025` for the web inbox.
 - Windows command quoting differs between PowerShell and `cmd.exe`; start with the simple relative command by launching n8n from the repository root.
 - If `python` opens the Microsoft Store launcher, use `py -3` or the full path to your Python executable in the Execute Command node.
 - If n8n runs in Docker, `127.0.0.1` points at the n8n container rather than the host. Prefer host n8n for this dry-run bridge. Do not broaden the bridge binding beyond local development unless you have a deliberate, temporary networking reason.
@@ -472,11 +577,11 @@ Known local caveats:
 
 ## Safety Notes
 
-- This stage only verifies local preview generation.
-- Do not enable the Email Send placeholder.
-- Do not add Gmail, SMTP, OAuth, API keys, or real recipients.
+- This stage verifies local preview generation and optional Mailpit rendering only.
+- Do not enable the Email Send placeholder unless you are doing the one-message local Mailpit capture test.
+- Do not add Gmail, external SMTP, OAuth, API keys, or real recipients.
 - Do not add SMS, auth, user accounts, or subscription behavior.
 - Do not commit generated preview JSON/HTML files.
-- Do not treat a successful dry-run as production readiness.
+- Do not treat a successful dry-run or Mailpit capture as production readiness.
 
 This is a local dry-run integration only, not a production-ready automation or notification system.
