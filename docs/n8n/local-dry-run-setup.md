@@ -343,6 +343,54 @@ Password: test
 
 Mailpit does not authenticate by default in this local capture setup. Do not use Gmail OAuth, Google Cloud credentials, Gmail SMTP, real recipients, or production credentials.
 
+## 원커맨드 Mailpit 이메일 캡처 검증
+
+Before configuring any n8n Send an Email credentials, run the local Mailpit smoke test script. This is the recommended verification path because it does not require n8n credentials and does not send real external email.
+
+The script:
+
+- runs the existing V2 daily digest dry-run
+- verifies `data/exports/email_digest_preview.html`
+- sends the HTML preview to Mailpit SMTP at `localhost:1025`
+- polls Mailpit at `http://localhost:8025/api/v1/messages`
+- verifies the captured subject, sender, recipient, and HTML body
+
+Command:
+
+```powershell
+python scripts/run_v2_mailpit_email_capture_test.py
+```
+
+Expected PASS includes:
+
+- dry-run PASS
+- HTML export PASS
+- SMTP send PASS
+- Mailpit inbox verification PASS
+
+If Mailpit is not reachable, start the local services first:
+
+```powershell
+cd C:\Users\msi\OneDrive\문서\GitHub\shelter-signal
+git checkout v2/n8n-email-alerts
+git pull
+$env:POSTGRES_PORT="5433"
+docker compose up -d
+```
+
+If the script reports missing database prerequisites, run:
+
+```powershell
+python scripts/validate_pipeline.py
+python scripts/run_v2_mailpit_email_capture_test.py
+```
+
+After the script passes, open Mailpit to inspect the rendered test message:
+
+```text
+http://localhost:8025
+```
+
 ## Manual Test Email Send 준비 절차
 
 This is the V2-3 manual local test path. It prepares one human-triggered email send from n8n only after the bridge returns `email_html`. Use Mailpit for local capture so no real external email is sent. It does not add schedules, real credentials, real recipients, SMS, auth, user accounts, or production subscription behavior to the repository.
