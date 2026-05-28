@@ -124,8 +124,19 @@ If the key is missing, it returns:
 If the upstream public-data API fails, it returns:
 
 ```json
-{ "ok": false, "code": "UPSTREAM_ERROR", "message": "...", "shelters": [] }
+{
+  "ok": false,
+  "code": "UPSTREAM_FORBIDDEN",
+  "upstreamStatus": 403,
+  "message": "...",
+  "upstreamError": {
+    "rawSnippet": "..."
+  },
+  "shelters": []
+}
 ```
+
+`UPSTREAM_FORBIDDEN` is used for HTTP `403`. Other non-2xx or upstream parsing failures use `UPSTREAM_ERROR`. The upstream diagnostic body is sanitized and never includes the raw service key.
 
 The internal API route normalizes shelter responses into this frontend shape:
 
@@ -204,6 +215,8 @@ After adding or changing Vercel environment variables, redeploy Production so th
 - Redeploy Production after adding or changing the variable.
 - Test the route directly: https://shelter-signal-ebon.vercel.app/api/shelters
 - `UPSTREAM_ERROR` means the function has a key, but data.go.kr rejected or failed the request. Check service approval/permission for the shelter endpoint before assuming live data is unavailable.
+- `UPSTREAM_FORBIDDEN` means data.go.kr returned `403`. Common causes include service-specific approval not yet active, wrong endpoint or operation path, missing required parameters, Encoding/Decoding key mismatch, double-encoded `serviceKey`, or extra spaces/quotes in the environment value.
+- Use `python scripts/test_shelter_upstream_request.py` to compare the local upstream request shape without printing the key.
 
 No database connection is required for this live shelter lookup route. The browser calls the internal Vercel API route, and only that serverless function calls data.go.kr.
 

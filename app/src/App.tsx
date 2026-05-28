@@ -1301,6 +1301,8 @@ function ShelterDataPanel({
     const message =
       errorCode === "MISSING_SERVICE_KEY"
         ? "보호소 정보를 확인할 수 없습니다. 배포 환경 변수를 확인해주세요."
+        : errorCode === "UPSTREAM_FORBIDDEN"
+          ? "공공데이터 API 권한 또는 서비스 승인 상태를 확인해야 합니다."
         : "공공데이터 API 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 
     return (

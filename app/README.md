@@ -42,7 +42,9 @@ Output Directory: dist
 
 - `MISSING_SERVICE_KEY`: Vercel Function이 `DATA_GO_KR_SERVICE_KEY`를 보지 못하는 상태입니다.
 - `UPSTREAM_ERROR`: 함수는 키를 받았지만 data.go.kr 응답이나 권한에서 실패한 상태입니다.
+- `UPSTREAM_FORBIDDEN`: data.go.kr가 `403`을 반환한 상태입니다. 서비스별 활용 승인, endpoint/operation 경로, 필수 파라미터, Encoding/Decoding key 혼동, serviceKey 이중 인코딩, 환경 변수의 공백/따옴표를 확인합니다.
 - 직접 확인 URL: https://shelter-signal-ebon.vercel.app/api/shelters
+- 로컬 진단: `python scripts/test_shelter_upstream_request.py`
 
 ## 현재 화면
 

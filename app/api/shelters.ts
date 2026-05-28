@@ -24,6 +24,7 @@ type Shelter = {
 
 type PublicApiParseResult = {
   items: Record<string, unknown>[];
+  upstreamErrorCode?: string;
   upstreamError?: string;
 };
 
@@ -31,6 +32,7 @@ type PublicApiResult = {
   url: string;
   status: number;
   contentType: string;
+  rawSnippet: string;
   parsed: PublicApiParseResult;
 };
 
@@ -60,8 +62,14 @@ type ShelterDiagnostics = {
 
 type ErrorResponseBody = {
   ok: false;
-  code: "MISSING_SERVICE_KEY" | "UPSTREAM_ERROR" | "METHOD_NOT_ALLOWED";
+  code: "MISSING_SERVICE_KEY" | "UPSTREAM_FORBIDDEN" | "UPSTREAM_ERROR" | "METHOD_NOT_ALLOWED";
   message?: string;
+  upstreamStatus?: number;
+  upstreamError?: {
+    resultCode?: string;
+    resultMessage?: string;
+    rawSnippet?: string;
+  };
   shelters: [];
 };
 
@@ -162,8 +170,10 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       logShelterWarning("upstream-http-error", diagnostics);
       sendError(response, 502, {
         ok: false,
-        code: "UPSTREAM_ERROR",
-        message: upstreamResult.parsed.upstreamError ?? `Public data API returned ${upstreamResult.status}`,
+        code: upstreamResult.status === 403 ? "UPSTREAM_FORBIDDEN" : "UPSTREAM_ERROR",
+        upstreamStatus: upstreamResult.status,
+        message: upstreamErrorMessage(upstreamResult.status, upstreamResult.parsed.upstreamError),
+        upstreamError: buildUpstreamErrorDetail(upstreamResult),
         shelters: [],
       });
       return;
@@ -175,6 +185,8 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         ok: false,
         code: "UPSTREAM_ERROR",
         message: upstreamResult.parsed.upstreamError,
+        upstreamStatus: upstreamResult.status,
+        upstreamError: buildUpstreamErrorDetail(upstreamResult),
         shelters: [],
       });
       return;
@@ -360,6 +372,7 @@ async function requestPublicApi(
     url,
     status: upstreamResponse.status,
     contentType: upstreamResponse.headers.get("content-type") ?? "",
+    rawSnippet: sanitizeUpstreamBody(upstreamText),
     parsed: parsePublicApiPayload(upstreamText),
   };
 }
@@ -374,13 +387,14 @@ function buildPublicApiUrl(
   serviceKey: string,
   params: Record<string, string | undefined>
 ): string {
-  const query = new URLSearchParams();
+  const url = new URL(endpoint);
+  url.searchParams.set("serviceKey", normalizeServiceKeyForQuery(serviceKey));
   Object.entries(params).forEach(([key, value]) => {
     if (value) {
-      query.set(key, value);
+      url.searchParams.set(key, value);
     }
   });
-  return `${endpoint}?serviceKey=${encodeServiceKey(serviceKey)}&${query.toString()}`;
+  return url.toString();
 }
 
 function withoutServiceKey(url: string): string {
@@ -389,8 +403,17 @@ function withoutServiceKey(url: string): string {
   return safeUrl.toString();
 }
 
-function encodeServiceKey(serviceKey: string): string {
-  return serviceKey.includes("%") ? serviceKey : encodeURIComponent(serviceKey);
+function normalizeServiceKeyForQuery(serviceKey: string): string {
+  const trimmed = serviceKey.trim().replace(/^["']|["']$/g, "");
+  if (!/%[0-9a-f]{2}/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    return trimmed;
+  }
 }
 
 function firstQueryValue(value: string | string[] | undefined): string {
@@ -414,14 +437,17 @@ function parsePublicApiPayload(text: string): PublicApiParseResult {
       ["resultCode"],
     ]);
     if (resultCode && !isSuccessfulResultCode(resultCode)) {
+      const resultMessage =
+        readNestedText(data, [
+          ["response", "header", "resultMsg"],
+          ["header", "resultMsg"],
+          ["resultMsg"],
+        ]) ?? resultCode;
+
       return {
         items: [],
-        upstreamError:
-          readNestedText(data, [
-            ["response", "header", "resultMsg"],
-            ["header", "resultMsg"],
-            ["resultMsg"],
-          ]) ?? resultCode,
+        upstreamErrorCode: resultCode,
+        upstreamError: resultMessage,
       };
     }
 
@@ -436,7 +462,11 @@ function parsePublicApiPayload(text: string): PublicApiParseResult {
     const reportedCode = resultCode ?? errorCode;
 
     if ((reportedCode && !isSuccessfulResultCode(reportedCode)) || serviceError) {
-      return { items: [], upstreamError: serviceError ?? reportedCode ?? "XML error response" };
+      return {
+        items: [],
+        ...(reportedCode ? { upstreamErrorCode: reportedCode } : {}),
+        upstreamError: serviceError ?? reportedCode ?? "XML error response",
+      };
     }
 
     return { items: extractXmlItems(trimmed) };
@@ -639,6 +669,36 @@ function decodeXmlEntities(value: string): string {
 
 function isSuccessfulResultCode(resultCode: string): boolean {
   return ["0", "00", "INFO-000"].includes(resultCode.trim());
+}
+
+function upstreamErrorMessage(status: number, parsedMessage?: string): string {
+  if (status === 403) {
+    return [
+      "Public data API returned 403.",
+      "Check service-specific approval, endpoint path, required parameters, and key encoding.",
+      parsedMessage ? `Portal message: ${parsedMessage}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+  return parsedMessage ?? `Public data API returned ${status}`;
+}
+
+function buildUpstreamErrorDetail(result: PublicApiResult): ErrorResponseBody["upstreamError"] {
+  return {
+    ...(result.parsed.upstreamErrorCode ? { resultCode: result.parsed.upstreamErrorCode } : {}),
+    ...(result.parsed.upstreamError ? { resultMessage: result.parsed.upstreamError } : {}),
+    ...(result.rawSnippet ? { rawSnippet: result.rawSnippet } : {}),
+  };
+}
+
+function sanitizeUpstreamBody(text: string): string {
+  return text
+    .replace(/serviceKey=([^&\s<>"']+)/gi, "serviceKey=[redacted]")
+    .replace(/serviceKey%3D([^&\s<>"']+)/gi, "serviceKey%3D[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 800);
 }
 
 function logShelterWarning(event: string, diagnostics: ShelterDiagnostics): void {

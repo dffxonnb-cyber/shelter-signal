@@ -7,7 +7,11 @@ export type Shelter = {
   raw?: unknown;
 };
 
-export type ShelterApiErrorCode = "MISSING_SERVICE_KEY" | "UPSTREAM_ERROR" | "UNKNOWN";
+export type ShelterApiErrorCode =
+  | "MISSING_SERVICE_KEY"
+  | "UPSTREAM_FORBIDDEN"
+  | "UPSTREAM_ERROR"
+  | "UNKNOWN";
 
 export class ShelterApiError extends Error {
   code: ShelterApiErrorCode;
@@ -94,7 +98,11 @@ function errorMessage(error: unknown): string {
 }
 
 function normalizeErrorCode(value: unknown): ShelterApiErrorCode {
-  if (value === "MISSING_SERVICE_KEY" || value === "UPSTREAM_ERROR") {
+  if (
+    value === "MISSING_SERVICE_KEY" ||
+    value === "UPSTREAM_FORBIDDEN" ||
+    value === "UPSTREAM_ERROR"
+  ) {
     return value;
   }
   return "UNKNOWN";
