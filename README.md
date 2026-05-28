@@ -1,16 +1,16 @@
 # Shelter Signal
 
-Shelter Signal은 **공공데이터 기반 유기동물 보호소 정보 탐색 PWA**입니다. 구조동물 공고를 모바일에서 빠르게 훑고, 보호 종료가 가까운 공고와 지역별 신호를 먼저 확인할 수 있도록 정리합니다.
+Shelter Signal은 **공공데이터 구조동물 공고 기반 보호소 연락 맥락 PWA**입니다. 구조동물 공고를 모바일에서 빠르게 훑고, 보호 종료가 가까운 공고와 공고에 포함된 보호소 연락 정보를 먼저 확인할 수 있도록 정리합니다.
 
 배포 링크: https://shelter-signal-ebon.vercel.app/
 
-현재 공고와 지역 신호 데이터는 `app/public/data/*.json`으로 export된 정적 JSON을 우선 사용합니다. 지역 보호소 조회는 Vercel 내부 API route인 `/api/shelters`를 통해 공공데이터 API를 호출하도록 연결되어 있으며, 서비스 키는 서버 환경 변수로만 읽습니다. 운영용 실시간 backend, 사용자 계정, 실제 저장 기능, email/SMS 알림, n8n 자동화가 붙은 production-ready 서비스는 아닙니다.
+현재 공고와 지역 신호 데이터는 `app/public/data/*.json`으로 export된 정적 JSON을 우선 사용합니다. 지역 보호소 연락 맥락은 Vercel 내부 API route인 `/api/shelters`가 data.go.kr 구조동물 공고 API를 호출하고, 공고 행의 `careNm`, `careTel`, `careAddr`, `orgNm` 값을 추출해 제공합니다. 서비스 키는 서버 환경 변수로만 읽으며, 이 V1 live API route에는 별도 데이터베이스 연결이 필요하지 않습니다. 운영용 실시간 backend, 사용자 계정, 실제 저장 기능, email/SMS 알림, n8n 자동화가 붙은 production-ready 서비스는 아닙니다.
 
 ## Overview
 
-Shelter Signal은 보호소 정보의 접근성을 높이기 위한 모바일 중심 서비스 실험입니다. 공공데이터와 로컬 데이터 파이프라인을 기반으로 구조동물 공고를 정리하고, React PWA 화면에서 탐색 가능한 형태로 제공합니다.
+Shelter Signal은 보호소 연락 맥락의 접근성을 높이기 위한 모바일 중심 서비스 실험입니다. 공공데이터와 로컬 데이터 파이프라인을 기반으로 구조동물 공고를 정리하고, React PWA 화면에서 탐색 가능한 형태로 제공합니다.
 
-저장소는 데이터 수집 점검, PostgreSQL 적재, SQL 모델링, 정적 JSON export, Vite React 앱까지 이어지는 데이터 제품형 MVP를 목표로 합니다.
+저장소는 데이터 수집 점검, PostgreSQL 적재, SQL 모델링, 정적 JSON export, Vite React 앱, Vercel 서버리스 API까지 이어지는 데이터 제품형 MVP를 목표로 합니다.
 
 ## Problem
 
@@ -34,11 +34,12 @@ Public API / mock data
 → Rescue Window Score
 → static JSON export
 → PWA app
+→ Vercel /api/shelters for notice-derived contact summaries
 ```
 
 브라우저 앱은 PostgreSQL이나 공공 API에 직접 연결하지 않습니다. 로컬 export 스크립트가 SQL view 결과를 정적 JSON으로 만들고, PWA는 `/data/*.json` 파일을 우선 로딩합니다. JSON 로딩에 실패하면 앱 내부 mock 데이터로 fallback합니다.
 
-보호소 조회는 프론트엔드에서 `/api/shelters`만 호출합니다. 이 Vercel Serverless Function이 `DATA_GO_KR_SERVICE_KEY`를 읽어 공공데이터 API와 통신하고, 화면에는 보호소명, 주소, 연락처, 관할처럼 확인된 기본 필드만 정규화해서 전달합니다.
+보호소 조회는 프론트엔드에서 `/api/shelters`만 호출합니다. 이 Vercel Serverless Function이 `DATA_GO_KR_SERVICE_KEY`를 읽어 data.go.kr 구조동물 공고 API와 통신하고, 화면에는 공고에 포함된 보호소명, 주소, 연락처, 관할기관 필드만 정규화해서 전달합니다. 이 목록은 전체 공식 보호소 디렉터리가 아니라 공고 기반 연락 맥락입니다.
 
 ## Features
 
@@ -47,7 +48,7 @@ Public API / mock data
 - **Notice filters**: Rescue Window 라벨, 축종, 지역 필터
 - **Notice display control**: 필터 결과 중 `5개`, `10개`, `20개`, `전체` 표시 선택
 - **Region explorer**: 시/도 → 시/군/구 드롭다운 기반 지역별 공고 신호 탐색
-- **Shelter lookup**: 내부 API route를 통한 지역 보호소 데이터 조회와 안전한 실패 상태 표시
+- **Shelter lookup**: 내부 API route를 통한 공고 기반 보호소 연락 맥락 조회와 안전한 실패 상태 표시
 - **Detail sheet**: 공식 공고 정보, 동물 정보, 보호소 및 연락처 그룹화
 - **Contact actions**: 전화번호 보기, 주소 확인, 공식 문의 안내
 - **Saved placeholder**: 추후 저장 및 알림 기능을 위한 자리
@@ -76,7 +77,7 @@ Implemented:
 - Rescue Window Score display and sorting
 - Notice filters and display count control
 - Region signal explorer
-- Internal `/api/shelters` route for public shelter data lookup when `DATA_GO_KR_SERVICE_KEY` is configured
+- Internal `/api/shelters` route for notice-derived shelter/contact summaries when `DATA_GO_KR_SERVICE_KEY` is configured
 - Detail sheet with official notice and shelter contact fields
 - Deployment-ready Vite app under `/app`
 
@@ -235,24 +236,27 @@ No database connection is required for this live shelter lookup route. The brows
 ## Portfolio Summary
 
 **One-line summary**
-공공데이터 기반 유기동물 보호소 정보 탐색 PWA.
+공공데이터 구조동물 공고 API 기반 보호소 연락 맥락 PWA.
 
 **Description**
-Shelter Signal은 구조동물 공고를 보호 종료일과 데이터 신호 중심으로 정리해, 모바일에서 먼저 확인해야 할 공고와 지역별 흐름을 빠르게 살펴볼 수 있게 만든 PWA입니다. 로컬 데이터 파이프라인에서 정적 JSON을 export하고, React 앱은 해당 데이터를 우선 로딩하되 실패 시 mock 데이터로 안전하게 fallback합니다.
+Shelter Signal은 공공데이터 구조동물 공고 API를 Vercel 서버리스 함수로 호출하고, 공고 데이터에 포함된 보호소명, 전화번호, 주소, 관할기관 정보를 추출해 보호소 연락 맥락을 제공하는 구조동물 리스크 탐색 서비스입니다. 공고 목록과 지역 신호는 정적 JSON export를 우선 사용하고, 실패 시 mock 데이터로 안전하게 fallback합니다. 보호소 연락 목록은 notice-derived summary이며, 전체 공식 보호소 디렉터리로 주장하지 않습니다.
+
+Shelter Signal is a rescued-animal risk exploration service that uses a Vercel serverless API route to call the data.go.kr rescued-animal notice API and derive shelter contact context from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`.
 
 **Key highlights**
 
 - 공공데이터 기반 구조동물 공고 탐색 경험 설계
 - Rescue Window Score를 통한 우선 확인 흐름 제안
 - PostgreSQL/SQL 모델링에서 PWA까지 이어지는 end-to-end 데이터 제품 MVP
-- 서버 내부 API route로 공공데이터 서비스 키를 숨기는 보호소 조회 구조
-- 운영 API 한계를 명확히 분리한 portfolio demo
+- Vercel 내부 API route로 공공데이터 서비스 키를 숨기고 notice-derived 보호소 연락 맥락 제공
+- 정적 JSON fallback과 live API route의 역할을 분리한 portfolio demo
+- DB, auth, 알림 없이도 동작하는 V1 live shelter lookup 구성
 
 ## Next Steps
 
 - 최신 UI 기준 화면 screenshot 갱신
 - Signal Archive용 case study 작성
 - 공공 API 권한과 응답 범위 재검토
-- 보호소 정보 enrichment 가능 여부 확인
+- 별도 보호소 센터 API와 보호소 정보 enrichment 가능 여부 확인
 - 저장 기능과 알림 흐름은 별도 단계에서 설계
-- static JSON bridge 이후의 backend/API 계약 검토
+- 정적 JSON 공고 데이터와 live API route 사이의 데이터 계약 검토

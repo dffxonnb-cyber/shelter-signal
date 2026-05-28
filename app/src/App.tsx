@@ -257,7 +257,7 @@ function AppHeader({
         <span className="brand-mark" aria-hidden="true" data-testid="brand-logo" />
         <div className="brand-copy">
           <h1>Shelter Signal</h1>
-          <p className="brand-tagline">공공데이터 기반 보호소 정보 탐색 PWA</p>
+          <p className="brand-tagline">구조동물 공고 기반 보호소 연락 맥락 PWA</p>
         </div>
       </div>
       <DataSourceNote source={dataSource} errorMessage={errorMessage} animalCount={animalCount} />
@@ -327,8 +327,8 @@ function HomeScreen({
           <p className="eyebrow">공공데이터 기반 PWA</p>
           <h2>Shelter Signal</h2>
           <p className="hero-lead">
-            공공데이터 기반 유기동물 보호소 정보 탐색 PWA. 보호소 정보의 접근성을 높이기
-            위한 모바일 중심 서비스 실험입니다.
+            공공데이터 구조동물 공고와 보호소 연락 맥락을 모바일에서 빠르게 살펴보는
+            서비스 실험입니다.
           </p>
           <div className="hero-actions" aria-label="주요 탐색">
             <button className="primary-action" type="button" onClick={onOpenNotices}>
@@ -345,7 +345,9 @@ function HomeScreen({
             <strong>{goldenCount}</strong>
             <small>골든타임 공고</small>
           </div>
-          <p className="hero-footnote">정적 JSON 데이터로 안정적으로 시연합니다.</p>
+          <p className="hero-footnote">
+            공고 목록은 정적 JSON으로 시연하고, 보호소 연락 맥락은 서버리스 API로 확인합니다.
+          </p>
         </div>
       </section>
 
@@ -845,8 +847,8 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
               <SummaryNumber label="평균 점수" value={selectedTotals.averageScore} />
             </dl>
             <p className="region-limit-note">
-              보호소 홈페이지, 운영시간, 좌표 정보는 아직 지원하지 않습니다. 공공데이터 제공 여부와
-              API 권한을 확인한 뒤 업데이트할 예정입니다.
+              별도 전체 보호소 디렉터리는 제공하지 않습니다. 보호소 홈페이지, 운영시간, 좌표
+              정보는 공공데이터 제공 여부와 API 권한을 확인한 뒤 업데이트할 예정입니다.
             </p>
           </section>
 
@@ -878,15 +880,15 @@ function RegionSummaryScreen({ regionSignals }: { regionSignals: RegionSignal[] 
       <ScreenHeader
         kicker="지역 신호"
         title="관심 지역의 흐름"
-        description="시/도와 시/군/구를 선택해 현재 데이터에 포함된 보호소 공고 흐름을 확인해보세요."
+        description="시/도와 시/군/구를 선택해 현재 데이터에 포함된 공고 흐름과 보호소 연락 맥락을 확인해보세요."
       />
 
       <section className="region-explorer" aria-label="지역 신호 선택">
         <div className="region-explorer-copy">
           <span className="section-kicker">지역 선택</span>
           <p>
-            현재 export된 공공데이터 기반 공고 지역만 표시합니다. 보호소 상세 정보는 API 제공
-            범위가 확인된 항목부터 차례로 확장합니다.
+            현재 export된 공공데이터 기반 공고 지역만 표시합니다. 보호소 연락 맥락은 구조동물
+            공고에 포함된 필드 기준으로만 정리합니다.
           </p>
         </div>
 
@@ -1336,15 +1338,16 @@ function ShelterDataPanel({
         </div>
         <span>{shelters.length}곳</span>
       </div>
-      <p className="shelter-source-note">공고 기반 보호소 정보</p>
+      <p className="shelter-source-note">구조동물 공고 기반 보호소 연락 맥락</p>
       <div className="shelter-card-list">
         {shelters.map((shelter) => (
           <ShelterCard key={shelter.id} shelter={shelter} />
         ))}
       </div>
       <p className="shelter-api-note">
-        구조동물 공고에 포함된 보호소 정보를 기준으로 정리했어요. 보호소 정보는 공고 데이터
-        기준이며, 최종 확인은 보호소 또는 관할기관을 통해 진행해주세요.
+        전체 공식 보호소 디렉터리가 아니라 구조동물 공고에 포함된 보호소명, 전화번호, 주소,
+        관할기관 정보를 기준으로 정리했어요. 최종 확인은 보호소 또는 관할기관을 통해
+        진행해주세요.
       </p>
     </section>
   );

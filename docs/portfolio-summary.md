@@ -6,11 +6,11 @@ Shelter Signal
 
 배포 링크: https://shelter-signal-ebon.vercel.app/
 
-현재 배포된 앱은 export된 정적 JSON 데이터를 사용하는 포트폴리오 시연용 PWA이며, 반응형 제품 랜딩 페이지와 앱 미리보기 형태로 정리했습니다.
+현재 배포된 앱은 공고 목록과 지역 신호에는 export된 정적 JSON 데이터를 사용하고, 선택 지역의 보호소 연락 맥락은 Vercel `/api/shelters` route가 data.go.kr 구조동물 공고 API에서 notice-derived summary로 제공합니다. 반응형 제품 랜딩 페이지와 앱 미리보기 형태로 정리했습니다.
 
 ## Portfolio Card Copy
 
-“보호 종료가 가까운 구조동물 공고를 먼저 확인하도록 돕는 공공데이터 기반 PWA”
+“공공데이터 구조동물 공고에서 보호소 연락 맥락을 함께 정리하는 모바일 PWA”
 
 ## Screenshot References
 
@@ -24,7 +24,7 @@ Shelter Signal
 
 ## One-line Description
 
-Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고를 정리하는 공공데이터 기반 PWA입니다.
+Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고와 보호소 연락 맥락을 정리하는 공공데이터 기반 PWA입니다.
 
 ## Problem
 
@@ -32,7 +32,7 @@ Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를
 
 ## Solution
 
-공공데이터 API 또는 mock 데이터를 PostgreSQL에 적재하고, SQL 모델에서 Rescue Window Score와 summary view를 만든 뒤, 정적 JSON export를 통해 PWA가 데이터를 읽도록 구성했습니다. 현재 화면 구성은 제품 랜딩 페이지 안에 앱 미리보기를 배치하고, 홈 신호, 골든타임 공고, 필터, 표시 수 조절, 지역 신호 탐색기, 상세 시트를 보여줍니다.
+공공데이터 API 또는 mock 데이터를 PostgreSQL에 적재하고, SQL 모델에서 Rescue Window Score와 summary view를 만든 뒤, 정적 JSON export를 통해 PWA가 공고 데이터를 읽도록 구성했습니다. 선택 지역의 보호소 연락 맥락은 Vercel 서버리스 함수가 data.go.kr 구조동물 공고 API를 호출하고 `careNm`, `careTel`, `careAddr`, `orgNm` 필드를 dedupe해 제공합니다. 현재 화면 구성은 제품 랜딩 페이지 안에 앱 미리보기를 배치하고, 홈 신호, 골든타임 공고, 필터, 표시 수 조절, 지역 신호 탐색기, 상세 시트를 보여줍니다.
 
 ## Technical Stack
 
@@ -41,6 +41,7 @@ Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를
 - SQL migrations, models, tests
 - Docker Compose
 - Static JSON export
+- Vercel serverless API route
 - Vite
 - React
 - TypeScript
@@ -59,6 +60,8 @@ Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를
 - Production-ready 서비스가 아닙니다.
 - 실사용자 계정과 저장 기능 persistence는 아직 없습니다.
 - email, SMS, n8n 자동화는 아직 구현하지 않았습니다.
-- 보호소 정보 API는 로컬 스모크 테스트에서 403이 발생해 enrichment를 다음 단계로 미뤘습니다.
-- 현재 앱은 live backend 대신 static JSON export를 사용합니다.
+- 별도 shelter-center API는 403이 발생할 수 있어, V1은 구조동물 공고 API에서 보호소 연락 맥락을 추출합니다.
+- 보호소 목록은 전체 공식 보호소 디렉터리가 아니라 notice-derived contact summary입니다.
+- 현재 앱은 공고 목록과 지역 신호에 static JSON export를 우선 사용하고, 보호소 연락 맥락만 Vercel serverless API route로 확인합니다.
+- 이 V1 live API route에는 DB 연결이 필요하지 않습니다.
 - Rescue Window Score는 공식 위험 점수나 결과 예측 모델이 아니라 내부 우선순위 탐색 신호입니다.
