@@ -84,21 +84,26 @@ Not implemented:
 - n8n automation in the deployed app
 - Shelter homepage, operating-hours, or coordinate enrichment
 
-## V2 n8n Manual Test Status
+## V2 Alert Pipeline Status
 
-The `v2/n8n-email-alerts` branch has a validated local n8n HTTP dry-run path. The bridge exposes `POST /dry-run`, and `POST /dry-run?include_html=true` can return the generated digest preview as `email_html` for n8n to use in a later manual Email Send node.
+The `v2/n8n-email-alerts` branch is finalized as a local-development alert pipeline validation. It keeps V1 app behavior unchanged while proving the V2 notification foundation:
 
-Local email rendering can now be verified with one command:
+- PostgreSQL alert candidate foundation through `mart.alert_candidates`
+- daily digest preview generation to JSON and HTML
+- local n8n HTTP dry-run bridge with `POST /dry-run`
+- `email_html` payload from `POST /dry-run?include_html=true`
+- Mailpit local SMTP capture for email rendering checks
+- one-command smoke test for dry-run, HTML export, SMTP send, and inbox verification
+
+Recommended local verification:
 
 ```powershell
 python scripts/run_v2_mailpit_email_capture_test.py
 ```
 
-The script generates the digest HTML, sends it to Mailpit local SMTP, and verifies the captured message at `http://localhost:8025`. No real external email is sent.
+The script generates the digest HTML, sends it to Mailpit local SMTP at `localhost:1025`, checks the captured message through the Mailpit inbox at `http://localhost:8025`, and verifies the subject, sender, recipient, HTML body, and `Shelter Signal` content. No real external email is sent.
 
-The next V2 manual step can still use local n8n with the `email_html` field and Mailpit capture if needed. Gmail OAuth, Google Cloud setup, Gmail SMTP, and production email sending are intentionally deferred.
-
-Real automated sending is not enabled: there are no committed credentials, no real recipients, no schedule trigger, no SMS, no auth, and no subscription flow.
+Manual n8n Send an Email setup is optional after this passes. Gmail, Google Cloud OAuth, Gmail SMTP, app passwords, production SMTP/email providers, real recipients, subscriptions, schedule activation, SMS, auth, and user accounts are intentionally deferred.
 
 See:
 

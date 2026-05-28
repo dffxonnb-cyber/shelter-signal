@@ -2,9 +2,27 @@
 
 ## V2 Workflow Purpose
 
-Shelter Signal V2의 n8n workflow는 구조동물 공고 데이터를 매일 수집하고, SQL로 계산한 `mart.alert_candidates` 결과를 이메일 digest preview로 확인하는 자동화 흐름을 문서화하기 위한 계획입니다.
+Shelter Signal V2의 n8n workflow 문서는 구조동물 공고 데이터를 바탕으로 계산한 `mart.alert_candidates` 결과를 이메일 digest preview로 확인하고, local dry-run bridge를 통해 n8n으로 전달하는 검증 흐름을 정리합니다.
 
-현재 단계는 preview + workflow planning입니다. 실제 이메일 발송, SMS, 사용자 계정, 구독 관리, live backend API는 구현하지 않습니다.
+현재 완료 기준은 Mailpit smoke test입니다. 실제 이메일 발송, SMS, 사용자 계정, 구독 관리, live backend API는 구현하지 않습니다.
+
+## Recommended Final V2 Verification
+
+V2 local testing의 최종 권장 검증 경로는 n8n credential을 설정하기 전에 one-command Mailpit smoke test를 실행하는 것입니다.
+
+```powershell
+python scripts/run_v2_mailpit_email_capture_test.py
+```
+
+This verifies the full local path:
+
+- daily digest dry-run PASS
+- HTML preview export PASS
+- SMTP send to Mailpit PASS
+- Mailpit inbox verification PASS
+- subject, sender, recipient, HTML body, and `Shelter Signal` content verified
+
+Manual n8n Send an Email credential setup is optional after this passes. It is no longer required as the next verification step.
 
 ## Daily Schedule Concept
 
@@ -113,7 +131,7 @@ HTTP Request 기반 로컬 dry-run workflow 초안은 [daily-digest-http-dry-run
 
 ## V2-3. Manual test email send
 
-V2-3의 목표는 자동 발송이 아니라, 사람이 n8n에서 수동 실행으로 preview HTML을 한 번 확인하고 한 명의 테스트 수신자에게만 보내는 안전한 로컬 테스트 흐름을 문서화하는 것입니다.
+V2-3의 권장 완료 검증은 one-command Mailpit smoke test입니다. n8n에서 직접 Send an Email credential을 설정하는 흐름은 smoke test가 통과한 뒤 선택적으로 해볼 수 있는 수동 확인 경로입니다.
 
 Gmail OAuth, Google Cloud OAuth Client setup, and Gmail SMTP app passwords are intentionally avoided for this local test. Use Mailpit as a local SMTP capture inbox instead, so the message renders locally without leaving the machine.
 

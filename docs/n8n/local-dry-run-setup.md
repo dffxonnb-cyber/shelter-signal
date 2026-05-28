@@ -4,6 +4,23 @@ This guide connects Shelter Signal V2's existing daily digest dry-run command to
 
 This setup does not add Gmail, external SMTP, SMS, auth, user accounts, real recipients, or API keys. Manual email rendering can be tested locally with Mailpit, which captures messages instead of sending real external email.
 
+## Recommended Final Check
+
+For finalized V2 local testing, run the Mailpit smoke test before configuring any n8n Send an Email credentials:
+
+```powershell
+python scripts/run_v2_mailpit_email_capture_test.py
+```
+
+Expected PASS includes:
+
+- dry-run PASS
+- HTML export PASS
+- SMTP send PASS
+- Mailpit inbox verification PASS
+
+This is the recommended completion check because it verifies local SMTP send, inbox capture, and HTML rendering without Gmail, Google Cloud, OAuth, app passwords, real recipients, or external delivery.
+
 ## Local Prerequisites
 
 Use this setup from the `v2/n8n-email-alerts` branch.
