@@ -18,6 +18,10 @@ Vite + React + TypeScript 기반 Shelter Signal PWA입니다. V1은 구조동물
 
 Shelter Signal is a rescued-animal risk exploration service that uses a Vercel serverless API route to call the data.go.kr rescued-animal notice API and derive shelter contact context from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`.
 
+## Operational DB Note
+
+`/api/notices`는 다음 backend 단계를 위한 server-only experimental operational DB route입니다. `DATABASE_URL`은 deployment environment에만 설정해야 하며, `VITE_` frontend 변수로 노출하면 안 됩니다. 프런트엔드는 아직 `public/data/*.json` 정적 파일을 primary data source로 사용합니다.
+
 ## 실행
 
 ```powershell
