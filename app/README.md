@@ -8,6 +8,10 @@ Vite + React + TypeScript 기반 Shelter Signal PWA입니다.
 
 앱은 `public/data/*.json`에 export된 정적 JSON을 먼저 읽고, 로딩에 실패하면 `src/data/mockAnimals.ts`의 mock 데이터로 fallback합니다. 브라우저에서 PostgreSQL이나 공공 API에 직접 연결하지 않습니다.
 
+## Operational DB Note
+
+`/api/notices`는 다음 backend 단계를 위한 server-only experimental operational DB route입니다. `DATABASE_URL`은 deployment environment에만 설정해야 하며, `VITE_` frontend 변수로 노출하면 안 됩니다. 프런트엔드는 아직 `public/data/*.json` 정적 파일을 primary data source로 사용합니다.
+
 ## 실행
 
 ```powershell

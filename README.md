@@ -84,6 +84,30 @@ Not implemented:
 - n8n automation in the deployed app
 - Shelter homepage, operating-hours, or coordinate enrichment
 
+## Operational DB Plan
+
+현재 구조: Shelter Signal은 아직 정적 JSON export 기반 PWA입니다. 프런트엔드는 `app/public/data/*.json`을 먼저 읽고, 파일 로딩에 실패하면 mock 데이터로 fallback합니다.
+
+다음 구조: 다음 backend 단계에서는 operational PostgreSQL을 serverless API route 뒤에 둡니다. 새 `/api/notices` route는 병렬로 추가된 server-only 경로이며, 배포 환경의 `DATABASE_URL`을 읽어 PostgreSQL을 조회하되 DB secret을 browser code에 노출하지 않습니다.
+
+스키마 가정: `/api/notices`는 현재 `sql/models/001_animals_clean.sql`에 정의된 notice-level SQL view인 `mart.animals_clean`을 조회합니다. 선택 필드는 기존 `animals.json` export shape와 최대한 맞춰, operational path가 성숙하는 동안 정적 PWA bridge가 안정적으로 유지되도록 합니다.
+
+이 기반이 필요한 이유:
+
+- 최신 공고 조회
+- 이후 실제 저장 공고 기능
+- 마감일 기반 alert candidate
+- 지역 signal refresh
+- n8n automation foundation
+
+현재 한계:
+
+- auth 없음
+- persisted saved notices 없음
+- push/email/SMS notification 없음
+- production monitoring 없음
+- 당분간 static JSON이 primary frontend data source로 유지됨
+
 ## V2 Alert Pipeline Status
 
 The `v2/n8n-email-alerts` branch is finalized as a local-development alert pipeline validation. It keeps V1 app behavior unchanged while proving the V2 notification foundation:
