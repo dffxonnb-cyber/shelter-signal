@@ -4,7 +4,7 @@
 
 배포 링크: https://shelter-signal-ebon.vercel.app/
 
-Shelter Signal V1은 production shelter service가 아니라 **portfolio-ready PWA prototype**입니다. 실제 사용자 계정, 저장 persistence, 실시간 운영 backend, push/email/SMS 알림, production n8n 자동화는 포함하지 않습니다. 대신 공공데이터 기반 문제를 데이터 파이프라인, SQL 모델링, 정적 export, PWA UX, Vercel serverless API로 끝까지 연결한 데이터 제품형 MVP를 보여줍니다.
+Shelter Signal V1.5는 production shelter service가 아니라 **portfolio-ready PWA prototype**입니다. 실제 사용자 계정, 저장 persistence, push/email/SMS 알림, production n8n 자동화는 포함하지 않습니다. 대신 공공데이터 기반 문제를 Docker local validation, Neon hosted PostgreSQL, Vercel API route, React PWA fallback 구조까지 연결한 데이터 제품형 MVP를 보여줍니다.
 
 ## Portfolio Snapshot
 
@@ -12,10 +12,19 @@ Shelter Signal V1은 production shelter service가 아니라 **portfolio-ready P
 | --- | --- |
 | 한 줄 정의 | 공공데이터 구조동물 공고 우선순위/보호소 연락 맥락 PWA |
 | 핵심 사용자 질문 | 오늘 먼저 확인해야 할 공고는 무엇이고, 공식 문의에 필요한 보호소 정보는 어디에 있는가? |
-| V1 구현 범위 | 모바일 PWA, Rescue Window Score, 공고 필터, 지역 신호, 상세 시트, Vercel `/api/shelters` |
+| V1.5 구현 범위 | 모바일 PWA, Rescue Window Score, 공고 필터, 지역 신호, 상세 시트, Vercel `/api/notices`, Vercel `/api/shelters` |
 | 데이터 전략 | `/api/notices?limit=100` operational DB read path를 먼저 사용하고, 실패 시 static JSON → mock 순서로 fallback |
 | API 보안 | 브라우저는 `DATABASE_URL`이나 공공데이터 API key를 보지 않고, Vercel serverless routes만 서버 환경 변수를 읽음 |
 | 포트폴리오 문서 | [docs/portfolio-case-study.md](docs/portfolio-case-study.md) |
+| Neon 배포 노트 | [docs/neon-deployment.md](docs/neon-deployment.md) |
+
+## Version Milestones
+
+| Version | Definition |
+| --- | --- |
+| `v1.0.0` | Static JSON 기반 portfolio PWA |
+| `v1.5.0` | Docker local DB validation + Neon operational read path + fallback architecture |
+| `v2.0.0` 후보 | actual public-data ingestion into hosted DB, saved notices, alert subscription, n8n digest preview |
 
 ## What It Shows
 
@@ -73,6 +82,10 @@ PWA region selector
 | --- |
 | ![Data pipeline section](docs/screenshots/07-data-pipeline.png) |
 
+| Operational DB Badge | Operational API Response |
+| --- | --- |
+| ![Operational DB badge in deployed PWA](docs/screenshots/08-operational-db-badge.png) | ![Operational notices API response](docs/screenshots/09-api-notices-operational-response.png) |
+
 ## Features
 
 - **Home signal**: 프로젝트 정체성, 정적 데이터 상태, 우선 확인 공고 요약
@@ -127,11 +140,20 @@ Not implemented:
 
 ## Operational DB Read Path
 
-현재 구조: Shelter Signal V2는 공고 목록을 먼저 operational PostgreSQL route에서 읽습니다. 프런트엔드는 `/api/notices?limit=100`만 호출하고, 이 server-only route가 배포 환경의 `DATABASE_URL`을 읽어 PostgreSQL을 조회합니다. `DATABASE_URL`은 browser code에 노출하지 않습니다.
+현재 구조: Shelter Signal V1.5는 공고 목록을 먼저 operational PostgreSQL route에서 읽습니다. 프런트엔드는 `/api/notices?limit=100`만 호출하고, 이 server-only route가 배포 환경의 `DATABASE_URL`을 읽어 PostgreSQL을 조회합니다. `DATABASE_URL`은 browser code에 노출하지 않습니다.
 
 fallback 구조: `/api/notices`가 실패하거나, `DATABASE_URL`이 없거나, DB query가 실패하거나, 빈 notices 배열을 반환하면 기존 `app/public/data/*.json` static export를 읽습니다. static JSON도 실패하면 mock 데이터로 fallback합니다.
 
 스키마 가정: `/api/notices`는 현재 `sql/models/001_animals_clean.sql`에 정의된 notice-level SQL view인 `mart.animals_clean`을 조회합니다. 선택 필드는 기존 `animals.json` export shape와 최대한 맞춰, operational path가 실패해도 정적 PWA bridge가 안정적으로 유지되도록 합니다.
+
+배포 검증: 2026-06-05 기준 Vercel 배포 환경에서 Neon-backed operational read path가 확인되었습니다.
+
+- `/api/notices?limit=5` → `ok=true`, `source=operational-postgres`
+- `/api/notices?limit=100` → `ok=true`, `source=operational-postgres`, `notices=20`
+- 배포된 React PWA bundle이 `/api/notices?limit=100`을 primary source로 호출합니다.
+- 앱 상단에 `Operational DB · 20건` badge가 표시됩니다.
+
+현재 Neon 데이터는 로컬 검증용 mock/export 데이터 20건을 기반으로 적재되어 있습니다. 실제 공공데이터 row를 hosted DB에 적재하는 작업은 다음 단계로 분리합니다.
 
 이 기반이 필요한 이유:
 
@@ -309,9 +331,9 @@ Key highlights:
 
 ## Next Steps
 
-- `v2/n8n-email-alerts` 브랜치를 `main`의 최신 V1 live API 개선사항과 동기화
-- Docker Desktop 실행 후 `python scripts/validate_pipeline.py` 재검증
-- `python scripts/run_daily_digest_dry_run.py` 재검증
 - 배포 환경의 `DATABASE_URL` 설정과 `/api/notices` operational read 안정성 검증
+- 실제 공공데이터 row를 Neon hosted DB에 적재하는 수집 경로 설계
+- `v2/n8n-email-alerts` 브랜치를 `main`의 최신 V1.5 구조와 동기화
+- `python scripts/run_daily_digest_dry_run.py` 재검증
 - `mart.alert_candidates` 기반 digest preview 품질 확인
 - 저장 기능과 실제 알림 흐름은 별도 단계에서 설계
