@@ -65,15 +65,53 @@ export interface ExportedAppData {
   rescueWindowSummaries: RescueWindowSummaryRecord[];
 }
 
+export type AppDataSource = "operational" | "exported" | "fallback";
+
+export interface LoadedAppData extends ExportedAppData {
+  source: AppDataSource;
+  errorMessage?: string;
+}
+
+export async function loadAppData(): Promise<LoadedAppData> {
+  const errors: string[] = [];
+
+  try {
+    return {
+      ...(await loadOperationalAppData()),
+      source: "operational",
+    };
+  } catch (error) {
+    errors.push(`Operational DB unavailable: ${errorMessage(error)}`);
+  }
+
+  try {
+    return {
+      ...(await loadExportedAppData()),
+      source: "exported",
+      errorMessage: errors.join(" "),
+    };
+  } catch (error) {
+    errors.push(`Static export unavailable: ${errorMessage(error)}`);
+  }
+
+  return {
+    ...fallbackAppData,
+    source: "fallback",
+    errorMessage: errors.join(" "),
+  };
+}
+
 export async function loadExportedAppData(): Promise<ExportedAppData> {
   const [animalRows, regionSummaries, rescueWindowSummaries] = await Promise.all([
-    fetchJsonArray<ExportedAnimalRecord>("/data/animals.json"),
+    fetchJsonArray<unknown>("/data/animals.json"),
     fetchJsonArray<RegionSummaryRecord>("/data/region_summary.json"),
     fetchJsonArray<RescueWindowSummaryRecord>("/data/rescue_window_summary.json"),
   ]);
 
   return {
-    animals: animalRows.map(toMockAnimalShape),
+    animals: animalRows.map((record, index) =>
+      toMockAnimalShape(normalizeAnimalRecord(record), index)
+    ),
     regionSummaries,
     rescueWindowSummaries,
   };
@@ -96,6 +134,94 @@ async function fetchJsonArray<T>(path: string): Promise<T[]> {
     throw new Error(`${path} did not return a JSON array`);
   }
   return payload as T[];
+}
+
+async function loadOperationalAppData(): Promise<ExportedAppData> {
+  const notices = await fetchOperationalNotices();
+
+  return {
+    animals: notices.map((record, index) => toMockAnimalShape(record, index)),
+    regionSummaries: [],
+    rescueWindowSummaries: [],
+  };
+}
+
+async function fetchOperationalNotices(): Promise<ExportedAnimalRecord[]> {
+  const response = await fetch("/api/notices?limit=100", {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  const payload = await parseJsonResponse(response, "/api/notices");
+
+  if (!isRecord(payload) || payload.ok !== true) {
+    const code = isRecord(payload) ? textFromUnknown(payload.code) : "";
+    throw new Error(code || "/api/notices did not return ok: true");
+  }
+
+  if (!Array.isArray(payload.notices)) {
+    throw new Error("/api/notices did not return a notices array");
+  }
+
+  if (!payload.notices.length) {
+    throw new Error("/api/notices returned an empty notices array");
+  }
+
+  return payload.notices.map(normalizeAnimalRecord);
+}
+
+async function parseJsonResponse(response: Response, label: string): Promise<unknown> {
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch (error) {
+    throw new Error(`${label} did not return JSON: ${errorMessage(error)}`);
+  }
+
+  if (!response.ok) {
+    const code = isRecord(payload) ? textFromUnknown(payload.code) : "";
+    const message = isRecord(payload) ? textFromUnknown(payload.message) : "";
+    throw new Error(
+      [label, `returned ${response.status}`, code, message].filter(Boolean).join(" ")
+    );
+  }
+
+  return payload;
+}
+
+function normalizeAnimalRecord(value: unknown): ExportedAnimalRecord {
+  const record = isRecord(value) ? value : {};
+
+  return {
+    desertion_no: nullableText(record.desertion_no),
+    notice_no: nullableText(record.notice_no),
+    happen_dt: nullableText(record.happen_dt),
+    happen_place: nullableText(record.happen_place),
+    notice_sdt: nullableText(record.notice_sdt),
+    notice_edt: nullableText(record.notice_edt),
+    days_until_notice_end: nullableNumber(record.days_until_notice_end),
+    deadline_bucket: nullableText(record.deadline_bucket),
+    rescue_window_score: nullableNumber(record.rescue_window_score),
+    rescue_window_label: nullableText(record.rescue_window_label),
+    kind_full_nm: nullableText(record.kind_full_nm),
+    up_kind_nm: nullableText(record.up_kind_nm),
+    kind_nm: nullableText(record.kind_nm),
+    color_cd: nullableText(record.color_cd),
+    age: nullableText(record.age),
+    weight: nullableText(record.weight),
+    popfile1: nullableText(record.popfile1),
+    popfile2: nullableText(record.popfile2),
+    process_state: nullableText(record.process_state),
+    sex_cd: nullableText(record.sex_cd),
+    neuter_yn: nullableText(record.neuter_yn),
+    special_mark: nullableText(record.special_mark),
+    care_nm: nullableText(record.care_nm),
+    care_tel: nullableText(record.care_tel),
+    care_addr: nullableText(record.care_addr),
+    org_nm: nullableText(record.org_nm),
+    has_photo: nullableBoolean(record.has_photo),
+    has_care_tel: nullableBoolean(record.has_care_tel),
+  };
 }
 
 function toMockAnimalShape(record: ExportedAnimalRecord, index: number): MockAnimal {
@@ -194,4 +320,54 @@ function textOr(value: string | null, fallback: string): string {
 
 function numberOr(value: number | null, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function nullableText(value: unknown): string | null {
+  const text = textFromUnknown(value);
+  return text || null;
+}
+
+function nullableNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function nullableBoolean(value: unknown): boolean | null {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") {
+      return true;
+    }
+    if (normalized === "false") {
+      return false;
+    }
+  }
+  return null;
+}
+
+function textFromUnknown(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  return "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "unknown error";
 }

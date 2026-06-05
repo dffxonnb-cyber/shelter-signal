@@ -1,14 +1,14 @@
 [
   {
-    "org_nm": "서울특별시 마포구",
-    "care_nm": "마포모의동물보호센터",
-    "care_reg_no": "MOCK-CARE-SEOUL-001",
+    "org_nm": "충청남도 천안시",
+    "care_nm": "천안모의보호소",
+    "care_reg_no": "MOCK-CARE-CN-001",
     "animal_count": 1,
     "urgent_count": 1,
     "active_notice_count": 1,
-    "earliest_notice_end": "2026-05-24",
+    "earliest_notice_end": "2026-06-06",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 80.0
+    "avg_rescue_window_score": 90.0
   },
   {
     "org_nm": "전북특별자치도 전주시",
@@ -19,7 +19,7 @@
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-07",
     "missing_care_tel_count": 1,
-    "avg_rescue_window_score": 35.0
+    "avg_rescue_window_score": 75.0
   },
   {
     "org_nm": "부산광역시 해운대구",
@@ -27,10 +27,10 @@
     "care_reg_no": "MOCK-CARE-BUSAN-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-27",
     "missing_care_tel_count": 1,
-    "avg_rescue_window_score": 50.0
+    "avg_rescue_window_score": 20.0
   },
   {
     "org_nm": "서울특별시 강서구",
@@ -38,10 +38,10 @@
     "care_reg_no": "MOCK-CARE-SEOUL-002",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-25",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 65.0
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "광주광역시 북구",
@@ -49,10 +49,21 @@
     "care_reg_no": "MOCK-CARE-GJ-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-30",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 45.0
+    "avg_rescue_window_score": 15.0
+  },
+  {
+    "org_nm": "서울특별시 마포구",
+    "care_nm": "마포모의동물보호센터",
+    "care_reg_no": "MOCK-CARE-SEOUL-001",
+    "animal_count": 1,
+    "urgent_count": 0,
+    "active_notice_count": 0,
+    "earliest_notice_end": "2026-05-24",
+    "missing_care_tel_count": 0,
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "전라남도 목포시",
@@ -71,10 +82,10 @@
     "care_reg_no": "MOCK-CARE-GG-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-26",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 75.0
+    "avg_rescue_window_score": 25.0
   },
   {
     "org_nm": "세종특별자치시",
@@ -82,10 +93,10 @@
     "care_reg_no": "MOCK-CARE-SJ-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-06-03",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 35.0
+    "avg_rescue_window_score": 25.0
   },
   {
     "org_nm": "서울특별시 송파구",
@@ -104,10 +115,10 @@
     "care_reg_no": "MOCK-CARE-DG-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-29",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 45.0
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "경기도 수원시",
@@ -126,10 +137,10 @@
     "care_reg_no": "MOCK-CARE-US-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-06-02",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 25.0
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "대전광역시 유성구",
@@ -137,10 +148,10 @@
     "care_reg_no": "MOCK-CARE-DJ-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-31",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 25.0
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "인천광역시 남동구",
@@ -151,7 +162,7 @@
     "active_notice_count": 0,
     "earliest_notice_end": "2026-05-23",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 20.0
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "제주특별자치도 제주시",
@@ -173,18 +184,7 @@
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-12",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 25.0
-  },
-  {
-    "org_nm": "충청남도 천안시",
-    "care_nm": "천안모의보호소",
-    "care_reg_no": "MOCK-CARE-CN-001",
-    "animal_count": 1,
-    "urgent_count": 0,
-    "active_notice_count": 1,
-    "earliest_notice_end": "2026-06-06",
-    "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 35.0
+    "avg_rescue_window_score": 45.0
   },
   {
     "org_nm": "충청북도 청주시",
@@ -195,7 +195,7 @@
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-05",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 20.0
+    "avg_rescue_window_score": 75.0
   },
   {
     "org_nm": "강원특별자치도 춘천시",
@@ -203,10 +203,10 @@
     "care_reg_no": "MOCK-CARE-GW-001",
     "animal_count": 1,
     "urgent_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-06-04",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 25.0
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "경상북도 포항시",
@@ -217,6 +217,6 @@
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-10",
     "missing_care_tel_count": 0,
-    "avg_rescue_window_score": 25.0
+    "avg_rescue_window_score": 45.0
   }
 ]

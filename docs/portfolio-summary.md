@@ -6,48 +6,107 @@ Shelter Signal
 
 Production link: https://shelter-signal-ebon.vercel.app/
 
-## V1 Summary
-
-Shelter Signal is a public-data-based rescued-animal risk exploration PWA. The deployed V1 app uses a Vercel serverless API route to call the data.go.kr rescued-animal notice API and derive shelter/contact context from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`.
-
-The shelter/contact list is notice-derived. It is not a complete official shelter directory, and final confirmation should be done through the shelter or relevant authority. Static JSON fallback/demo data is preserved, and no database is required for the current V1 live API route.
-
-## V2 Alert Pipeline Summary
-
-**Korean**
-
-V2에서는 보호 종료 임박 공고를 PostgreSQL 기반 후보 테이블로 선별하고, 이메일 다이제스트 HTML을 생성한 뒤, n8n HTTP dry-run과 Mailpit 로컬 SMTP 캡처를 통해 실제 외부 발송 없이 알림 파이프라인을 검증했습니다.
-
-**English**
-
-V2 validates the alert pipeline by selecting near-deadline rescue notices from PostgreSQL, generating an email digest HTML, exposing it through an n8n dry-run bridge, and verifying local SMTP capture with Mailpit without sending real external email.
-
 ## Portfolio Card Copy
 
-공공데이터 구조동물 공고 API를 Vercel 서버리스 함수로 호출하고, 공고 데이터에 포함된 보호소명, 전화번호, 주소, 관할기관 정보를 추출해 보호소 연락 맥락을 제공하는 구조동물 리스크 탐색 서비스.
+Shelter Signal is a portfolio-ready PWA prototype that turns rescued-animal public notices into a prioritized, mobile-first review experience with shelter/contact context.
 
-## Key Highlights
+## V1.5 Summary
 
-- V1 public PWA with a Vercel serverless API route and notice-derived shelter/contact summaries
-- Static JSON fallback/demo data preserved for resilience and portfolio review
-- V2 PostgreSQL alert candidate foundation for near-deadline rescued animal notices
-- Daily digest JSON/HTML preview generation
-- n8n HTTP dry-run bridge with optional `email_html` payload
-- Mailpit local SMTP capture smoke test with no real external email delivery
+Shelter Signal V1.5 is a public-data-based rescued-animal notice PWA with a verified operational database read path.
+
+The deployed app reads notice data through:
+
+```text
+Neon PostgreSQL
+-> Vercel /api/notices
+-> React PWA
+-> static JSON fallback
+-> mock fallback
+```
+
+Verified deployment state:
+
+```text
+/api/notices?limit=100
+ok=true
+source=operational-postgres
+notices=20
+```
+
+The current hosted data is based on local validation mock/export rows. Loading actual public-data rows into the hosted DB is a later step.
+
+Shelter contact context is handled separately through `/api/shelters`, which calls the data.go.kr rescued-animal notice API server-side and derives contact summaries from `careNm`, `careTel`, `careAddr`, and `orgNm`.
+
+## V2 Digest Preview Scope
+
+V2/n8n work is limited to local preview and dry-run validation.
+
+It may include:
+
+- `mart.alert_candidates` SQL candidate view
+- daily digest JSON/HTML preview
+- local dry-run script
+- local HTTP bridge for n8n HTTP Request testing
+- optional local-only Mailpit/manual test artifacts if already present
+
+It does not include:
+
+- real external email sending
+- SMTP/Gmail credentials
+- real recipients
+- subscriptions
+- auth
+- SMS
+- push notifications
+- production monitoring
+- activated production n8n schedules
 
 ## Screenshot References
 
-- Home: `docs/screenshots/01-home.png`
-- Golden Time: `docs/screenshots/02-golden-time.png`
-- Notice filters: `docs/screenshots/03-notices.png`
-- Detail sheet: `docs/screenshots/04-detail-sheet.png`
+- Landing hero: `docs/screenshots/01-landing-hero.png`
+- App preview: `docs/screenshots/02-app-preview-home.png`
+- Golden time: `docs/screenshots/03-golden-time.png`
+- Notice filter: `docs/screenshots/04-notices-filter.png`
 - Region explorer: `docs/screenshots/05-region-explorer.png`
-- Saved screen: `docs/screenshots/06-saved.png`
+- Detail sheet: `docs/screenshots/06-detail-sheet.png`
+- Data pipeline: `docs/screenshots/07-data-pipeline.png`
+- Operational DB badge: `docs/screenshots/08-operational-db-badge.png`
+- `/api/notices` operational response: `docs/screenshots/09-api-notices-operational-response.png`
+
+## Technical Stack
+
+- Python
+- PostgreSQL
+- Docker Compose
+- Neon PostgreSQL
+- SQL migrations, models, and tests
+- Static JSON export
+- Vercel serverless API routes
+- Vite
+- React
+- TypeScript
+- PWA metadata and SVG brand assets
+- n8n preview/dry-run documentation
+
+## Key Contribution
+
+This project connects data analysis, data modeling, backend API boundaries, and frontend product design into one portfolio artifact. It is not a generic CRUD demo: it defines a Rescue Window Score, models alert candidates in SQL, exports app-ready JSON, serves operational data through a serverless route, and keeps graceful fallbacks for portfolio reliability.
+
+In V1.5, the local Docker validation path and the hosted Neon read path are separated on purpose. That separation shows both data pipeline discipline and deployed product behavior without exposing database credentials to the browser.
+
+## Why This Project Matters
+
+Shelter Signal turns public notices from a passive lookup table into a decision-support interface. Reviewers can quickly see which notices are time-sensitive, where they are concentrated, and what shelter/contact context is available.
+
+The project also demonstrates practical constraints: public API permissions, imperfect source data, secret handling, operational DB failures, and fallback design.
 
 ## Boundaries
 
 - Shelter Signal is not a production shelter service.
-- The V1 shelter/contact summaries are derived from rescued-animal notice fields, not from a complete official shelter directory.
-- V2 Mailpit validation proves local SMTP send, inbox capture, and HTML rendering only.
-- Gmail, Google Cloud OAuth, app passwords, production email sending, real recipients, SMS, auth, and subscriptions are intentionally not implemented.
+- The shelter/contact summaries are notice-derived, not a complete official shelter directory.
 - Rescue Window Score is an internal exploration signal, not an official risk score or prediction model.
+- Current Neon data is mock/export based and contains 20 validation rows.
+- Actual public-data ingestion into the hosted DB is a future task.
+- V2 digest work is preview/dry-run only.
+- Real email/SMS/push/auth/subscription/monitoring are intentionally not implemented.
+- Secrets such as `DATABASE_URL`, Neon passwords, service keys, email credentials, and real recipients must never be committed or logged.
