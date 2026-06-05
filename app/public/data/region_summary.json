@@ -1,52 +1,62 @@
 [
   {
-    "org_nm": "서울특별시 마포구",
+    "org_nm": "충청남도 천안시",
     "animal_count": 1,
     "urgent_count": 1,
     "ending_soon_count": 1,
     "active_notice_count": 1,
-    "earliest_notice_end": "2026-05-24",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 80.0
+    "earliest_notice_end": "2026-06-06",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 90.0
   },
   {
-    "org_nm": "경기도 성남시",
-    "animal_count": 1,
-    "urgent_count": 0,
-    "ending_soon_count": 1,
-    "active_notice_count": 1,
-    "earliest_notice_end": "2026-05-26",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 75.0
-  },
-  {
-    "org_nm": "서울특별시 강서구",
-    "animal_count": 1,
-    "urgent_count": 0,
-    "ending_soon_count": 1,
-    "active_notice_count": 1,
-    "earliest_notice_end": "2026-05-25",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 65.0
-  },
-  {
-    "org_nm": "인천광역시 남동구",
+    "org_nm": "전라남도 목포시",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 1,
     "active_notice_count": 0,
-    "earliest_notice_end": "2026-05-23",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
+    "earliest_notice_end": "2026-06-08",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
     "avg_rescue_window_score": 20.0
+  },
+  {
+    "org_nm": "전북특별자치도 전주시",
+    "animal_count": 1,
+    "urgent_count": 0,
+    "ending_soon_count": 1,
+    "active_notice_count": 1,
+    "earliest_notice_end": "2026-06-07",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 75.0
+  },
+  {
+    "org_nm": "충청북도 청주시",
+    "animal_count": 1,
+    "urgent_count": 0,
+    "ending_soon_count": 1,
+    "active_notice_count": 1,
+    "earliest_notice_end": "2026-06-05",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 75.0
   },
   {
     "org_nm": "강원특별자치도 춘천시",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-06-04",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
+  },
+  {
+    "org_nm": "경기도 성남시",
+    "animal_count": 1,
+    "urgent_count": 0,
+    "ending_soon_count": 0,
+    "active_notice_count": 0,
+    "earliest_notice_end": "2026-05-26",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
     "avg_rescue_window_score": 25.0
   },
   {
@@ -56,7 +66,7 @@
     "ending_soon_count": 0,
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-16",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
     "avg_rescue_window_score": 25.0
   },
   {
@@ -66,8 +76,8 @@
     "ending_soon_count": 0,
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-12",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 25.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 45.0
   },
   {
     "org_nm": "경상북도 포항시",
@@ -76,48 +86,68 @@
     "ending_soon_count": 0,
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-10",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 25.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 45.0
   },
   {
     "org_nm": "광주광역시 북구",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-30",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 45.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "대구광역시 수성구",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-29",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 45.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "대전광역시 유성구",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-31",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 25.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "부산광역시 해운대구",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-05-27",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 50.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 20.0
+  },
+  {
+    "org_nm": "서울특별시 강서구",
+    "animal_count": 1,
+    "urgent_count": 0,
+    "ending_soon_count": 0,
+    "active_notice_count": 0,
+    "earliest_notice_end": "2026-05-25",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
+  },
+  {
+    "org_nm": "서울특별시 마포구",
+    "animal_count": 1,
+    "urgent_count": 0,
+    "ending_soon_count": 0,
+    "active_notice_count": 0,
+    "earliest_notice_end": "2026-05-24",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "서울특별시 송파구",
@@ -126,7 +156,7 @@
     "ending_soon_count": 0,
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-18",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
     "avg_rescue_window_score": 25.0
   },
   {
@@ -134,40 +164,30 @@
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-06-03",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 35.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 25.0
   },
   {
     "org_nm": "울산광역시 남구",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
-    "active_notice_count": 1,
+    "active_notice_count": 0,
     "earliest_notice_end": "2026-06-02",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 25.0
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
   },
   {
-    "org_nm": "전라남도 목포시",
+    "org_nm": "인천광역시 남동구",
     "animal_count": 1,
     "urgent_count": 0,
     "ending_soon_count": 0,
     "active_notice_count": 0,
-    "earliest_notice_end": "2026-06-08",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 20.0
-  },
-  {
-    "org_nm": "전북특별자치도 전주시",
-    "animal_count": 1,
-    "urgent_count": 0,
-    "ending_soon_count": 0,
-    "active_notice_count": 1,
-    "earliest_notice_end": "2026-06-07",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 35.0
+    "earliest_notice_end": "2026-05-23",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
+    "avg_rescue_window_score": 15.0
   },
   {
     "org_nm": "제주특별자치도 제주시",
@@ -176,27 +196,7 @@
     "ending_soon_count": 0,
     "active_notice_count": 1,
     "earliest_notice_end": "2026-06-14",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
+    "latest_collected_at": "2026-06-05T07:20:14.521925+00:00",
     "avg_rescue_window_score": 30.0
-  },
-  {
-    "org_nm": "충청남도 천안시",
-    "animal_count": 1,
-    "urgent_count": 0,
-    "ending_soon_count": 0,
-    "active_notice_count": 1,
-    "earliest_notice_end": "2026-06-06",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 35.0
-  },
-  {
-    "org_nm": "충청북도 청주시",
-    "animal_count": 1,
-    "urgent_count": 0,
-    "ending_soon_count": 0,
-    "active_notice_count": 1,
-    "earliest_notice_end": "2026-06-05",
-    "latest_collected_at": "2026-05-23T18:56:32.181814+00:00",
-    "avg_rescue_window_score": 20.0
   }
 ]
