@@ -5,12 +5,12 @@ import {
   RescueWindowLabel,
   rescueWindowLabels,
 } from "./data/mockAnimals";
-import {
+import { fallbackAppData, loadAppData } from "./data/exportedData";
+import type {
+  AppDataSource,
   ExportedAppData,
   RegionSummaryRecord,
   RescueWindowSummaryRecord,
-  fallbackAppData,
-  loadExportedAppData,
 } from "./data/exportedData";
 import { getRegionCodes } from "./data/regionCodes";
 import {
@@ -47,7 +47,7 @@ const labelOrder: Record<RescueWindowLabel, number> = {
   "종료/확인 필요": 5,
 };
 
-type DataSourceState = "loading" | "exported" | "fallback";
+type DataSourceState = "loading" | AppDataSource;
 type ShelterLoadState = "idle" | "loading" | "success" | "error";
 
 interface RuntimeAppData extends ExportedAppData {
@@ -96,18 +96,18 @@ function App() {
   useEffect(() => {
     let isMounted = true;
 
-    loadExportedAppData()
+    loadAppData()
       .then((data) => {
         if (!isMounted) {
           return;
         }
-        setRuntimeData({ ...data, source: "exported" });
+        setRuntimeData(data);
       })
       .catch((error: unknown) => {
         if (!isMounted) {
           return;
         }
-        const message = error instanceof Error ? error.message : "exported JSON load failed";
+        const message = error instanceof Error ? error.message : "app data load failed";
         setRuntimeData({ ...fallbackAppData, source: "fallback", errorMessage: message });
       });
 
@@ -1422,12 +1422,15 @@ function signalStyle(urgent: number, endingSoon: number): CSSProperties & { "--s
 
 function dataSourceCopy(source: DataSourceState, animalCount: number): string {
   if (source === "loading") {
-    return "정적 데이터 확인 중";
+    return "Operational DB 확인 중";
+  }
+  if (source === "operational") {
+    return `Operational DB · ${animalCount}건`;
   }
   if (source === "exported") {
-    return `정적 데이터 ${animalCount}건`;
+    return `Static export fallback · ${animalCount}건`;
   }
-  return `예시 데이터 표시 중 · ${MOCK_REFERENCE_DATE}`;
+  return `Mock fallback · ${MOCK_REFERENCE_DATE}`;
 }
 
 function labelClass(label: RescueWindowLabel) {
