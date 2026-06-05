@@ -1,45 +1,71 @@
 # Shelter Signal
 
-Shelter Signal은 **공공데이터 구조동물 공고 기반 보호소 연락 맥락 PWA**입니다. 구조동물 공고를 모바일에서 빠르게 훑고, 보호 종료가 가까운 공고와 공고에 포함된 보호소 연락 정보를 먼저 확인할 수 있도록 정리합니다.
+**Shelter Signal은 공공데이터 구조동물 공고를 “먼저 확인할 공고”와 “보호소 연락 맥락”으로 재구성한 모바일 PWA 포트폴리오 프로젝트입니다.**
 
 배포 링크: https://shelter-signal-ebon.vercel.app/
 
-현재 공고와 지역 신호 데이터는 `app/public/data/*.json`으로 export된 정적 JSON을 우선 사용합니다. 지역 보호소 연락 맥락은 Vercel 내부 API route인 `/api/shelters`가 data.go.kr 구조동물 공고 API를 호출하고, 공고 행의 `careNm`, `careTel`, `careAddr`, `orgNm` 값을 추출해 제공합니다. 서비스 키는 서버 환경 변수로만 읽으며, 이 V1 live API route에는 별도 데이터베이스 연결이 필요하지 않습니다. 운영용 실시간 backend, 사용자 계정, 실제 저장 기능, email/SMS 알림, n8n 자동화가 붙은 production-ready 서비스는 아닙니다.
+Shelter Signal V1은 production shelter service가 아니라 **portfolio-ready PWA prototype**입니다. 실제 사용자 계정, 저장 persistence, 실시간 운영 backend, push/email/SMS 알림, production n8n 자동화는 포함하지 않습니다. 대신 공공데이터 기반 문제를 데이터 파이프라인, SQL 모델링, 정적 export, PWA UX, Vercel serverless API로 끝까지 연결한 데이터 제품형 MVP를 보여줍니다.
 
-## Overview
+## Portfolio Snapshot
 
-Shelter Signal은 보호소 연락 맥락의 접근성을 높이기 위한 모바일 중심 서비스 실험입니다. 공공데이터와 로컬 데이터 파이프라인을 기반으로 구조동물 공고를 정리하고, React PWA 화면에서 탐색 가능한 형태로 제공합니다.
+| 항목 | 내용 |
+| --- | --- |
+| 한 줄 정의 | 공공데이터 구조동물 공고 우선순위/보호소 연락 맥락 PWA |
+| 핵심 사용자 질문 | 오늘 먼저 확인해야 할 공고는 무엇이고, 공식 문의에 필요한 보호소 정보는 어디에 있는가? |
+| V1 구현 범위 | 모바일 PWA, Rescue Window Score, 공고 필터, 지역 신호, 상세 시트, Vercel `/api/shelters` |
+| 데이터 전략 | `app/public/data/*.json` 정적 export를 primary source로 사용하고 실패 시 mock fallback |
+| API 보안 | 브라우저는 공공데이터 API key를 보지 않고, Vercel serverless route만 `DATA_GO_KR_SERVICE_KEY`를 읽음 |
+| 포트폴리오 문서 | [docs/portfolio-case-study.md](docs/portfolio-case-study.md) |
 
-저장소는 데이터 수집 점검, PostgreSQL 적재, SQL 모델링, 정적 JSON export, Vite React 앱, Vercel 서버리스 API까지 이어지는 데이터 제품형 MVP를 목표로 합니다.
+## What It Shows
 
-## Problem
+- 구조동물 공고를 단순 최신순 목록이 아니라 `긴급 확인`, `곧 종료`, `확인 필요` 같은 우선순위 신호로 정리합니다.
+- Rescue Window Score를 사용해 보호 종료일, 사진 여부, 연락처 여부 등 확인 신호를 설명 가능한 방식으로 UI에 연결합니다.
+- 공고 목록, 필터, 표시 수 조절, 지역 탐색, 상세 시트, 보호소 문의 안내까지 하나의 모바일 중심 PWA 흐름으로 구성합니다.
+- 공공데이터 API key를 browser bundle에 넣지 않고, Vercel `/api/shelters` route가 서버에서 data.go.kr 구조동물 공고 API를 호출합니다.
+- 보호소 연락 목록은 별도 공식 보호소 디렉터리가 아니라 공고 행의 `careNm`, `careTel`, `careAddr`, `orgNm`에서 만든 notice-derived summary임을 명확히 표시합니다.
+- 정적 JSON 로딩 실패 시 앱 내부 mock 데이터로 fallback해 데모 화면이 안전하게 동작하도록 설계했습니다.
 
-구조동물 공고는 공고 종료일, 보호소 연락처, 지역, 사진 여부 같은 정보가 흩어져 있어 사용자가 우선 확인할 공고를 빠르게 고르기 어렵습니다.
-
-특히 다음 질문에 빨리 답하기 어렵습니다.
-
-- 오늘 먼저 확인해야 할 공고는 무엇인가?
-- 보호 종료가 임박한 공고는 어느 지역에 몰려 있는가?
-- 공식 문의를 위해 어떤 보호소 정보가 필요한가?
-- API 연결이나 데이터 export가 불안정할 때도 앱이 안전하게 동작하는가?
-
-## Solution
-
-Shelter Signal은 공고 목록을 단순 최신순이 아니라 “확인 우선순위가 있는 신호”로 다룹니다.
+## Data Flow
 
 ```text
 Public API / mock data
-→ PostgreSQL
-→ SQL models
+→ PostgreSQL raw table
+→ SQL models and tests
 → Rescue Window Score
 → static JSON export
-→ PWA app
-→ Vercel /api/shelters for notice-derived contact summaries
+→ Vite React PWA
 ```
 
-브라우저 앱은 PostgreSQL이나 공공 API에 직접 연결하지 않습니다. 로컬 export 스크립트가 SQL view 결과를 정적 JSON으로 만들고, PWA는 `/data/*.json` 파일을 우선 로딩합니다. JSON 로딩에 실패하면 앱 내부 mock 데이터로 fallback합니다.
+```text
+PWA region selector
+→ /api/shelters
+→ Vercel Serverless Function
+→ data.go.kr rescued-animal notice API
+→ notice-derived shelter/contact summaries
+```
 
-보호소 조회는 프론트엔드에서 `/api/shelters`만 호출합니다. 이 Vercel Serverless Function이 `DATA_GO_KR_SERVICE_KEY`를 읽어 data.go.kr 구조동물 공고 API와 통신하고, 화면에는 공고에 포함된 보호소명, 주소, 연락처, 관할기관 필드만 정규화해서 전달합니다. 이 목록은 전체 공식 보호소 디렉터리가 아니라 공고 기반 연락 맥락입니다.
+브라우저 앱은 PostgreSQL이나 data.go.kr API에 직접 연결하지 않습니다. 공고 목록과 지역 신호는 `app/public/data/*.json`으로 export된 정적 JSON을 먼저 읽고, 로딩에 실패하면 `src/data/mockAnimals.ts`의 mock 데이터로 fallback합니다.
+
+지역 보호소 연락 맥락은 프론트엔드가 `/api/shelters?sido=...&sigungu=...`만 호출합니다. 이 route는 서버 환경 변수 `DATA_GO_KR_SERVICE_KEY`를 읽어 공공데이터 API와 통신하고, 화면에는 공고에 포함된 보호소명, 전화번호, 주소, 관할기관 필드만 정규화해 전달합니다. 이 V1 live route에는 별도 데이터베이스 연결이 필요하지 않습니다.
+
+## Screenshots
+
+| Landing | App Home |
+| --- | --- |
+| ![Shelter Signal landing hero](docs/screenshots/01-landing-hero.png) | ![Shelter Signal app preview home](docs/screenshots/02-app-preview-home.png) |
+
+| Golden Time | Notice Filters |
+| --- | --- |
+| ![Golden time notices](docs/screenshots/03-golden-time.png) | ![Notice filters and display control](docs/screenshots/04-notices-filter.png) |
+
+| Region Explorer | Detail Sheet |
+| --- | --- |
+| ![Region explorer](docs/screenshots/05-region-explorer.png) | ![Notice detail sheet](docs/screenshots/06-detail-sheet.png) |
+
+| Data Pipeline |
+| --- |
+| ![Data pipeline section](docs/screenshots/07-data-pipeline.png) |
 
 ## Features
 
@@ -52,7 +78,7 @@ Public API / mock data
 - **Detail sheet**: 공식 공고 정보, 동물 정보, 보호소 및 연락처 그룹화
 - **Contact actions**: 전화번호 보기, 주소 확인, 공식 문의 안내
 - **Saved placeholder**: 추후 저장 및 알림 기능을 위한 자리
-- **PWA assets**: manifest, SVG icon, OG image metadata
+- **PWA assets**: manifest, service worker, SVG icon, OG image metadata
 
 ## Tech Stack
 
@@ -78,6 +104,7 @@ Implemented:
 - Notice filters and display count control
 - Region signal explorer
 - Internal `/api/shelters` route for notice-derived shelter/contact summaries when `DATA_GO_KR_SERVICE_KEY` is configured
+- Experimental `/api/notices` operational DB route for a later backend phase
 - Detail sheet with official notice and shelter contact fields
 - Deployment-ready Vite app under `/app`
 
@@ -89,6 +116,7 @@ Not implemented:
 - Push, email, or SMS notifications
 - n8n automation in the deployed app
 - Shelter homepage, operating-hours, or coordinate enrichment
+- Production monitoring
 
 ## Operational DB Plan
 
@@ -131,13 +159,6 @@ For live shelter lookup, Shelter Signal uses rescued-animal notice rows as the p
 - Frontend entrypoint: `/api/shelters?sido=...&sigungu=...`
 
 The service key must be configured in Vercel as `DATA_GO_KR_SERVICE_KEY`. Do not prefix it with `VITE_` or expose it in frontend code. Local secret files such as `.env` should remain uncommitted; `.env.example` only documents required keys.
-
-The route derives shelter-like summaries from notice fields already present in rescued-animal rows:
-
-- `careNm`
-- `careTel`
-- `careAddr`
-- `orgNm`
 
 Rows are deduplicated by `careNm + careTel + careAddr`. This avoids blocking the app on the separate shelter-center endpoint when that endpoint returns `403`.
 
@@ -257,17 +278,11 @@ After adding or changing Vercel environment variables, redeploy Production so th
 
 No database connection is required for this live shelter lookup route. The browser calls the internal Vercel API route, and only that serverless function calls data.go.kr.
 
-## Portfolio Summary
+## Portfolio Description
 
-**One-line summary**
-공공데이터 구조동물 공고 API 기반 보호소 연락 맥락 PWA.
+Shelter Signal은 공공데이터 구조동물 공고 API와 로컬 SQL 모델링을 기반으로, 보호 종료가 가까운 공고와 보호소 연락 맥락을 먼저 확인할 수 있게 정리한 모바일 PWA입니다. 공고 목록과 지역 신호는 정적 JSON export를 primary source로 사용하고, 선택 지역의 보호소 연락 맥락은 Vercel serverless API route가 공공데이터 API를 서버에서 호출해 notice-derived summary로 제공합니다.
 
-**Description**
-Shelter Signal은 공공데이터 구조동물 공고 API를 Vercel 서버리스 함수로 호출하고, 공고 데이터에 포함된 보호소명, 전화번호, 주소, 관할기관 정보를 추출해 보호소 연락 맥락을 제공하는 구조동물 리스크 탐색 서비스입니다. 공고 목록과 지역 신호는 정적 JSON export를 우선 사용하고, 실패 시 mock 데이터로 안전하게 fallback합니다. 보호소 연락 목록은 notice-derived summary이며, 전체 공식 보호소 디렉터리로 주장하지 않습니다.
-
-Shelter Signal is a rescued-animal risk exploration service that uses a Vercel serverless API route to call the data.go.kr rescued-animal notice API and derive shelter contact context from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`.
-
-**Key highlights**
+Key highlights:
 
 - 공공데이터 기반 구조동물 공고 탐색 경험 설계
 - Rescue Window Score를 통한 우선 확인 흐름 제안
@@ -278,9 +293,9 @@ Shelter Signal is a rescued-animal risk exploration service that uses a Vercel s
 
 ## Next Steps
 
-- 최신 UI 기준 화면 screenshot 갱신
-- Signal Archive용 case study 작성
-- 공공 API 권한과 응답 범위 재검토
-- 별도 보호소 센터 API와 보호소 정보 enrichment 가능 여부 확인
-- 저장 기능과 알림 흐름은 별도 단계에서 설계
-- 정적 JSON 공고 데이터와 live API route 사이의 데이터 계약 검토
+- `v2/n8n-email-alerts` 브랜치를 `main`의 최신 V1 live API 개선사항과 동기화
+- Docker Desktop 실행 후 `python scripts/validate_pipeline.py` 재검증
+- `python scripts/run_daily_digest_dry_run.py` 재검증
+- `/api/notices` operational route 검증
+- `mart.alert_candidates` 기반 digest preview 품질 확인
+- 저장 기능과 실제 알림 흐름은 별도 단계에서 설계
