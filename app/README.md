@@ -1,28 +1,96 @@
 # Shelter Signal App
 
-Vite + React + TypeScript 기반 Shelter Signal PWA입니다. V1은 구조동물 공고 데이터와 공고에 포함된 보호소 연락 맥락을 모바일에서 탐색하는 포트폴리오용 서비스 실험입니다.
+Vite + React + TypeScript PWA for Shelter Signal V1.5. The app presents rescued-animal public notice data with priority cues, regional exploration, saved-notice placeholders, and shelter/contact context.
 
-배포 링크: https://shelter-signal-ebon.vercel.app/
+Production link: https://shelter-signal-ebon.vercel.app/
 
-현재 배포된 앱은 공고와 지역 신호에 export된 정적 JSON 데이터를 사용하고, 지역 보호소 연락 맥락은 Vercel serverless API route인 `/api/shelters`를 통해 data.go.kr 구조동물 공고 API의 `careNm`, `careTel`, `careAddr`, `orgNm` 필드를 요약합니다. 운영용 실시간 backend, 인증, 알림 기능이 붙은 production-ready 서비스는 아닙니다.
+## Data Loading
 
-앱은 `public/data/*.json`에 export된 정적 JSON을 먼저 읽고, 로딩에 실패하면 `src/data/mockAnimals.ts`의 mock 데이터로 fallback합니다. 브라우저에서 PostgreSQL이나 공공 API에 직접 연결하지 않습니다.
+The deployed app loads notice data in this order:
 
-보호소 조회의 서비스 키는 브라우저 번들에 포함하지 않습니다. Vercel Production 환경 변수에 `DATA_GO_KR_SERVICE_KEY`를 설정해야 하며, 추가 또는 변경 후에는 Production을 다시 배포해야 합니다. 이 live shelter API route에는 Supabase/Postgres 같은 DB 연결이 필요하지 않습니다.
+```text
+/api/notices
+-> public rescued-animal API, server-side
+-> PostgreSQL server fallback
+-> public/data/*.json static export fallback
+-> src/data/mockAnimals.ts mock fallback
+```
 
-`/api/shelters`는 별도 보호소 센터 디렉터리가 아니라 구조동물 공고 응답의 `careNm`, `careTel`, `careAddr`, `orgNm` 값을 dedupe해 만든 공고 기반 보호소 연락 요약입니다. 별도 shelter-center API가 `403`을 반환해도 앱이 완전히 막히지 않도록 이 흐름을 우선 사용합니다. 최종 확인은 보호소 또는 관할기관을 통해 진행해야 합니다.
+`/api/notices` is a Vercel serverless API route. It uses
+`DATA_GO_KR_SERVICE_KEY` only on the server and requests a rolling 30-day window
+with `state=notice`, `_type=json`, `pageNo=1`, and `numOfRows=1000`. The browser
+never receives the service key, `DATABASE_URL`, or a direct database connection.
+For legacy local tooling, the server route also accepts `ANIMAL_API_KEY` as a
+server-only alias. `DATA_GO_KR_SERVICE_KEY` remains the canonical deployment name.
 
-## V1 요약
+The route treats `noticeEdt` as the public notice end date, recalculates
+`days_left`, and excludes expired records from the default current-notice view.
+It returns separate `currentNotices`, `urgentNotices`, `protectedAnimals`, and
+optional `expiredRecords` views. Urgent notices have `days_left` between `0` and
+`3` and are sorted by `days_left` and then `noticeEdt` ascending. The server
+follows upstream pagination across up to 10 pages, then returns at most 500 rows
+per UI view to keep the serverless response safely sized.
 
-공공데이터 구조동물 공고 API를 Vercel 서버리스 함수로 호출하고, 공고 데이터에 포함된 보호소명, 전화번호, 주소, 관할기관 정보를 추출해 보호소 연락 맥락을 제공하는 구조동물 리스크 탐색 서비스입니다.
+If the public API fails, the route can query `mart.animals_clean` as a clearly
+labeled fallback. If the route is unavailable, the frontend tries static JSON and
+then mock data. Static/mock rows pass through the same current-date classifier, so
+expired records never appear in the default view. A valid live response with zero
+current notices remains empty instead of triggering fallback.
 
-Shelter Signal is a rescued-animal risk exploration service that uses a Vercel serverless API route to call the data.go.kr rescued-animal notice API and derive shelter contact context from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`.
+Fallback starts only for a missing key, upstream HTTP/API error, empty upstream
+body, request failure, or an unusable response whose records contain no valid
+`noticeEdt`. PostgreSQL fallback connections and queries have explicit timeouts.
+Static exports keep their original dates and are filtered. Mock dates are shifted
+relative to the current KST date so mock fallback remains visibly useful without
+pretending to be live.
 
-## Operational DB Note
+Fallback metadata uses `source: "fallback"`, an ISO `fetchedAt`, the rolling
+`dateRange`, and a warning. The UI displays:
 
-`/api/notices`는 다음 backend 단계를 위한 server-only experimental operational DB route입니다. `DATABASE_URL`은 deployment environment에만 설정해야 하며, `VITE_` frontend 변수로 노출하면 안 됩니다. 프런트엔드는 아직 `public/data/*.json` 정적 파일을 primary data source로 사용합니다.
+```text
+공공데이터 API 응답이 불안정하여 샘플 데이터를 표시 중입니다. 실시간 공고가 아닐 수 있습니다.
+```
 
-## 실행
+Safe response diagnostics include `source`, `fetchedAt`, `dateRange`,
+`requestState`, `itemCount`, `filteredCount`, `returnedCount`, `urgentCount`,
+`pagesFetched`, `upstreamTotalCount`, `responseFormat`, `truncated`, `viewLimit`,
+and `fallbackReason`.
+
+The UI renders those diagnostics in a compact Korean-first status panel. Notice
+lists start with 20 rows, support incremental "공고 더 보기", and clearly explain
+when the server response is capped at 500 rows. The urgent view puts the region
+filter before the list and preserves `days_left` ascending order.
+
+Known limitations: the public API can be affected by service approval, quotas,
+intermittent non-JSON errors, and agency update timing. Each upstream page is
+capped at 1000 rows and the route follows at most 10 pages.
+
+Shelter/contact context is handled separately through `/api/shelters`. That route calls the data.go.kr rescued-animal notice API server-side and derives shelter summaries from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`. It is notice-derived context, not a complete official shelter directory.
+
+## Production Live-first Verification
+
+On 2026-06-12, the freshness-first preview returned `source: "api"`, while the
+then-current Production deployment still returned the old
+`source: "operational-postgres"` response. Production was subsequently
+redeployed with the live-first pipeline and verified through `/api/notices` and
+the browser UI.
+
+```text
+public rescued-animal API
+-> Vercel /api/notices
+-> React PWA
+-> PostgreSQL fallback
+-> static JSON fallback
+-> mock fallback
+```
+
+The Production UI shows `Live API` and hides the Korean fallback warning when the
+public API succeeds. Vite-only development is expected to show explicitly
+labeled fallback unless the serverless API/proxy is running. Public API quotas,
+XML/plain-text errors, update-cycle differences, valid empty results, and the
+maximum page cap remain known limitations.
+
+## Local Development
 
 ```powershell
 npm install
@@ -30,16 +98,29 @@ npm run dev
 npm run build
 ```
 
-`npm`이 PATH에 없다면 로컬 의존성이 설치된 상태에서 다음 빌드 검증을 사용할 수 있습니다.
+`npm run dev` starts Vite only. Because Vite does not execute `app/api/*.ts`,
+the browser will show static/mock fallback when no API dev server is running.
+To verify the live serverless notice route and UI locally, link/configure the
+Vercel project, then run these in separate terminals:
+
+```powershell
+npm run dev:api
+npm run dev
+```
+
+Vite proxies `/api` to `http://127.0.0.1:4174` by default. Override that target
+with `VITE_API_PROXY_TARGET` when needed.
+
+If `npm` is not available on PATH but dependencies are installed, these commands can be used for local build checks:
 
 ```powershell
 .\node_modules\.bin\tsc.cmd --noEmit
 .\node_modules\.bin\vite.cmd build
 ```
 
-## Vercel 배포 설정
+## Vercel Settings
 
-Vercel에서 이 앱을 배포할 때는 저장소 루트가 아니라 `app` 폴더를 프로젝트 루트로 지정합니다.
+Deploy the `app` folder as the Vercel project root:
 
 ```text
 Root Directory: app
@@ -48,23 +129,38 @@ Build Command: npm run build
 Output Directory: dist
 ```
 
-`public/data/*.json` 파일은 현재 앱이 읽는 정적 export 데이터입니다. 배포 결과물에는 이 JSON 파일들이 `/data/*.json` 경로의 정적 자산으로 포함됩니다.
+Server-side environment variables:
 
-`/api/shelters` 문제를 볼 때:
+```text
+DATA_GO_KR_SERVICE_KEY=  # required for live public API
+DATABASE_URL=            # optional PostgreSQL fallback
+```
 
-- `MISSING_SERVICE_KEY`: Vercel Function이 `DATA_GO_KR_SERVICE_KEY`를 보지 못하는 상태입니다.
-- `UPSTREAM_ERROR`: 함수는 키를 받았지만 구조동물 공고 API 응답이나 권한에서 실패한 상태입니다.
-- `UPSTREAM_FORBIDDEN`: data.go.kr가 `403`을 반환한 상태입니다. 서비스별 활용 승인, endpoint/operation 경로, 필수 파라미터, Encoding/Decoding key 혼동, serviceKey 이중 인코딩, 환경 변수의 공백/따옴표를 확인합니다.
-- 직접 확인 URL: https://shelter-signal-ebon.vercel.app/api/shelters
-- 로컬 진단: `python scripts/test_shelter_upstream_request.py`
+`DATA_GO_KR_SERVICE_KEY` is used server-side by `/api/notices` and
+`/api/shelters`. `DATABASE_URL` is used only by the `/api/notices` PostgreSQL
+fallback. Do not add a `VITE_` prefix to either value, because they must not be
+exposed to browser code.
 
-## 현재 화면
+## Troubleshooting
 
-- 홈
-- 골든타임
-- 공고 필터와 표시 수 조절
-- 지역 신호 탐색기
-- 저장 공고 placeholder
-- 공고 상세 시트와 보호소 문의 안내
+For `/api/notices`:
 
-인증, email/SMS 알림, n8n 자동화, DB-backed 운영용 backend는 아직 포함하지 않았습니다. 배포는 포트폴리오 시연용 PWA와 Vercel 서버리스 API route 조합으로 다룹니다.
+- `source: "api"`: the public API succeeded and returned usable rows.
+- `source: "fallback"`: inspect the safe `fallbackReason` for a missing key,
+  upstream error/shape problem, or request failure.
+- A valid empty live result remains live and does not silently switch to samples.
+- PostgreSQL is optional and is attempted only after the live public API fails.
+
+For `/api/shelters`:
+
+- `MISSING_SERVICE_KEY`: the Vercel Function cannot see `DATA_GO_KR_SERVICE_KEY`.
+- `UPSTREAM_ERROR`: the route called the upstream API but the response or permission state failed.
+- `UPSTREAM_FORBIDDEN`: data.go.kr returned `403`; check service approval, operation path, required parameters, key encoding, and accidental whitespace.
+- Direct check: https://shelter-signal-ebon.vercel.app/api/shelters
+- Local diagnosis: `python scripts/test_shelter_upstream_request.py`
+
+## Current Product Boundary
+
+The app includes a landing view, golden-time priority view, notice filtering, region exploration, a notice detail sheet, and shelter contact guidance.
+
+Auth, real email/SMS alerts, n8n production automation, subscription management, and production monitoring are intentionally out of scope. V2/n8n work is limited to digest preview and dry-run verification.

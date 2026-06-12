@@ -1,89 +1,95 @@
 # Shelter Signal V2 Roadmap
 
-## V2 One-Line Definition
+## V1.5 Baseline
 
-Shelter Signal V2 is a planned n8n-based alert pipeline that refreshes rescued-animal notice data, selects notice candidates from SQL, and generates a preview-only daily email digest.
+Shelter Signal `main` is stabilized at `v1.5.0`.
 
-V2 is not production-ready. It is a follow-up pipeline and automation track that builds on the V1 portfolio PWA without changing V1 into a live notification service.
+Completed baseline:
 
-## Current Branch Note
+- Docker local PostgreSQL pipeline validation
+- Neon hosted PostgreSQL connection
+- Vercel `/api/notices` operational read path
+- `/api/notices?limit=100` verified with `ok=true`, `source=operational-postgres`, `notices=20`
+- React PWA Operational DB badge
+- static JSON fallback
+- mock fallback
+- Vercel `/api/shelters` notice-derived shelter/contact route
+- README, Neon deployment docs, portfolio case study, and verification screenshots
 
-V1 is stabilized on `main` as a portfolio-ready PWA prototype.
+Current Neon data is based on local mock/export validation rows. Loading actual public-data rows into the hosted DB is a separate V2+ task.
 
-V2 work is separated on:
+## V2 Definition
+
+Shelter Signal V2 is a preview-only alert pipeline validation track.
+
+The goal is to verify:
 
 ```text
-v2/n8n-email-alerts
+Docker PostgreSQL
+-> SQL models
+-> mart.alert_candidates
+-> daily digest JSON/HTML preview
+-> local dry-run script
+-> optional local n8n HTTP dry-run bridge
 ```
 
-Before continuing V2 implementation, sync `v2/n8n-email-alerts` with the latest `main` branch. `main` contains V1 live shelter API improvements, portfolio documentation polish, and the current Vercel `/api/shelters` behavior. The V2 branch should be updated before additional workflow, Mailpit, or digest work continues.
+This is not a production notification service. It does not send real email and does not manage real subscribers.
 
-## V1 And V2 Boundary
+## Scope For This Branch
 
-| Area | V1 current state | V2 planned direction |
-| --- | --- | --- |
-| App purpose | Portfolio PWA for rescued-animal notice priority and shelter contact context | Pipeline/digest automation layer |
-| Primary app data | Static JSON export in `app/public/data/*.json` | Static JSON may be refreshed later, but not required initially |
-| Live route | `/api/shelters` notice-derived contact summaries | `/api/notices` operational route verification |
-| Alerting | Not implemented | Preview-only email digest from SQL candidates |
-| Production readiness | Portfolio prototype | Still not production notification infrastructure |
+The `v2/n8n-email-alerts` branch should preserve the `main`/`v1.5.0` app architecture while keeping digest preview materials.
 
-V2 must preserve V1's current positioning: Shelter Signal is not an official shelter service, not a risk prediction system, and not a production notification platform.
+Allowed V2 scope:
+
+- `mart.alert_candidates` SQL view
+- daily digest preview export
+- dry-run script
+- local HTTP bridge for n8n HTTP Request testing
+- n8n workflow documentation for manual/local dry-run
+- generated preview verification
+- optional local-only Mailpit/manual test files if already present, kept clearly out of production scope
+
+Out of scope:
+
+- real external email sending
+- SMTP/Gmail credentials
+- real recipients
+- subscription management
+- auth
+- SMS
+- push notifications
+- production monitoring
+- activated production n8n schedule
+- automatic deployment from n8n
 
 ## Required Revalidation
 
-After syncing the V2 branch with `main`, run the local pipeline checks again.
-
-### 1. Docker Desktop
-
-Start Docker Desktop before running data pipeline commands. The local PostgreSQL service depends on Docker Compose.
-
-```powershell
-docker compose up -d postgres
-```
-
-If host port `5432` is already in use, set `POSTGRES_PORT=5433` before starting the service.
-
-```powershell
-$env:POSTGRES_PORT = "5433"
-docker compose up -d postgres
-```
-
-### 2. Pipeline Validation
-
-Run:
+Run after syncing this branch with `main`:
 
 ```powershell
 python scripts/validate_pipeline.py
+python scripts/run_daily_digest_dry_run.py
+cd app
+npm.cmd run build
 ```
 
-This should verify:
+`python scripts/validate_pipeline.py` should verify:
 
 - Docker availability
 - PostgreSQL readiness
-- SQL migrations
-- mock data loading
+- migrations
+- mock data load
 - SQL models
 - SQL tests
-- preview queries for `mart.alert_candidates`, `mart.region_summary`, `mart.shelter_summary`, and related views
+- `mart.alert_candidates` preview
 
-This check should pass before treating the V2 branch as ready for more automation work.
+`python scripts/run_daily_digest_dry_run.py` should verify:
 
-### 3. Daily Digest Dry-Run
-
-Run:
-
-```powershell
-python scripts/run_daily_digest_dry_run.py
-```
-
-This should verify:
-
-- PostgreSQL connection
+- DB connection
 - `mart.alert_candidates` exists
 - candidate count can be queried
-- preview JSON is written
-- preview HTML is written
+- preview JSON is generated
+- preview HTML is generated
 - no email is sent
 
 Expected generated files:
@@ -93,64 +99,20 @@ data/exports/email_digest_preview.json
 data/exports/email_digest_preview.html
 ```
 
-These generated preview files should remain uncommitted.
+Generated preview files must remain uncommitted.
 
-### 4. Operational Notices Route
+## n8n Dry-Run Direction
 
-The experimental `/api/notices` route should be verified separately from the V1 static JSON app path.
-
-Route intent:
-
-- Read `DATABASE_URL` only from the server/deployment environment.
-- Query the operational PostgreSQL view `mart.animals_clean`.
-- Return notice rows in a shape close to the static `animals.json` export.
-- Keep database secrets out of browser code.
-
-This route is not yet the primary PWA data source. V1 still reads static JSON first and falls back to mock data.
-
-## Alert Candidates And Digest Preview
-
-The V2 digest should be based on the SQL view:
-
-```text
-mart.alert_candidates
-```
-
-The current alert candidate logic is designed to select notice-level rows using:
-
-- active notice status
-- days until notice end
-- `긴급 확인` and `곧 종료` Rescue Window labels
-- Rescue Window Score
-- fallback top-scored notices when direct candidates are too few
-
-The email digest preview should stay preview-only until candidate quality, wording, and safety constraints are reviewed.
-
-Preview output should include:
-
-- generated timestamp
-- candidate count
-- notice number
-- animal kind and region
-- shelter name and contact fields when available
-- notice end date
-- Rescue Window Score
-- alert reason
-- official contact reminder
-- preview-only notice
-
-## n8n Direction
-
-Initial n8n work should remain local and non-sending.
+n8n is local/manual preview only.
 
 Recommended local flow:
 
 ```text
 n8n Manual Trigger
-→ HTTP Request to local dry-run bridge
-→ python scripts/run_daily_digest_dry_run.py
-→ preview JSON/HTML generated locally
-→ inspect result in n8n execution output
+-> HTTP Request to local dry-run bridge
+-> python scripts/run_daily_digest_dry_run.py
+-> preview JSON/HTML generated locally
+-> inspect result in n8n execution output
 ```
 
 The local bridge remains:
@@ -159,54 +121,65 @@ The local bridge remains:
 python scripts/serve_daily_digest_dry_run.py
 ```
 
-The n8n HTTP Request node can call:
+Typical n8n HTTP Request target:
 
 ```text
 POST http://host.docker.internal:8787/dry-run
 ```
 
-When HTML body testing is needed later, the bridge can include the generated HTML without sending email:
+Optional HTML payload testing:
 
 ```text
 POST http://host.docker.internal:8787/dry-run?include_html=true
 ```
 
-## Out Of Scope For V2 Foundation
+This still does not send email. It only returns generated preview HTML to the local n8n workflow.
 
-These are intentionally outside the current V2 foundation scope:
+## Relationship To Neon And Vercel
 
-- production auth
-- user accounts
-- subscription management
-- real email sending
-- real SMS sending
-- push notifications
-- unsubscribe flow
-- bounce handling
-- sender reputation management
+Neon/Vercel operational DB read path is part of V1.5:
+
+```text
+Neon PostgreSQL
+-> Vercel /api/notices
+-> React PWA
+```
+
+V2 digest preview is a separate local pipeline validation:
+
+```text
+Docker PostgreSQL
+-> mart.alert_candidates
+-> preview JSON/HTML
+-> optional n8n dry-run
+```
+
+Do not mix these responsibilities:
+
+- Vercel `/api/notices` proves the deployed app can read operational notice data.
+- V2 dry-run proves alert candidate selection and digest rendering can be generated locally.
+- Real public-data ingestion into Neon is a later task.
+- Real notification delivery is a later task.
+
+## Safety Boundaries
+
+- Do not commit `DATABASE_URL`, Neon passwords, service keys, SMTP credentials, OAuth tokens, or real recipient addresses.
+- Do not print secrets in logs.
+- Do not use Gmail OAuth, Google Cloud OAuth, Gmail SMTP, or app passwords for this branch.
+- Do not activate schedules or publish a production n8n workflow.
+- Do not treat Mailpit or local preview as external delivery readiness.
+- Keep generated files under `data/exports/` out of Git.
+- Keep V1.5 operational DB read path and fallback architecture intact.
+
+## Future Work
+
+V2+ candidates:
+
+- actual public-data ingestion into hosted Neon DB
+- hosted DB refresh strategy
+- saved notices
+- alert subscription design
+- consented recipient management
+- unsubscribe and bounce handling
+- production email provider evaluation
 - production monitoring
-- production incident alerting
-- public admin dashboard
-- automatic production deployment from n8n
-
-The first V2 target is digest preview correctness, not user-facing notification delivery.
-
-## Safety And Product Constraints
-
-- Shelter Signal is not an official risk scoring or adoption prediction system.
-- Rescue Window Score is an internal exploration signal only.
-- Digest language should avoid fear, guilt, or certainty about outcomes.
-- Official contact and final confirmation should always be directed to shelters or public agencies.
-- API keys, DB passwords, SMTP credentials, OAuth tokens, and real recipients must not be committed.
-- Failed V2 automation must not break the deployed V1 static PWA.
-
-## Practical Next Steps
-
-1. Sync `v2/n8n-email-alerts` with latest `main`.
-2. Start Docker Desktop.
-3. Run `python scripts/validate_pipeline.py`.
-4. Run `python scripts/run_daily_digest_dry_run.py`.
-5. Verify `/api/notices` locally or in a controlled deployment environment with `DATABASE_URL`.
-6. Review generated `email_digest_preview.json` and `email_digest_preview.html`.
-7. Keep email sending disabled until preview quality and safety language are approved.
-8. Decide later whether static JSON refresh should remain manual or become part of a controlled V2 workflow.

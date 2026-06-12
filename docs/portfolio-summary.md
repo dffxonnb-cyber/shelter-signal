@@ -4,64 +4,109 @@
 
 Shelter Signal
 
-배포 링크: https://shelter-signal-ebon.vercel.app/
-
-현재 배포된 앱은 공고 목록과 지역 신호에는 export된 정적 JSON 데이터를 사용하고, 선택 지역의 보호소 연락 맥락은 Vercel `/api/shelters` route가 data.go.kr 구조동물 공고 API에서 notice-derived summary로 제공합니다. 반응형 제품 랜딩 페이지와 앱 미리보기 형태로 정리했습니다.
+Production link: https://shelter-signal-ebon.vercel.app/
 
 ## Portfolio Card Copy
 
-“공공데이터 구조동물 공고에서 보호소 연락 맥락을 함께 정리하는 모바일 PWA”
+Shelter Signal is a portfolio-ready PWA prototype that turns rescued-animal public notices into a prioritized, mobile-first review experience with shelter/contact context.
+
+## V1.5 Summary
+
+Shelter Signal V1.5 is a public-data-based rescued-animal notice PWA with a verified operational database read path.
+
+The deployed app reads notice data through:
+
+```text
+Neon PostgreSQL
+-> Vercel /api/notices
+-> React PWA
+-> static JSON fallback
+-> mock fallback
+```
+
+Verified deployment state:
+
+```text
+/api/notices?limit=100
+ok=true
+source=operational-postgres
+notices=20
+```
+
+The current hosted data is based on local validation mock/export rows. Loading actual public-data rows into the hosted DB is a later step.
+
+Shelter contact context is handled separately through `/api/shelters`, which calls the data.go.kr rescued-animal notice API server-side and derives contact summaries from `careNm`, `careTel`, `careAddr`, and `orgNm`.
+
+## V2 Digest Preview Scope
+
+V2/n8n work is limited to local preview and dry-run validation.
+
+It may include:
+
+- `mart.alert_candidates` SQL candidate view
+- daily digest JSON/HTML preview
+- local dry-run script
+- local HTTP bridge for n8n HTTP Request testing
+- optional local-only Mailpit/manual test artifacts if already present
+
+It does not include:
+
+- real external email sending
+- SMTP/Gmail credentials
+- real recipients
+- subscriptions
+- auth
+- SMS
+- push notifications
+- production monitoring
+- activated production n8n schedules
 
 ## Screenshot References
 
-- 랜딩 히어로: `docs/screenshots/01-landing-hero.png`
-- 앱 preview 홈: `docs/screenshots/02-app-preview-home.png`
-- 골든타임: `docs/screenshots/03-golden-time.png`
-- 공고 필터: `docs/screenshots/04-notices-filter.png`
-- 지역 탐색: `docs/screenshots/05-region-explorer.png`
-- 상세 시트: `docs/screenshots/06-detail-sheet.png`
-- 데이터 파이프라인: `docs/screenshots/07-data-pipeline.png`
-
-## One-line Description
-
-Shelter Signal은 구조동물 공고의 보호 종료일과 데이터 신호를 기반으로, 먼저 확인해야 할 공고와 보호소 연락 맥락을 정리하는 공공데이터 기반 PWA입니다.
-
-## Problem
-
-구조동물 공고는 종료일, 지역, 보호소 연락처, 사진 여부 같은 정보가 흩어져 있어 사용자가 긴급하게 확인해야 할 공고를 빠르게 고르기 어렵습니다.
-
-## Solution
-
-공공데이터 API 또는 mock 데이터를 PostgreSQL에 적재하고, SQL 모델에서 Rescue Window Score와 summary view를 만든 뒤, 정적 JSON export를 통해 PWA가 공고 데이터를 읽도록 구성했습니다. 선택 지역의 보호소 연락 맥락은 Vercel 서버리스 함수가 data.go.kr 구조동물 공고 API를 호출하고 `careNm`, `careTel`, `careAddr`, `orgNm` 필드를 dedupe해 제공합니다. 현재 화면 구성은 제품 랜딩 페이지 안에 앱 미리보기를 배치하고, 홈 신호, 골든타임 공고, 필터, 표시 수 조절, 지역 신호 탐색기, 상세 시트를 보여줍니다.
+- Landing hero: `docs/screenshots/01-landing-hero.png`
+- App preview: `docs/screenshots/02-app-preview-home.png`
+- Golden time: `docs/screenshots/03-golden-time.png`
+- Notice filter: `docs/screenshots/04-notices-filter.png`
+- Region explorer: `docs/screenshots/05-region-explorer.png`
+- Detail sheet: `docs/screenshots/06-detail-sheet.png`
+- Data pipeline: `docs/screenshots/07-data-pipeline.png`
+- Operational DB badge: `docs/screenshots/08-operational-db-badge.png`
+- `/api/notices` operational response: `docs/screenshots/09-api-notices-operational-response.png`
 
 ## Technical Stack
 
 - Python
 - PostgreSQL
-- SQL migrations, models, tests
 - Docker Compose
+- Neon PostgreSQL
+- SQL migrations, models, and tests
 - Static JSON export
-- Vercel serverless API route
+- Vercel serverless API routes
 - Vite
 - React
 - TypeScript
 - PWA metadata and SVG brand assets
+- n8n preview/dry-run documentation
 
 ## Key Contribution
 
-데이터 파이프라인에서 사용자 화면까지 이어지는 전체 흐름을 직접 설계했습니다. 특히 공식 점수나 예측 모델이 아닌 내부 탐색 신호로 Rescue Window Score를 정의하고, 이를 앱의 우선순위 리스트와 지역 탐색 UX로 연결했습니다.
+This project connects data analysis, data modeling, backend API boundaries, and frontend product design into one portfolio artifact. It is not a generic CRUD demo: it defines a Rescue Window Score, models alert candidates in SQL, exports app-ready JSON, serves operational data through a serverless route, and keeps graceful fallbacks for portfolio reliability.
+
+In V1.5, the local Docker validation path and the hosted Neon read path are separated on purpose. That separation shows both data pipeline discipline and deployed product behavior without exposing database credentials to the browser.
 
 ## Why This Project Matters
 
-이 프로젝트는 공공데이터를 단순 조회 화면으로 끝내지 않고, 사용자가 “오늘 무엇을 먼저 확인해야 하는지” 판단할 수 있는 제품형 인터페이스로 바꾸는 실험입니다. 동시에 API 권한, 데이터 품질, fallback, 정적 export 같은 현실적인 제약을 드러낸 상태로 다룹니다.
+Shelter Signal turns public notices from a passive lookup table into a decision-support interface. Reviewers can quickly see which notices are time-sensitive, where they are concentrated, and what shelter/contact context is available.
 
-## Limitations
+The project also demonstrates practical constraints: public API permissions, imperfect source data, secret handling, operational DB failures, and fallback design.
 
-- Production-ready 서비스가 아닙니다.
-- 실사용자 계정과 저장 기능 persistence는 아직 없습니다.
-- email, SMS, n8n 자동화는 아직 구현하지 않았습니다.
-- 별도 shelter-center API는 403이 발생할 수 있어, V1은 구조동물 공고 API에서 보호소 연락 맥락을 추출합니다.
-- 보호소 목록은 전체 공식 보호소 디렉터리가 아니라 notice-derived contact summary입니다.
-- 현재 앱은 공고 목록과 지역 신호에 static JSON export를 우선 사용하고, 보호소 연락 맥락만 Vercel serverless API route로 확인합니다.
-- 이 V1 live API route에는 DB 연결이 필요하지 않습니다.
-- Rescue Window Score는 공식 위험 점수나 결과 예측 모델이 아니라 내부 우선순위 탐색 신호입니다.
+## Boundaries
+
+- Shelter Signal is not a production shelter service.
+- The shelter/contact summaries are notice-derived, not a complete official shelter directory.
+- Rescue Window Score is an internal exploration signal, not an official risk score or prediction model.
+- Current Neon data is mock/export based and contains 20 validation rows.
+- Actual public-data ingestion into the hosted DB is a future task.
+- V2 digest work is preview/dry-run only.
+- Real email/SMS/push/auth/subscription/monitoring are intentionally not implemented.
+- Secrets such as `DATABASE_URL`, Neon passwords, service keys, email credentials, and real recipients must never be committed or logged.

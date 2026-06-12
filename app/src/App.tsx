@@ -9,6 +9,7 @@ import { fallbackAppData, loadAppData } from "./data/exportedData";
 import type {
   AppDataSource,
   ExportedAppData,
+  FreshnessMeta,
   RegionSummaryRecord,
   RescueWindowSummaryRecord,
 } from "./data/exportedData";
@@ -21,15 +22,9 @@ import {
 } from "./data/shelters";
 
 type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
-type NoticeLimit = 5 | 10 | 20 | "all";
 
 const ALL_FILTER = "전체";
-const NOTICE_LIMIT_OPTIONS: Array<{ value: NoticeLimit; label: string }> = [
-  { value: 5, label: "5개" },
-  { value: 10, label: "10개" },
-  { value: 20, label: "20개" },
-  { value: "all", label: "전체" },
-];
+const NOTICE_PAGE_SIZE = 20;
 
 const viewItems: Array<{ key: ViewKey; label: string; testId: string }> = [
   { key: "overview", label: "홈", testId: "nav-home" },
@@ -131,7 +126,7 @@ function App() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [detailAnimalId]);
 
-  const animals = runtimeData.animals;
+  const animals = runtimeData.currentNotices;
 
   const animalTypes = useMemo(
     () => Array.from(new Set(animals.map((animal) => animal.animalType))),
@@ -154,12 +149,12 @@ function App() {
   const detailAnimal = detailAnimalId
     ? animals.find((animal) => animal.id === detailAnimalId)
     : undefined;
-  const activeAnimals = animals.filter((animal) => animal.processState.includes("보호"));
-  const urgentAnimals = animals.filter((animal) => animal.rescueWindowLabel === "긴급 확인");
-  const soonEndingAnimals = animals.filter((animal) => animal.rescueWindowLabel === "곧 종료");
-  const goldenTimeAnimals = sortedAnimals.filter((animal) =>
-    ["긴급 확인", "곧 종료"].includes(animal.rescueWindowLabel)
+  const activeAnimals = runtimeData.protectedAnimals;
+  const urgentAnimals = runtimeData.urgentNotices;
+  const soonEndingAnimals = urgentAnimals.filter(
+    (animal) => animal.daysUntilNoticeEnd >= 2 && animal.daysUntilNoticeEnd <= 3
   );
+  const goldenTimeAnimals = urgentAnimals;
   const topPriorityAnimals = (goldenTimeAnimals.length ? goldenTimeAnimals : sortedAnimals).slice(
     0,
     3
@@ -185,11 +180,20 @@ function App() {
         dataSource={runtimeData.source}
         errorMessage={runtimeData.errorMessage}
         animalCount={animals.length}
+        origin={runtimeData.meta.origin}
       />
 
       <AppNavigation activeView={activeView} placement="top" onChange={setActiveView} />
 
       <main className="app-main">
+        {runtimeData.source === "fallback" && <FallbackWarning />}
+        {runtimeData.source !== "loading" && (
+          <DataStatusPanel
+            meta={runtimeData.meta}
+            currentCount={animals.length}
+            urgentCount={urgentAnimals.length}
+          />
+        )}
         {activeView === "overview" && (
           <HomeScreen
             activeCount={activeAnimals.length}
@@ -199,6 +203,7 @@ function App() {
             topAnimals={topPriorityAnimals}
             regionSignals={regionSignals}
             rescueWindowSummaries={runtimeData.rescueWindowSummaries}
+            dataSource={runtimeData.source}
             onOpenGoldenTime={() => setActiveView("golden")}
             onOpenNotices={() => setActiveView("notices")}
             onOpenRegions={() => setActiveView("regions")}
@@ -209,6 +214,8 @@ function App() {
         {activeView === "golden" && (
           <GoldenTimeScreen
             animals={goldenTimeAnimals}
+            totalUrgentCount={runtimeData.meta.urgentCount ?? goldenTimeAnimals.length}
+            truncated={Boolean(runtimeData.meta.truncated)}
             selectedAnimalId={detailAnimal?.id}
             onSelect={openDetail}
           />
@@ -227,6 +234,8 @@ function App() {
             onRegionFilter={setRegionFilter}
             onResetFilters={resetFilters}
             onSelect={openDetail}
+            totalCurrentCount={runtimeData.meta.filteredCount ?? animals.length}
+            truncated={Boolean(runtimeData.meta.truncated)}
           />
         )}
         {activeView === "regions" && <RegionSummaryScreen regionSignals={regionSignals} />}
@@ -246,10 +255,12 @@ function AppHeader({
   dataSource,
   errorMessage,
   animalCount,
+  origin,
 }: {
   dataSource: DataSourceState;
   errorMessage?: string;
   animalCount: number;
+  origin: ExportedAppData["meta"]["origin"];
 }) {
   return (
     <header className="app-header">
@@ -260,8 +271,73 @@ function AppHeader({
           <p className="brand-tagline">구조동물 공고 기반 보호소 연락 맥락 PWA</p>
         </div>
       </div>
-      <DataSourceNote source={dataSource} errorMessage={errorMessage} animalCount={animalCount} />
+      <DataSourceNote
+        source={dataSource}
+        errorMessage={errorMessage}
+        animalCount={animalCount}
+        origin={origin}
+      />
     </header>
+  );
+}
+
+function FallbackWarning() {
+  return (
+    <aside className="fallback-warning" role="status">
+      공공데이터 API 응답이 불안정하여 샘플 데이터를 표시 중입니다. 실시간 공고가 아닐 수
+      있습니다.
+    </aside>
+  );
+}
+
+function DataStatusPanel({
+  meta,
+  currentCount,
+  urgentCount,
+}: {
+  meta: FreshnessMeta;
+  currentCount: number;
+  urgentCount: number;
+}) {
+  const statusItems = [
+    ["데이터 소스", meta.source === "api" ? "Live API" : "Fallback"],
+    ["조회 기간", `${meta.dateRange.bgnde} ~ ${meta.dateRange.endde}`],
+    ["수집 페이지 수", `${meta.pagesFetched ?? 0}페이지`],
+    ["현재 공고 수", `${meta.filteredCount ?? currentCount}건`],
+    ["종료 임박 공고 수", `${meta.urgentCount ?? urgentCount}건`],
+    ["마지막 갱신 시각", formatFetchedAt(meta.fetchedAt)],
+  ];
+
+  return (
+    <section
+      className={`data-status-panel ${meta.source === "fallback" ? "is-fallback" : "is-api"}`}
+      aria-label="공공데이터 수집 상태"
+      data-testid="data-status-panel"
+    >
+      <div className="data-status-heading">
+        <div>
+          <span className="section-kicker">API 상태</span>
+          <h2>공고 데이터 수집 현황</h2>
+        </div>
+        <span className={`source-badge ${meta.source === "api" ? "is-api" : "is-fallback"}`}>
+          {meta.source === "api" ? "Live API" : "Fallback"}
+        </span>
+      </div>
+      <dl className="data-status-grid">
+        {statusItems.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {meta.truncated && (
+        <p className="result-scope-note" role="status">
+          전체 조회 결과가 많아 화면에는 최대 {meta.viewLimit ?? currentCount}건만 제공합니다.
+          지역 필터와 더 보기를 사용해 필요한 공고를 먼저 확인해 주세요.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -299,6 +375,7 @@ function HomeScreen({
   topAnimals,
   regionSignals,
   rescueWindowSummaries,
+  dataSource,
   onOpenGoldenTime,
   onOpenNotices,
   onOpenRegions,
@@ -312,6 +389,7 @@ function HomeScreen({
   topAnimals: MockAnimal[];
   regionSignals: RegionSignal[];
   rescueWindowSummaries: RescueWindowSummaryRecord[];
+  dataSource: DataSourceState;
   onOpenGoldenTime: () => void;
   onOpenNotices: () => void;
   onOpenRegions: () => void;
@@ -346,7 +424,11 @@ function HomeScreen({
             <small>골든타임 공고</small>
           </div>
           <p className="hero-footnote">
-            공고 목록은 정적 JSON으로 시연하고, 보호소 연락 맥락은 서버리스 API로 확인합니다.
+            {dataSource === "api"
+              ? "공고 목록은 공공데이터 API의 현재 공고를 기준으로 표시합니다."
+              : dataSource === "loading"
+                ? "공공데이터 API의 최신 공고를 확인하고 있습니다."
+                : "현재 샘플 fallback 데이터를 표시 중이며 실시간 공고가 아닐 수 있습니다."}
           </p>
         </div>
       </section>
@@ -510,13 +592,36 @@ function PriorityAnimalList({
 
 function GoldenTimeScreen({
   animals,
+  totalUrgentCount,
+  truncated,
   selectedAnimalId,
   onSelect,
 }: {
   animals: MockAnimal[];
+  totalUrgentCount: number;
+  truncated: boolean;
   selectedAnimalId?: string;
   onSelect: (id: string) => void;
 }) {
+  const regions = useMemo(
+    () => Array.from(new Set(animals.map((animal) => animal.region))).sort(),
+    [animals]
+  );
+  const [regionFilter, setRegionFilter] = useState(ALL_FILTER);
+  const [visibleCount, setVisibleCount] = useState(NOTICE_PAGE_SIZE);
+  const filteredAnimals = useMemo(
+    () =>
+      regionFilter === ALL_FILTER
+        ? animals
+        : animals.filter((animal) => animal.region === regionFilter),
+    [animals, regionFilter]
+  );
+  const displayedAnimals = filteredAnimals.slice(0, visibleCount);
+
+  useEffect(() => {
+    setVisibleCount(NOTICE_PAGE_SIZE);
+  }, [regionFilter]);
+
   return (
     <div className="screen-stack" data-testid="screen-golden">
       <ScreenHeader
@@ -528,11 +633,36 @@ function GoldenTimeScreen({
         이 화면은 공고 확인 순서를 돕기 위한 탐색용입니다. 공식 문의와 최종 확인은 보호소
         또는 관할기관을 통해 진행해주세요.
       </section>
+      <section className="urgent-region-focus" aria-label="종료 임박 공고 지역 필터">
+        <div>
+          <strong>지역을 먼저 선택해 확인하세요</strong>
+          <p>D-Day부터 D-3까지의 공고를 종료일이 가까운 순서로 보여 줍니다.</p>
+        </div>
+        <FilterSelect
+          label="지역"
+          value={regionFilter}
+          options={[ALL_FILTER, ...regions]}
+          testId="urgent-filter-region"
+          onChange={setRegionFilter}
+        />
+      </section>
+      <ResultScopeNote
+        displayedCount={displayedAnimals.length}
+        resultCount={filteredAnimals.length}
+        totalCount={totalUrgentCount}
+        truncated={truncated}
+        label="종료 임박 공고"
+      />
       <AnimalCards
-        animals={animals}
+        animals={displayedAnimals}
         selectedAnimalId={selectedAnimalId}
         onSelect={onSelect}
         priority
+      />
+      <LoadMoreControl
+        displayedCount={displayedAnimals.length}
+        resultCount={filteredAnimals.length}
+        onLoadMore={() => setVisibleCount((count) => count + NOTICE_PAGE_SIZE)}
       />
     </div>
   );
@@ -551,6 +681,8 @@ function NoticeListScreen({
   onRegionFilter,
   onResetFilters,
   onSelect,
+  totalCurrentCount,
+  truncated,
 }: {
   animals: MockAnimal[];
   selectedAnimalId?: string;
@@ -564,17 +696,20 @@ function NoticeListScreen({
   onRegionFilter: (value: string) => void;
   onResetFilters: () => void;
   onSelect: (id: string) => void;
+  totalCurrentCount: number;
+  truncated: boolean;
 }) {
-  const [noticeLimit, setNoticeLimit] = useState<NoticeLimit>(10);
+  const [visibleCount, setVisibleCount] = useState(NOTICE_PAGE_SIZE);
   const activeFilters = [
+    ["지역", regionFilter],
     ["신호", labelFilter],
     ["축종", typeFilter],
-    ["지역", regionFilter],
   ].filter(([, value]) => value !== ALL_FILTER);
-  const displayedAnimals = useMemo(
-    () => limitNotices(animals, noticeLimit),
-    [animals, noticeLimit]
-  );
+  const displayedAnimals = animals.slice(0, visibleCount);
+
+  useEffect(() => {
+    setVisibleCount(NOTICE_PAGE_SIZE);
+  }, [labelFilter, regionFilter, typeFilter]);
 
   return (
     <div className="screen-stack" data-testid="screen-notices">
@@ -584,6 +719,13 @@ function NoticeListScreen({
         description="Rescue Window 라벨, 축종, 지역으로 필요한 공고만 좁혀볼 수 있어요."
       />
       <section className="filter-panel" aria-label="공고 필터">
+        <FilterSelect
+          label="지역"
+          value={regionFilter}
+          options={[ALL_FILTER, ...regions]}
+          testId="filter-region"
+          onChange={onRegionFilter}
+        />
         <FilterSelect
           label="Rescue Window"
           value={labelFilter}
@@ -597,13 +739,6 @@ function NoticeListScreen({
           options={[ALL_FILTER, ...animalTypes]}
           testId="filter-type"
           onChange={onTypeFilter}
-        />
-        <FilterSelect
-          label="지역"
-          value={regionFilter}
-          options={[ALL_FILTER, ...regions]}
-          testId="filter-region"
-          onChange={onRegionFilter}
         />
       </section>
       <div className="filter-summary" aria-live="polite">
@@ -624,55 +759,79 @@ function NoticeListScreen({
           <span>적용된 필터가 없습니다.</span>
         )}
       </div>
-      <NoticeDisplayControl
-        value={noticeLimit}
+      <ResultScopeNote
         resultCount={animals.length}
         displayedCount={displayedAnimals.length}
-        onChange={setNoticeLimit}
+        totalCount={totalCurrentCount}
+        truncated={truncated}
+        label="현재 공고"
       />
       <AnimalCards
         animals={displayedAnimals}
         selectedAnimalId={selectedAnimalId}
         onSelect={onSelect}
       />
+      <LoadMoreControl
+        displayedCount={displayedAnimals.length}
+        resultCount={animals.length}
+        onLoadMore={() => setVisibleCount((count) => count + NOTICE_PAGE_SIZE)}
+      />
     </div>
   );
 }
 
-function NoticeDisplayControl({
-  value,
+function ResultScopeNote({
   resultCount,
   displayedCount,
-  onChange,
+  totalCount,
+  truncated,
+  label,
 }: {
-  value: NoticeLimit;
   resultCount: number;
   displayedCount: number;
-  onChange: (value: NoticeLimit) => void;
+  totalCount: number;
+  truncated: boolean;
+  label: string;
 }) {
   return (
-    <section className="notice-display-control" aria-label="표시 공고 수">
+    <section className="notice-display-control" aria-label={`${label} 표시 범위`}>
       <div>
-        <strong>표시 수</strong>
-        <p>필터 결과 중 표시할 공고 수를 조정할 수 있어요.</p>
-      </div>
-      <div className="notice-limit-options" role="group" aria-label="표시할 공고 수 선택">
-        {NOTICE_LIMIT_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            className={value === option.value ? "is-active" : ""}
-            type="button"
-            data-testid={`notice-limit-${option.value}`}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
+        <strong>{label} 표시 범위</strong>
+        <p>
+          {truncated
+            ? `API 조회 결과 ${totalCount}건 중 화면 응답으로 제공된 ${resultCount}건을 탐색합니다.`
+            : `조회된 ${resultCount}건을 탐색합니다.`}
+        </p>
       </div>
       <span className="notice-display-count" aria-live="polite">
         {displayedCount}/{resultCount}건
       </span>
     </section>
+  );
+}
+
+function LoadMoreControl({
+  displayedCount,
+  resultCount,
+  onLoadMore,
+}: {
+  displayedCount: number;
+  resultCount: number;
+  onLoadMore: () => void;
+}) {
+  if (displayedCount >= resultCount) {
+    return null;
+  }
+
+  return (
+    <div className="load-more-control">
+      <button type="button" data-testid="load-more-notices" onClick={onLoadMore}>
+        공고 더 보기
+      </button>
+      <span>
+        {displayedCount}/{resultCount}건 표시 중
+      </span>
+    </div>
   );
 }
 
@@ -1139,14 +1298,16 @@ function DataSourceNote({
   source,
   errorMessage,
   animalCount,
+  origin,
 }: {
   source: DataSourceState;
   errorMessage?: string;
   animalCount: number;
+  origin: ExportedAppData["meta"]["origin"];
 }) {
   return (
     <p className={`data-note is-${source}`} aria-live="polite" title={errorMessage}>
-      {dataSourceCopy(source, animalCount)}
+      {dataSourceCopy(source, animalCount, origin)}
     </p>
   );
 }
@@ -1243,14 +1404,6 @@ function buildRegionSignals(
       ),
     }))
     .sort((a, b) => b.urgent - a.urgent || b.endingSoon - a.endingSoon || b.total - a.total);
-}
-
-function limitNotices(animals: MockAnimal[], limit: NoticeLimit): MockAnimal[] {
-  if (limit === "all") {
-    return animals;
-  }
-
-  return animals.slice(0, limit);
 }
 
 function summarizeRegionSignals(regionSignals: RegionSignal[]): RegionSignalTotals {
@@ -1420,17 +1573,39 @@ function signalStyle(urgent: number, endingSoon: number): CSSProperties & { "--s
   return { "--signal": `${value}%` };
 }
 
-function dataSourceCopy(source: DataSourceState, animalCount: number): string {
+function dataSourceCopy(
+  source: DataSourceState,
+  animalCount: number,
+  origin: ExportedAppData["meta"]["origin"]
+): string {
   if (source === "loading") {
-    return "Operational DB 확인 중";
+    return "최신 공고 확인 중";
   }
-  if (source === "operational") {
-    return `Operational DB · ${animalCount}건`;
+  if (source === "api") {
+    return `공공데이터 API · 현재 공고 ${animalCount}건`;
   }
-  if (source === "exported") {
-    return `Static export fallback · ${animalCount}건`;
+  const fallbackLabel =
+    origin === "operational-postgres"
+      ? "DB fallback"
+      : origin === "static-export"
+        ? "Static fallback"
+        : `Mock fallback · ${MOCK_REFERENCE_DATE}`;
+  return `${fallbackLabel} · 현재 공고 ${animalCount}건`;
+}
+
+function formatFetchedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
   }
-  return `Mock fallback · ${MOCK_REFERENCE_DATE}`;
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function labelClass(label: RescueWindowLabel) {
