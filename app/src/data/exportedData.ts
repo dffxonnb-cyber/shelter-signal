@@ -1,9 +1,17 @@
 import {
+  MOCK_REFERENCE_DATE,
   MockAnimal,
   RescueWindowLabel,
   mockAnimals,
-  rescueWindowLabels,
 } from "./mockAnimals";
+
+export type DeadlineStatus = NonNullable<MockAnimal["deadlineStatus"]>;
+export type AppDataSource = "api" | "fallback";
+export type AppDataOrigin =
+  | "public-api"
+  | "operational-postgres"
+  | "static-export"
+  | "mock";
 
 export interface ExportedAnimalRecord {
   desertion_no: string | null;
@@ -13,6 +21,8 @@ export interface ExportedAnimalRecord {
   notice_sdt: string | null;
   notice_edt: string | null;
   days_until_notice_end: number | null;
+  days_left: number | null;
+  deadline_status: DeadlineStatus | null;
   deadline_bucket: string | null;
   rescue_window_score: number | null;
   rescue_window_label: string | null;
@@ -59,35 +69,74 @@ export interface RescueWindowSummaryRecord {
   max_days_until_notice_end: number | null;
 }
 
-export interface ExportedAppData {
+export interface FreshnessMeta {
+  source: AppDataSource;
+  origin: AppDataOrigin;
+  fetchedAt: string;
+  dateRange: {
+    bgnde: string;
+    endde: string;
+    bgupd?: string;
+    enupd?: string;
+  };
+  state: string;
+  requestState?: string;
+  itemCount?: number;
+  filteredCount?: number;
+  returnedCount?: number;
+  urgentCount?: number;
+  pagesFetched?: number;
+  upstreamTotalCount?: number;
+  responseFormat?: string;
+  truncated?: boolean;
+  viewLimit?: number;
+  fallbackReason?: string;
+  warning?: string;
+}
+
+export interface NoticeViews {
+  currentNotices: MockAnimal[];
+  urgentNotices: MockAnimal[];
+  protectedAnimals: MockAnimal[];
+  expiredRecords: MockAnimal[];
+}
+
+export interface ExportedAppData extends NoticeViews {
   animals: MockAnimal[];
   regionSummaries: RegionSummaryRecord[];
   rescueWindowSummaries: RescueWindowSummaryRecord[];
+  meta: FreshnessMeta;
 }
-
-export type AppDataSource = "operational" | "exported" | "fallback";
 
 export interface LoadedAppData extends ExportedAppData {
   source: AppDataSource;
   errorMessage?: string;
 }
 
+const FALLBACK_WARNING =
+  "공공데이터 API 응답이 불안정하여 샘플 데이터를 표시 중입니다. 실시간 공고가 아닐 수 있습니다.";
+
 export async function loadAppData(): Promise<LoadedAppData> {
   const errors: string[] = [];
 
   try {
+    const operationalData = await loadOperationalAppData();
     return {
-      ...(await loadOperationalAppData()),
-      source: "operational",
+      ...operationalData,
+      source: operationalData.meta.source,
+      ...(operationalData.meta.warning
+        ? { errorMessage: operationalData.meta.warning }
+        : {}),
     };
   } catch (error) {
-    errors.push(`Operational DB unavailable: ${errorMessage(error)}`);
+    errors.push(`Notice API unavailable: ${errorMessage(error)}`);
   }
 
   try {
+    const exportedData = await loadExportedAppData();
     return {
-      ...(await loadExportedAppData()),
-      source: "exported",
+      ...exportedData,
+      source: "fallback",
       errorMessage: errors.join(" "),
     };
   } catch (error) {
@@ -102,26 +151,18 @@ export async function loadAppData(): Promise<LoadedAppData> {
 }
 
 export async function loadExportedAppData(): Promise<ExportedAppData> {
-  const [animalRows, regionSummaries, rescueWindowSummaries] = await Promise.all([
-    fetchJsonArray<unknown>("/data/animals.json"),
-    fetchJsonArray<RegionSummaryRecord>("/data/region_summary.json"),
-    fetchJsonArray<RescueWindowSummaryRecord>("/data/rescue_window_summary.json"),
-  ]);
+  const animalRows = await fetchJsonArray<unknown>("/data/animals.json");
+  const animals = animalRows.map((record, index) =>
+    toMockAnimalShape(normalizeAnimalRecord(record), index),
+  );
 
-  return {
-    animals: animalRows.map((record, index) =>
-      toMockAnimalShape(normalizeAnimalRecord(record), index)
-    ),
-    regionSummaries,
-    rescueWindowSummaries,
-  };
+  return buildAppData(animals, fallbackMeta("static-export"));
 }
 
-export const fallbackAppData: ExportedAppData = {
-  animals: mockAnimals,
-  regionSummaries: [],
-  rescueWindowSummaries: [],
-};
+export const fallbackAppData: ExportedAppData = buildAppData(
+  mockAnimals.map(refreshMockAnimal),
+  fallbackMeta("mock"),
+);
 
 async function fetchJsonArray<T>(path: string): Promise<T[]> {
   const response = await fetch(path, { cache: "no-store" });
@@ -137,17 +178,21 @@ async function fetchJsonArray<T>(path: string): Promise<T[]> {
 }
 
 async function loadOperationalAppData(): Promise<ExportedAppData> {
-  const notices = await fetchOperationalNotices();
+  const payload = await fetchOperationalNotices();
+  const views = normalizeApiViews(payload);
+  const meta = normalizeApiMeta(payload.meta, payload.source);
 
   return {
-    animals: notices.map((record, index) => toMockAnimalShape(record, index)),
+    animals: views.currentNotices,
+    ...views,
     regionSummaries: [],
     rescueWindowSummaries: [],
+    meta,
   };
 }
 
-async function fetchOperationalNotices(): Promise<ExportedAnimalRecord[]> {
-  const response = await fetch("/api/notices?limit=100", {
+async function fetchOperationalNotices(): Promise<Record<string, unknown>> {
+  const response = await fetch("/api/notices", {
     cache: "no-store",
     headers: { Accept: "application/json" },
   });
@@ -158,15 +203,90 @@ async function fetchOperationalNotices(): Promise<ExportedAnimalRecord[]> {
     throw new Error(code || "/api/notices did not return ok: true");
   }
 
+  return payload;
+}
+
+function normalizeApiViews(payload: Record<string, unknown>): NoticeViews {
+  if (isRecord(payload.views)) {
+    return {
+      currentNotices: normalizeAnimalArray(payload.views.currentNotices),
+      urgentNotices: normalizeAnimalArray(payload.views.urgentNotices),
+      protectedAnimals: normalizeAnimalArray(payload.views.protectedAnimals),
+      expiredRecords: normalizeAnimalArray(payload.views.expiredRecords),
+    };
+  }
+
   if (!Array.isArray(payload.notices)) {
-    throw new Error("/api/notices did not return a notices array");
+    throw new Error("/api/notices did not return notice views");
   }
 
-  if (!payload.notices.length) {
-    throw new Error("/api/notices returned an empty notices array");
-  }
+  const animals = normalizeAnimalArray(payload.notices);
+  return buildNoticeViews(animals);
+}
 
-  return payload.notices.map(normalizeAnimalRecord);
+function normalizeAnimalArray(value: unknown): MockAnimal[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((record, index) => toMockAnimalShape(normalizeAnimalRecord(record), index));
+}
+
+function normalizeApiMeta(value: unknown, sourceValue: unknown): FreshnessMeta {
+  const meta = isRecord(value) ? value : {};
+  const dateRange = isRecord(meta.dateRange) ? meta.dateRange : {};
+  const source: AppDataSource = sourceValue === "api" ? "api" : "fallback";
+  const originValue = textFromUnknown(meta.origin);
+  const origin: AppDataOrigin =
+    originValue === "public-api" || originValue === "operational-postgres"
+      ? originValue
+      : source === "api"
+        ? "public-api"
+        : "operational-postgres";
+
+  return {
+    source,
+    origin,
+    fetchedAt: textFromUnknown(meta.fetchedAt) || new Date().toISOString(),
+    dateRange: {
+      bgnde: normalizeDate(dateRange.bgnde) || rollingDateRange().bgnde,
+      endde: normalizeDate(dateRange.endde) || rollingDateRange().endde,
+      ...(normalizeDate(dateRange.bgupd) ? { bgupd: normalizeDate(dateRange.bgupd)! } : {}),
+      ...(normalizeDate(dateRange.enupd) ? { enupd: normalizeDate(dateRange.enupd)! } : {}),
+    },
+    state: textFromUnknown(meta.state) || "notice",
+    requestState: textFromUnknown(meta.requestState) || textFromUnknown(meta.state) || "notice",
+    ...(nullableNumber(meta.itemCount) !== null
+      ? { itemCount: nullableNumber(meta.itemCount)! }
+      : {}),
+    ...(nullableNumber(meta.filteredCount) !== null
+      ? { filteredCount: nullableNumber(meta.filteredCount)! }
+      : {}),
+    ...(nullableNumber(meta.returnedCount) !== null
+      ? { returnedCount: nullableNumber(meta.returnedCount)! }
+      : {}),
+    ...(nullableNumber(meta.urgentCount) !== null
+      ? { urgentCount: nullableNumber(meta.urgentCount)! }
+      : {}),
+    ...(nullableNumber(meta.pagesFetched) !== null
+      ? { pagesFetched: nullableNumber(meta.pagesFetched)! }
+      : {}),
+    ...(nullableNumber(meta.upstreamTotalCount) !== null
+      ? { upstreamTotalCount: nullableNumber(meta.upstreamTotalCount)! }
+      : {}),
+    ...(textFromUnknown(meta.responseFormat)
+      ? { responseFormat: textFromUnknown(meta.responseFormat) }
+      : {}),
+    ...(nullableBoolean(meta.truncated) !== null
+      ? { truncated: nullableBoolean(meta.truncated)! }
+      : {}),
+    ...(nullableNumber(meta.viewLimit) !== null
+      ? { viewLimit: nullableNumber(meta.viewLimit)! }
+      : {}),
+    ...(textFromUnknown(meta.fallbackReason)
+      ? { fallbackReason: textFromUnknown(meta.fallbackReason) }
+      : {}),
+    ...(textFromUnknown(meta.warning) ? { warning: textFromUnknown(meta.warning) } : {}),
+  };
 }
 
 async function parseJsonResponse(response: Response, label: string): Promise<unknown> {
@@ -182,7 +302,7 @@ async function parseJsonResponse(response: Response, label: string): Promise<unk
     const code = isRecord(payload) ? textFromUnknown(payload.code) : "";
     const message = isRecord(payload) ? textFromUnknown(payload.message) : "";
     throw new Error(
-      [label, `returned ${response.status}`, code, message].filter(Boolean).join(" ")
+      [label, `returned ${response.status}`, code, message].filter(Boolean).join(" "),
     );
   }
 
@@ -195,11 +315,13 @@ function normalizeAnimalRecord(value: unknown): ExportedAnimalRecord {
   return {
     desertion_no: nullableText(record.desertion_no),
     notice_no: nullableText(record.notice_no),
-    happen_dt: nullableText(record.happen_dt),
+    happen_dt: normalizeDate(record.happen_dt),
     happen_place: nullableText(record.happen_place),
-    notice_sdt: nullableText(record.notice_sdt),
-    notice_edt: nullableText(record.notice_edt),
+    notice_sdt: normalizeDate(record.notice_sdt),
+    notice_edt: normalizeDate(record.notice_edt),
     days_until_notice_end: nullableNumber(record.days_until_notice_end),
+    days_left: nullableNumber(record.days_left),
+    deadline_status: normalizeDeadlineStatus(record.deadline_status),
     deadline_bucket: nullableText(record.deadline_bucket),
     rescue_window_score: nullableNumber(record.rescue_window_score),
     rescue_window_label: nullableText(record.rescue_window_label),
@@ -225,12 +347,15 @@ function normalizeAnimalRecord(value: unknown): ExportedAnimalRecord {
 }
 
 function toMockAnimalShape(record: ExportedAnimalRecord, index: number): MockAnimal {
-  const label = normalizeLabel(record.rescue_window_label);
-  const score = numberOr(record.rescue_window_score, 0);
-  const daysUntilNoticeEnd = numberOr(record.days_until_notice_end, 0);
+  const noticeEndDate = textOr(record.notice_edt, "미상");
+  const daysUntilNoticeEnd =
+    noticeEndDate === "미상" ? -1 : differenceInDays(todayInSeoul(), noticeEndDate);
+  const deadlineStatus = deadlineStatusFor(daysUntilNoticeEnd);
+  const label = rescueWindowLabel(daysUntilNoticeEnd);
+  const hasPhoto = Boolean(record.has_photo || record.popfile1 || record.popfile2);
+  const hasCareTel = Boolean(record.has_care_tel || record.care_tel);
   const animalType = normalizeAnimalType(record.up_kind_nm);
   const breed = textOr(record.kind_nm, "품종 미상");
-  const hasPhoto = Boolean(record.has_photo);
 
   return {
     id: textOr(record.desertion_no, `exported-${index}`),
@@ -239,11 +364,12 @@ function toMockAnimalShape(record: ExportedAnimalRecord, index: number): MockAni
     happenDate: textOr(record.happen_dt, "미상"),
     happenPlace: textOr(record.happen_place, "발견 위치 미상"),
     noticeStartDate: textOr(record.notice_sdt, "미상"),
-    noticeEndDate: textOr(record.notice_edt, "미상"),
+    noticeEndDate,
     daysUntilNoticeEnd,
-    ddayText: formatDday(daysUntilNoticeEnd),
-    deadlineBucket: textOr(record.deadline_bucket, "미상"),
-    rescueWindowScore: score,
+    deadlineStatus,
+    ddayText: deadlineStatus,
+    deadlineBucket: deadlineStatus,
+    rescueWindowScore: rescueWindowScore(daysUntilNoticeEnd, hasPhoto, hasCareTel),
     rescueWindowLabel: label,
     animalType,
     breed,
@@ -264,8 +390,154 @@ function toMockAnimalShape(record: ExportedAnimalRecord, index: number): MockAni
   };
 }
 
-function normalizeLabel(value: string | null): RescueWindowLabel {
-  return rescueWindowLabels.find((label) => label === value) ?? "확인 필요";
+function refreshMockAnimal(animal: MockAnimal): MockAnimal {
+  const today = todayInSeoul();
+  const noticeEndDate = shiftDate(
+    today,
+    differenceInDays(MOCK_REFERENCE_DATE, animal.noticeEndDate),
+  );
+  const noticeStartDate = shiftDate(
+    today,
+    differenceInDays(MOCK_REFERENCE_DATE, animal.noticeStartDate),
+  );
+  const happenDate = shiftDate(
+    today,
+    differenceInDays(MOCK_REFERENCE_DATE, animal.happenDate),
+  );
+  const daysUntilNoticeEnd = differenceInDays(today, noticeEndDate);
+  const deadlineStatus = deadlineStatusFor(daysUntilNoticeEnd);
+  const hasCareTel = Boolean(animal.shelterTel);
+
+  return {
+    ...animal,
+    happenDate,
+    noticeStartDate,
+    noticeEndDate,
+    daysUntilNoticeEnd,
+    deadlineStatus,
+    ddayText: deadlineStatus,
+    deadlineBucket: deadlineStatus,
+    rescueWindowScore: rescueWindowScore(daysUntilNoticeEnd, animal.hasPhoto, hasCareTel),
+    rescueWindowLabel: rescueWindowLabel(daysUntilNoticeEnd),
+  };
+}
+
+function buildAppData(animals: MockAnimal[], meta: FreshnessMeta): ExportedAppData {
+  const views = buildNoticeViews(animals);
+  return {
+    animals: views.currentNotices,
+    ...views,
+    regionSummaries: [],
+    rescueWindowSummaries: [],
+    meta: {
+      ...meta,
+      requestState: meta.requestState || meta.state,
+      itemCount: meta.itemCount ?? animals.length,
+      filteredCount: meta.filteredCount ?? views.currentNotices.length,
+      returnedCount: meta.returnedCount ?? views.currentNotices.length,
+      urgentCount: meta.urgentCount ?? views.urgentNotices.length,
+      pagesFetched: meta.pagesFetched ?? 0,
+      upstreamTotalCount: meta.upstreamTotalCount ?? animals.length,
+      responseFormat: meta.responseFormat || "fallback",
+      truncated: meta.truncated ?? false,
+      viewLimit: meta.viewLimit ?? views.currentNotices.length,
+    },
+  };
+}
+
+function buildNoticeViews(animals: MockAnimal[]): NoticeViews {
+  const currentNotices = animals
+    .filter(
+      (animal) =>
+        animal.deadlineStatus !== "expired" && !animal.processState.startsWith("종료"),
+    )
+    .sort(compareDeadline);
+  return {
+    currentNotices,
+    urgentNotices: currentNotices
+      .filter((animal) => animal.daysUntilNoticeEnd >= 0 && animal.daysUntilNoticeEnd <= 3)
+      .sort(compareDeadline),
+    protectedAnimals: currentNotices.filter((animal) => animal.processState.includes("보호")),
+    expiredRecords: animals
+      .filter(
+        (animal) =>
+          animal.deadlineStatus === "expired" || animal.processState.startsWith("종료"),
+      )
+      .sort(compareDeadline),
+  };
+}
+
+function compareDeadline(a: MockAnimal, b: MockAnimal): number {
+  return a.noticeEndDate.localeCompare(b.noticeEndDate) || a.id.localeCompare(b.id);
+}
+
+function fallbackMeta(origin: "static-export" | "mock"): FreshnessMeta {
+  return {
+    source: "fallback",
+    origin,
+    fetchedAt: new Date().toISOString(),
+    dateRange: rollingDateRange(),
+    state: "notice",
+    warning: FALLBACK_WARNING,
+  };
+}
+
+function rollingDateRange(): { bgnde: string; endde: string } {
+  const endde = todayInSeoul();
+  return {
+    bgnde: shiftDate(endde, -30),
+    endde,
+  };
+}
+
+function normalizeDeadlineStatus(value: unknown): DeadlineStatus | null {
+  const status = textFromUnknown(value);
+  if (
+    status === "D-Day" ||
+    status === "D-1" ||
+    status === "D-2" ||
+    status === "D-3" ||
+    status === "active" ||
+    status === "expired"
+  ) {
+    return status;
+  }
+  return null;
+}
+
+function deadlineStatusFor(daysLeft: number): DeadlineStatus {
+  if (daysLeft < 0) {
+    return "expired";
+  }
+  if (daysLeft === 0) {
+    return "D-Day";
+  }
+  if (daysLeft <= 3) {
+    return `D-${daysLeft}` as DeadlineStatus;
+  }
+  return "active";
+}
+
+function rescueWindowLabel(daysLeft: number): RescueWindowLabel {
+  if (daysLeft < 0) {
+    return "종료/확인 필요";
+  }
+  if (daysLeft <= 1) {
+    return "긴급 확인";
+  }
+  if (daysLeft <= 3) {
+    return "곧 종료";
+  }
+  if (daysLeft <= 7) {
+    return "확인 필요";
+  }
+  return "여유 있음";
+}
+
+function rescueWindowScore(daysLeft: number, hasPhoto: boolean, hasCareTel: boolean): number {
+  const baseScore =
+    daysLeft < 0 ? 0 : daysLeft <= 1 ? 80 : daysLeft <= 3 ? 65 : daysLeft <= 7 ? 45 : 25;
+  return Math.min(100, baseScore + (hasPhoto ? 0 : 10) + (hasCareTel ? 0 : 10));
 }
 
 function normalizeAnimalType(value: string | null): MockAnimal["animalType"] {
@@ -273,16 +545,6 @@ function normalizeAnimalType(value: string | null): MockAnimal["animalType"] {
     return value;
   }
   return "기타축종";
-}
-
-function formatDday(days: number): string {
-  if (days === 0) {
-    return "D-Day";
-  }
-  if (days > 0) {
-    return `D-${days}`;
-  }
-  return `D+${Math.abs(days)}`;
 }
 
 function formatSex(value: string | null): string {
@@ -299,9 +561,6 @@ function formatNeuter(value: string | null): string {
   if (value === "Y") {
     return "중성화";
   }
-  if (value === "N") {
-    return "미상";
-  }
   return "미상";
 }
 
@@ -313,13 +572,48 @@ function photoToneFor(index: number, hasPhoto: boolean): MockAnimal["photoTone"]
   return tones[index % tones.length];
 }
 
+function todayInSeoul(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function shiftDate(date: string, days: number): string {
+  const shifted = new Date(`${date}T00:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}
+
+function differenceInDays(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00Z`).getTime();
+  const end = new Date(`${endDate}T00:00:00Z`).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    return -1;
+  }
+  return Math.round((end - start) / 86_400_000);
+}
+
+function normalizeDate(value: unknown): string | null {
+  const text = textFromUnknown(value);
+  const digits = text.replace(/\D/g, "");
+  if (digits.length !== 8) {
+    return null;
+  }
+  const normalized = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  const date = new Date(`${normalized}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === normalized
+    ? normalized
+    : null;
+}
+
 function textOr(value: string | null, fallback: string): string {
   const text = value?.trim();
   return text || fallback;
-}
-
-function numberOr(value: number | null, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function nullableText(value: unknown): string | null {

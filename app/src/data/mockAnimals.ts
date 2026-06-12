@@ -5,6 +5,8 @@ export type RescueWindowLabel =
   | "여유 있음"
   | "종료/확인 필요";
 
+export type DeadlineStatus = "D-Day" | "D-1" | "D-2" | "D-3" | "active" | "expired";
+
 export interface MockAnimal {
   id: string;
   desertionNo: string;
@@ -14,6 +16,7 @@ export interface MockAnimal {
   noticeStartDate: string;
   noticeEndDate: string;
   daysUntilNoticeEnd: number;
+  deadlineStatus?: DeadlineStatus;
   ddayText: string;
   deadlineBucket: string;
   rescueWindowScore: number;

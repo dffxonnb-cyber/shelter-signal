@@ -196,13 +196,7 @@ select:focus-visible {
   white-space: nowrap;
 }
 
-.data-note.is-exported {
-  border-color: var(--color-border);
-  background: rgba(238, 244, 239, 0.54);
-  color: var(--color-muted-strong);
-}
-
-.data-note.is-operational {
+.data-note.is-api {
   border-color: #b8d4cb;
   background: #e6f4ef;
   color: #245f52;
@@ -212,6 +206,102 @@ select:focus-visible {
   border-color: #dfc79d;
   background: #fff7e5;
   color: #715035;
+}
+
+.fallback-warning {
+  padding: 10px 12px;
+  border: 1px solid #dfc79d;
+  border-radius: var(--radius-sm);
+  background: #fff7e5;
+  color: #715035;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.data-status-panel {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.data-status-panel.is-api {
+  border-color: #b8d4cb;
+}
+
+.data-status-panel.is-fallback {
+  border-color: #dfc79d;
+  background: #fffaf0;
+}
+
+.data-status-heading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.data-status-heading h2 {
+  margin-top: 3px;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.source-badge {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.source-badge.is-api {
+  background: #e6f4ef;
+  color: #245f52;
+}
+
+.source-badge.is-fallback {
+  background: #fff0cf;
+  color: #715035;
+}
+
+.data-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.data-status-grid div {
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+}
+
+.data-status-grid dt {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.data-status-grid dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--color-primary);
+  font-size: 0.79rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.result-scope-note {
+  color: var(--color-muted-strong);
+  font-size: 0.77rem;
+  line-height: 1.55;
+  word-break: keep-all;
 }
 
 .app-nav {
@@ -266,6 +356,7 @@ select:focus-visible {
 .filter-panel,
 .filter-summary,
 .notice-display-control,
+.urgent-region-focus,
 .region-explorer,
 .selected-region-panel,
 .shelter-data-panel,
@@ -769,6 +860,25 @@ select:focus-visible {
   background: var(--color-surface);
 }
 
+.urgent-region-focus {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: var(--color-primary-soft);
+}
+
+.urgent-region-focus strong {
+  color: var(--color-primary);
+  font-size: 0.9rem;
+}
+
+.urgent-region-focus p {
+  margin-top: 4px;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .notice-display-control strong {
   color: var(--color-text);
   font-size: 0.9rem;
@@ -811,6 +921,37 @@ select:focus-visible {
 .notice-display-count {
   color: var(--color-muted);
   font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.load-more-control {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 4px 0 8px;
+}
+
+.load-more-control button {
+  min-width: 160px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 0.84rem;
+  font-weight: 760;
+}
+
+.load-more-control button:hover,
+.load-more-control button:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.load-more-control span {
+  color: var(--color-muted);
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
@@ -1647,6 +1788,15 @@ select:focus-visible {
   .notice-display-control {
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
+  }
+
+  .data-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .urgent-region-focus {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 0.7fr);
+    align-items: end;
   }
 
   .filter-panel .filter-control:first-child {
