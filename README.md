@@ -245,8 +245,10 @@ page = 1..N
 limit = 20 by default, capped at 100
 ```
 
-Region matching normalizes common Korean short and administrative names and
-checks normalized `orgNm`, `careAddr`, `happenPlace`, and `careNm` fields.
+Region matching normalizes common Korean short and administrative names. It uses
+the leading administrative region in `orgNm` first, then checks `happenPlace`,
+`careAddr`, and `careNm` only when a higher-priority field has no recognizable
+region.
 Pagination metadata includes `limit`, `page`, `returnedCount`,
 `totalFilteredCount`, `hasMore`, and `nextPage`.
 

@@ -730,49 +730,66 @@ function matchesNoticeFilters(notice: NoticeRecord, filters: NoticeFilters): boo
 }
 
 function matchesRegion(notice: NoticeRecord, region: string): boolean {
-  const searchTerms = regionSearchTerms(region);
-  if (!searchTerms.length) {
-    return true;
-  }
-
-  const primaryText = [notice.org_nm, notice.happen_place]
-    .map(normalizeRegionText)
-    .filter(Boolean)
-    .join(" ");
-  if (searchTerms.some((term) => primaryText.includes(term))) {
-    return true;
-  }
-  if (containsKnownRegion(primaryText)) {
+  const requestedRegion = canonicalRegion(region);
+  if (requestedRegion) {
+    for (const field of [
+      notice.org_nm,
+      notice.happen_place,
+      notice.care_addr,
+      notice.care_nm,
+    ]) {
+      const detectedRegion = canonicalRegionFromField(field);
+      if (detectedRegion) {
+        return detectedRegion === requestedRegion;
+      }
+    }
     return false;
   }
 
-  const fallbackText = [notice.care_addr, notice.care_nm]
+  const searchTerm = normalizeRegionText(region);
+  if (!searchTerm) {
+    return true;
+  }
+
+  const organization = normalizeRegionText(notice.org_nm);
+  if (organization.includes(searchTerm)) {
+    return true;
+  }
+  if (organization) {
+    return false;
+  }
+
+  return [notice.happen_place, notice.care_addr, notice.care_nm]
     .map(normalizeRegionText)
-    .filter(Boolean)
-    .join(" ");
-  return searchTerms.some((term) => fallbackText.includes(term));
+    .some((value) => value.startsWith(searchTerm));
 }
 
-function regionSearchTerms(region: string): string[] {
+function canonicalRegion(region: string): string | null {
   const normalized = normalizeRegionText(region);
   if (!normalized) {
-    return [];
+    return null;
   }
 
   const aliases = KOREAN_REGION_ALIASES.find((group) =>
     group.some((alias) => normalized === normalizeRegionText(alias)),
   );
-  return Array.from(new Set((aliases || [region]).map(normalizeRegionText).filter(Boolean)));
+  return aliases?.[0] || null;
+}
+
+function canonicalRegionFromField(value: unknown): string | null {
+  const normalized = normalizeRegionText(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const aliases = KOREAN_REGION_ALIASES.find((group) =>
+    group.some((alias) => normalized.startsWith(normalizeRegionText(alias))),
+  );
+  return aliases?.[0] || null;
 }
 
 function normalizeRegionText(value: unknown): string {
   return textFromUnknown(value).toLowerCase().replace(/[\s·,.\-()]/g, "");
-}
-
-function containsKnownRegion(value: string): boolean {
-  return KOREAN_REGION_ALIASES.flat().some((alias) =>
-    value.includes(normalizeRegionText(alias)),
-  );
 }
 
 function compareUrgency(a: NoticeRecord, b: NoticeRecord): number {

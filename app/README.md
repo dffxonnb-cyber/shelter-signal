@@ -38,8 +38,9 @@ view, region, and page filters.
 
 `view` supports `current`, `urgent`, `protected`, and `archive`. `limit`
 defaults to 20 and is capped at 100. Region matching accepts common Korean
-variants such as `서울`/`서울특별시` and checks `orgNm`, `careAddr`,
-`happenPlace`, and `careNm`.
+variants such as `서울`/`서울특별시`. It treats the leading administrative
+region in `orgNm` as authoritative, then checks `happenPlace`, `careAddr`, and
+`careNm` only when higher-priority fields do not identify a region.
 
 If the public API fails, the route can query `mart.animals_clean` as a clearly
 labeled fallback. If the route is unavailable, the frontend tries static JSON and
