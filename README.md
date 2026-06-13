@@ -233,8 +233,22 @@ overridden through the internal `/api/notices` query string. `numOfRows` is capp
 at `1000`. For the default `pageNo=1` request, the server follows the upstream
 `totalCount` across up to 10 pages before sorting by deadline. The rolling
 notice-start window reduces old upstream rows, while `state=notice` requests
-currently announced notices. API responses expose at most 500 records per view
-to stay below serverless response-size limits; full counts remain in metadata.
+currently announced notices. The response layer then applies server-side view,
+region, and page filters instead of sending thousands of rows to the browser.
+
+Supported response-layer query parameters:
+
+```text
+view = current | urgent | protected | archive
+region = 서울 | 서울특별시 | 경기 | 경기도 | ...
+page = 1..N
+limit = 20 by default, capped at 100
+```
+
+Region matching normalizes common Korean short and administrative names and
+checks normalized `orgNm`, `careAddr`, `happenPlace`, and `careNm` fields.
+Pagination metadata includes `limit`, `page`, `returnedCount`,
+`totalFilteredCount`, `hasMore`, and `nextPage`.
 
 The route treats `noticeEdt` as the public notice end date. It recalculates
 `days_left` against the current `Asia/Seoul` date and derives
@@ -277,8 +291,14 @@ silently switch to stale samples.
 Safe `/api/notices` metadata includes `source`, `fetchedAt`, `dateRange`,
 `requestState`, `itemCount`, `filteredCount`, `returnedCount`, `urgentCount`,
 `pagesFetched`, `upstreamTotalCount`, `responseFormat`, `truncated`, `viewLimit`,
-and `fallbackReason` when applicable. No service key or upstream URL containing
-the service key is returned or logged.
+`totalFilteredCount`, `hasMore`, `nextPage`, and `fallbackReason` when
+applicable. No service key or upstream URL containing the service key is returned
+or logged.
+
+Large public API results are not rendered at once. Region changes request a new
+server-filtered first page, and `공고 더 보기` requests the next server page.
+A valid region/view query with zero rows remains `source: "api"` with a normal
+empty state. Fallback is reserved for upstream failure or an unusable response.
 
 Known public API limitations:
 
@@ -286,6 +306,9 @@ Known public API limitations:
   responses can make the live request unavailable.
 - A single upstream request is capped at `1000` rows. The route follows up to 10
   pages, so unusually large date ranges can still be truncated.
+- Page and region filters are applied after the server collects the available
+  upstream window. An uncached filtered request can therefore still require
+  several public API calls.
 - `state=notice` and `noticeEdt` reflect public-source fields, but agencies can
   update notice/process state on their own schedule.
 - Notice-derived shelter contact data is not a complete official shelter directory.

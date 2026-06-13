@@ -28,8 +28,18 @@ The route treats `noticeEdt` as the public notice end date, recalculates
 It returns separate `currentNotices`, `urgentNotices`, `protectedAnimals`, and
 optional `expiredRecords` views. Urgent notices have `days_left` between `0` and
 `3` and are sorted by `days_left` and then `noticeEdt` ascending. The server
-follows upstream pagination across up to 10 pages, then returns at most 500 rows
-per UI view to keep the serverless response safely sized.
+follows upstream pagination across up to 10 pages, then applies response-layer
+view, region, and page filters.
+
+```text
+/api/notices?view=current&region=경기&page=1&limit=20
+/api/notices?view=urgent&region=서울&page=1&limit=20
+```
+
+`view` supports `current`, `urgent`, `protected`, and `archive`. `limit`
+defaults to 20 and is capped at 100. Region matching accepts common Korean
+variants such as `서울`/`서울특별시` and checks `orgNm`, `careAddr`,
+`happenPlace`, and `careNm`.
 
 If the public API fails, the route can query `mart.animals_clean` as a clearly
 labeled fallback. If the route is unavailable, the frontend tries static JSON and
@@ -54,16 +64,23 @@ Fallback metadata uses `source: "fallback"`, an ISO `fetchedAt`, the rolling
 Safe response diagnostics include `source`, `fetchedAt`, `dateRange`,
 `requestState`, `itemCount`, `filteredCount`, `returnedCount`, `urgentCount`,
 `pagesFetched`, `upstreamTotalCount`, `responseFormat`, `truncated`, `viewLimit`,
-and `fallbackReason`.
+`totalFilteredCount`, `hasMore`, `nextPage`, and `fallbackReason`.
 
 The UI renders those diagnostics in a compact Korean-first status panel. Notice
-lists start with 20 rows, support incremental "공고 더 보기", and clearly explain
-when the server response is capped at 500 rows. The urgent view puts the region
-filter before the list and preserves `days_left` ascending order.
+lists start with a server-filtered 20-row page. Region changes request page 1
+again, while "공고 더 보기" requests and appends the next server page. The urgent
+view puts the region filter before the list and preserves `days_left` ascending
+order. Thousands of public rows are not rendered at once.
+
+A valid live query with no rows remains `source: "api"` and shows a normal empty
+state. It never triggers sample fallback. Fallback remains limited to live API
+failure or unusable upstream data and is always explicitly labeled.
 
 Known limitations: the public API can be affected by service approval, quotas,
 intermittent non-JSON errors, and agency update timing. Each upstream page is
-capped at 1000 rows and the route follows at most 10 pages.
+capped at 1000 rows and the route follows at most 10 pages. Response pagination
+is applied after collecting the available upstream window, so an uncached
+filtered request can still call several upstream pages.
 
 Shelter/contact context is handled separately through `/api/shelters`. That route calls the data.go.kr rescued-animal notice API server-side and derives shelter summaries from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`. It is notice-derived context, not a complete official shelter directory.
 
