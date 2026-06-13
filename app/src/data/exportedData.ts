@@ -7,6 +7,7 @@ import {
 
 export type DeadlineStatus = NonNullable<MockAnimal["deadlineStatus"]>;
 export type AppDataSource = "api" | "fallback";
+export type NoticeView = "current" | "urgent" | "protected" | "archive";
 export type AppDataOrigin =
   | "public-api"
   | "operational-postgres"
@@ -81,9 +82,16 @@ export interface FreshnessMeta {
   };
   state: string;
   requestState?: string;
+  view?: NoticeView;
+  region?: string;
+  limit?: number;
+  page?: number;
   itemCount?: number;
   filteredCount?: number;
   returnedCount?: number;
+  totalFilteredCount?: number;
+  hasMore?: boolean;
+  nextPage?: number;
   urgentCount?: number;
   pagesFetched?: number;
   upstreamTotalCount?: number;
@@ -92,6 +100,12 @@ export interface FreshnessMeta {
   viewLimit?: number;
   fallbackReason?: string;
   warning?: string;
+  counts?: {
+    current: number;
+    urgent: number;
+    protected: number;
+    expired: number;
+  };
 }
 
 export interface NoticeViews {
@@ -111,6 +125,21 @@ export interface ExportedAppData extends NoticeViews {
 export interface LoadedAppData extends ExportedAppData {
   source: AppDataSource;
   errorMessage?: string;
+}
+
+export interface NoticePageQuery {
+  view: NoticeView;
+  region?: string;
+  animalType?: string;
+  rescueWindowLabel?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface LoadedNoticePage {
+  notices: MockAnimal[];
+  meta: FreshnessMeta;
+  source: AppDataSource;
 }
 
 const FALLBACK_WARNING =
@@ -178,7 +207,7 @@ async function fetchJsonArray<T>(path: string): Promise<T[]> {
 }
 
 async function loadOperationalAppData(): Promise<ExportedAppData> {
-  const payload = await fetchOperationalNotices();
+  const payload = await fetchOperationalNotices({ view: "current", limit: 20 });
   const views = normalizeApiViews(payload);
   const meta = normalizeApiMeta(payload.meta, payload.source);
 
@@ -191,12 +220,33 @@ async function loadOperationalAppData(): Promise<ExportedAppData> {
   };
 }
 
-async function fetchOperationalNotices(): Promise<Record<string, unknown>> {
-  const response = await fetch("/api/notices", {
+export async function loadNoticePage(query: NoticePageQuery): Promise<LoadedNoticePage> {
+  const payload = await fetchOperationalNotices(query);
+  const source: AppDataSource = payload.source === "api" ? "api" : "fallback";
+  return {
+    notices: normalizeAnimalArray(payload.notices),
+    meta: normalizeApiMeta(payload.meta, payload.source),
+    source,
+  };
+}
+
+async function fetchOperationalNotices(
+  query: Partial<NoticePageQuery> = {},
+): Promise<Record<string, unknown>> {
+  const params = new URLSearchParams();
+  if (query.view) params.set("view", query.view);
+  if (query.region) params.set("region", query.region);
+  if (query.animalType) params.set("animalType", query.animalType);
+  if (query.rescueWindowLabel) params.set("rescueWindowLabel", query.rescueWindowLabel);
+  if (query.page) params.set("page", String(query.page));
+  if (query.limit) params.set("limit", String(query.limit));
+  const queryString = params.toString();
+  const path = `/api/notices${queryString ? `?${queryString}` : ""}`;
+  const response = await fetch(path, {
     cache: "no-store",
     headers: { Accept: "application/json" },
   });
-  const payload = await parseJsonResponse(response, "/api/notices");
+  const payload = await parseJsonResponse(response, path);
 
   if (!isRecord(payload) || payload.ok !== true) {
     const code = isRecord(payload) ? textFromUnknown(payload.code) : "";
@@ -255,6 +305,10 @@ function normalizeApiMeta(value: unknown, sourceValue: unknown): FreshnessMeta {
     },
     state: textFromUnknown(meta.state) || "notice",
     requestState: textFromUnknown(meta.requestState) || textFromUnknown(meta.state) || "notice",
+    view: normalizeNoticeView(meta.view),
+    ...(textFromUnknown(meta.region) ? { region: textFromUnknown(meta.region) } : {}),
+    ...(nullableNumber(meta.limit) !== null ? { limit: nullableNumber(meta.limit)! } : {}),
+    ...(nullableNumber(meta.page) !== null ? { page: nullableNumber(meta.page)! } : {}),
     ...(nullableNumber(meta.itemCount) !== null
       ? { itemCount: nullableNumber(meta.itemCount)! }
       : {}),
@@ -263,6 +317,15 @@ function normalizeApiMeta(value: unknown, sourceValue: unknown): FreshnessMeta {
       : {}),
     ...(nullableNumber(meta.returnedCount) !== null
       ? { returnedCount: nullableNumber(meta.returnedCount)! }
+      : {}),
+    ...(nullableNumber(meta.totalFilteredCount) !== null
+      ? { totalFilteredCount: nullableNumber(meta.totalFilteredCount)! }
+      : {}),
+    ...(nullableBoolean(meta.hasMore) !== null
+      ? { hasMore: nullableBoolean(meta.hasMore)! }
+      : {}),
+    ...(nullableNumber(meta.nextPage) !== null
+      ? { nextPage: nullableNumber(meta.nextPage)! }
       : {}),
     ...(nullableNumber(meta.urgentCount) !== null
       ? { urgentCount: nullableNumber(meta.urgentCount)! }
@@ -286,6 +349,7 @@ function normalizeApiMeta(value: unknown, sourceValue: unknown): FreshnessMeta {
       ? { fallbackReason: textFromUnknown(meta.fallbackReason) }
       : {}),
     ...(textFromUnknown(meta.warning) ? { warning: textFromUnknown(meta.warning) } : {}),
+    ...(normalizeCounts(meta.counts) ? { counts: normalizeCounts(meta.counts)! } : {}),
   };
 }
 
@@ -432,15 +496,27 @@ function buildAppData(animals: MockAnimal[], meta: FreshnessMeta): ExportedAppDa
     meta: {
       ...meta,
       requestState: meta.requestState || meta.state,
+      view: meta.view || "current",
+      limit: meta.limit ?? views.currentNotices.length,
+      page: meta.page ?? 1,
       itemCount: meta.itemCount ?? animals.length,
       filteredCount: meta.filteredCount ?? views.currentNotices.length,
       returnedCount: meta.returnedCount ?? views.currentNotices.length,
+      totalFilteredCount: meta.totalFilteredCount ?? views.currentNotices.length,
+      hasMore: meta.hasMore ?? false,
       urgentCount: meta.urgentCount ?? views.urgentNotices.length,
       pagesFetched: meta.pagesFetched ?? 0,
       upstreamTotalCount: meta.upstreamTotalCount ?? animals.length,
       responseFormat: meta.responseFormat || "fallback",
       truncated: meta.truncated ?? false,
       viewLimit: meta.viewLimit ?? views.currentNotices.length,
+      counts:
+        meta.counts ?? {
+          current: views.currentNotices.length,
+          urgent: views.urgentNotices.length,
+          protected: views.protectedAnimals.length,
+          expired: views.expiredRecords.length,
+        },
     },
   };
 }
@@ -503,6 +579,26 @@ function normalizeDeadlineStatus(value: unknown): DeadlineStatus | null {
     return status;
   }
   return null;
+}
+
+function normalizeNoticeView(value: unknown): NoticeView {
+  const view = textFromUnknown(value);
+  if (view === "urgent" || view === "protected" || view === "archive") {
+    return view;
+  }
+  return "current";
+}
+
+function normalizeCounts(value: unknown): FreshnessMeta["counts"] | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  return {
+    current: nullableNumber(value.current) ?? 0,
+    urgent: nullableNumber(value.urgent) ?? 0,
+    protected: nullableNumber(value.protected) ?? 0,
+    expired: nullableNumber(value.expired) ?? 0,
+  };
 }
 
 function deadlineStatusFor(daysLeft: number): DeadlineStatus {

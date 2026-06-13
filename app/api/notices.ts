@@ -2,6 +2,7 @@ import { Pool } from "pg";
 
 type QueryValue = string | string[] | undefined;
 type NoticeSource = "api" | "fallback";
+type NoticeView = "current" | "urgent" | "protected" | "archive";
 type DeadlineStatus = "D-Day" | "D-1" | "D-2" | "D-3" | "active" | "expired";
 type FallbackReason =
   | "missing_service_key"
@@ -35,6 +36,9 @@ interface RequestOptions {
   enupd?: string;
   pageNo: number;
   numOfRows: number;
+  view: NoticeView;
+  page: number;
+  limit: number;
   includeExpired: boolean;
   filters: NoticeFilters;
 }
@@ -62,9 +66,16 @@ interface NoticeMeta {
   requestState: string;
   pageNo: number;
   numOfRows: number;
+  view: NoticeView;
+  region?: string;
+  limit: number;
+  page: number;
   itemCount: number;
   filteredCount: number;
   returnedCount: number;
+  totalFilteredCount: number;
+  hasMore: boolean;
+  nextPage?: number;
   urgentCount: number;
   pagesFetched: number;
   upstreamTotalCount: number;
@@ -123,6 +134,14 @@ interface NoticeDiagnostics {
   fallbackReason?: FallbackReason;
 }
 
+interface PaginatedViews {
+  views: NoticeViews;
+  notices: NoticeRecord[];
+  totalFilteredCount: number;
+  hasMore: boolean;
+  nextPage?: number;
+}
+
 const PUBLIC_API_URL =
   "https://apis.data.go.kr/1543061/abandonmentPublicService_v2/abandonmentPublic_v2";
 const FALLBACK_WARNING =
@@ -130,9 +149,30 @@ const FALLBACK_WARNING =
 const DEFAULT_NUM_OF_ROWS = 1000;
 const MAX_NUM_OF_ROWS = 1000;
 const MAX_UPSTREAM_PAGES = 10;
-const MAX_VIEW_ROWS = 500;
+const DEFAULT_PAGE_LIMIT = 20;
+const MAX_PAGE_LIMIT = 100;
+const MAX_DATABASE_ROWS = 10_000;
 const DEFAULT_STATE = "notice";
 const SEOUL_TIME_ZONE = "Asia/Seoul";
+const KOREAN_REGION_ALIASES = [
+  ["서울", "서울특별시"],
+  ["경기", "경기도"],
+  ["인천", "인천광역시"],
+  ["부산", "부산광역시"],
+  ["대구", "대구광역시"],
+  ["광주", "광주광역시"],
+  ["대전", "대전광역시"],
+  ["울산", "울산광역시"],
+  ["세종", "세종특별자치시", "세종시"],
+  ["강원", "강원특별자치도", "강원도"],
+  ["충북", "충청북도"],
+  ["충남", "충청남도"],
+  ["전북", "전북특별자치도", "전라북도"],
+  ["전남", "전라남도"],
+  ["경북", "경상북도"],
+  ["경남", "경상남도"],
+  ["제주", "제주특별자치도", "제주도"],
+];
 
 let cachedPool: Pool | null = null;
 let cachedDatabaseUrl: string | null = null;
@@ -177,18 +217,19 @@ export default async function handler(
           records.some((record) => Boolean(record.notice_edt));
 
         if (hasUsableDates) {
-          const views = buildViews(records, options.includeExpired, options.filters);
+          const allViews = buildViews(records, options.includeExpired, options.filters);
+          const pageResult = paginateViews(allViews, options);
 
           res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=900");
           res.status(200).json({
             ok: true,
-            notices: views.currentNotices,
-            views,
+            notices: pageResult.notices,
+            views: pageResult.views,
             source: "api",
-            meta: buildMeta("api", "public-api", options, views, {
+            meta: buildMeta("api", "public-api", options, allViews, pageResult, {
               itemCount: upstreamResult.items.length,
-              filteredCount: countCurrentNotices(records, options.filters),
-              urgentCount: countUrgentNotices(records, options.filters),
+              filteredCount: allViews.currentNotices.length,
+              urgentCount: allViews.urgentNotices.length,
               pagesFetched: upstreamResult.pagesFetched,
               upstreamTotalCount: upstreamResult.totalCount,
               responseFormat: upstreamResult.responseFormat,
@@ -229,24 +270,26 @@ export default async function handler(
 
   try {
     const records = await fetchDatabaseFallback(databaseUrl, options, today);
-    const views = buildViews(records, options.includeExpired, options.filters);
+    const allViews = buildViews(records, options.includeExpired, options.filters);
+    const pageResult = paginateViews(allViews, options);
     console.warn("[notices-api] using PostgreSQL fallback", upstreamError);
 
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     res.status(200).json({
       ok: true,
-      notices: views.currentNotices,
-      views,
+      notices: pageResult.notices,
+      views: pageResult.views,
       source: "fallback",
       meta: buildMeta(
         "fallback",
         "operational-postgres",
         options,
-        views,
+        allViews,
+        pageResult,
         {
           itemCount: records.length,
-          filteredCount: countCurrentNotices(records, options.filters),
-          urgentCount: countUrgentNotices(records, options.filters),
+          filteredCount: allViews.currentNotices.length,
+          urgentCount: allViews.urgentNotices.length,
           pagesFetched: 0,
           upstreamTotalCount: 0,
           responseFormat: "fallback",
@@ -281,7 +324,12 @@ function parseRequestOptions(
     ...optionalDateQuery("enupd", query.enupd),
     pageNo: parsePositiveInteger(query.pageNo, 1, 1_000_000),
     numOfRows: parsePositiveInteger(query.numOfRows, DEFAULT_NUM_OF_ROWS, MAX_NUM_OF_ROWS),
-    includeExpired: firstQueryValue(query.includeExpired) === "true",
+    view: parseNoticeView(query.view),
+    page: parsePositiveInteger(query.page, 1, 1_000_000),
+    limit: parsePositiveInteger(query.limit, DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT),
+    includeExpired:
+      firstQueryValue(query.includeExpired) === "true" ||
+      parseNoticeView(query.view) === "archive",
     filters: parseFilters(query),
   };
 }
@@ -505,7 +553,6 @@ function buildNoticesQuery(
   const values: Array<string | number> = [];
   const whereClauses: string[] = [];
 
-  addExactFilter(whereClauses, values, "org_nm", options.filters.region);
   addExactFilter(whereClauses, values, "up_kind_nm", options.filters.animalType);
   addExactFilter(
     whereClauses,
@@ -523,7 +570,7 @@ function buildNoticesQuery(
     whereClauses.push(`notice_edt >= $${values.length}::date`);
   }
 
-  values.push(options.numOfRows);
+  values.push(MAX_DATABASE_ROWS);
   const limitPlaceholder = `$${values.length}`;
 
   const sql = `
@@ -602,17 +649,15 @@ function buildViews(
         !textFromUnknown(notice.process_state).startsWith("종료"),
     )
     .sort(compareNoticeDeadline);
-  const currentNotices = currentCandidates.slice(0, MAX_VIEW_ROWS);
+  const currentNotices = currentCandidates;
   const urgentNotices = currentCandidates
     .filter((notice) => {
       const daysLeft = numberFromUnknown(notice.days_left);
       return daysLeft >= 0 && daysLeft <= 3;
     })
-    .sort(compareUrgency)
-    .slice(0, MAX_VIEW_ROWS);
+    .sort(compareUrgency);
   const protectedAnimals = currentCandidates
-    .filter((notice) => textFromUnknown(notice.process_state).includes("보호"))
-    .slice(0, MAX_VIEW_ROWS);
+    .filter((notice) => textFromUnknown(notice.process_state).includes("보호"));
   const expiredRecords = includeExpired
     ? filteredRecords
         .filter(
@@ -621,7 +666,6 @@ function buildViews(
             textFromUnknown(notice.process_state).startsWith("종료"),
         )
         .sort(compareNoticeDeadline)
-        .slice(0, MAX_VIEW_ROWS)
     : [];
 
   return {
@@ -632,34 +676,102 @@ function buildViews(
   };
 }
 
-function countCurrentNotices(records: NoticeRecord[], filters: NoticeFilters): number {
-  return records.filter(
-    (notice) =>
-      matchesNoticeFilters(notice, filters) &&
-      notice.deadline_status !== "expired" &&
-      !textFromUnknown(notice.process_state).startsWith("종료"),
-  ).length;
+function paginateViews(views: NoticeViews, options: RequestOptions): PaginatedViews {
+  const selected = selectedView(views, options.view);
+  const offset = (options.page - 1) * options.limit;
+  const notices = selected.slice(offset, offset + options.limit);
+  const hasMore = offset + notices.length < selected.length;
+  const paginatedViews: NoticeViews = {
+    currentNotices: [],
+    urgentNotices: [],
+    protectedAnimals: [],
+    expiredRecords: [],
+  };
+
+  if (options.view === "current") {
+    paginatedViews.currentNotices = notices;
+  } else if (options.view === "urgent") {
+    paginatedViews.urgentNotices = notices;
+  } else if (options.view === "protected") {
+    paginatedViews.protectedAnimals = notices;
+  } else {
+    paginatedViews.expiredRecords = notices;
+  }
+
+  return {
+    views: paginatedViews,
+    notices,
+    totalFilteredCount: selected.length,
+    hasMore,
+    ...(hasMore ? { nextPage: options.page + 1 } : {}),
+  };
 }
 
-function countUrgentNotices(records: NoticeRecord[], filters: NoticeFilters): number {
-  return records.filter((notice) => {
-    const daysLeft = numberFromUnknown(notice.days_left);
-    return (
-      matchesNoticeFilters(notice, filters) &&
-      notice.deadline_status !== "expired" &&
-      !textFromUnknown(notice.process_state).startsWith("종료") &&
-      daysLeft >= 0 &&
-      daysLeft <= 3
-    );
-  }).length;
+function selectedView(views: NoticeViews, view: NoticeView): NoticeRecord[] {
+  if (view === "urgent") {
+    return views.urgentNotices;
+  }
+  if (view === "protected") {
+    return views.protectedAnimals;
+  }
+  if (view === "archive") {
+    return views.expiredRecords;
+  }
+  return views.currentNotices;
 }
 
 function matchesNoticeFilters(notice: NoticeRecord, filters: NoticeFilters): boolean {
   return (
-    (!filters.region || textFromUnknown(notice.org_nm) === filters.region) &&
+    (!filters.region || matchesRegion(notice, filters.region)) &&
     (!filters.animalType || textFromUnknown(notice.up_kind_nm) === filters.animalType) &&
     (!filters.rescueWindowLabel ||
       textFromUnknown(notice.rescue_window_label) === filters.rescueWindowLabel)
+  );
+}
+
+function matchesRegion(notice: NoticeRecord, region: string): boolean {
+  const searchTerms = regionSearchTerms(region);
+  if (!searchTerms.length) {
+    return true;
+  }
+
+  const primaryText = [notice.org_nm, notice.happen_place]
+    .map(normalizeRegionText)
+    .filter(Boolean)
+    .join(" ");
+  if (searchTerms.some((term) => primaryText.includes(term))) {
+    return true;
+  }
+  if (containsKnownRegion(primaryText)) {
+    return false;
+  }
+
+  const fallbackText = [notice.care_addr, notice.care_nm]
+    .map(normalizeRegionText)
+    .filter(Boolean)
+    .join(" ");
+  return searchTerms.some((term) => fallbackText.includes(term));
+}
+
+function regionSearchTerms(region: string): string[] {
+  const normalized = normalizeRegionText(region);
+  if (!normalized) {
+    return [];
+  }
+
+  const aliases = KOREAN_REGION_ALIASES.find((group) =>
+    group.some((alias) => normalized === normalizeRegionText(alias)),
+  );
+  return Array.from(new Set((aliases || [region]).map(normalizeRegionText).filter(Boolean)));
+}
+
+function normalizeRegionText(value: unknown): string {
+  return textFromUnknown(value).toLowerCase().replace(/[\s·,.\-()]/g, "");
+}
+
+function containsKnownRegion(value: string): boolean {
+  return KOREAN_REGION_ALIASES.flat().some((alias) =>
+    value.includes(normalizeRegionText(alias)),
   );
 }
 
@@ -682,6 +794,7 @@ function buildMeta(
   origin: NoticeMeta["origin"],
   options: RequestOptions,
   views: NoticeViews,
+  pageResult: PaginatedViews,
   diagnostics: NoticeDiagnostics,
   warning?: string,
 ): NoticeMeta {
@@ -699,18 +812,22 @@ function buildMeta(
     requestState: options.state,
     pageNo: options.pageNo,
     numOfRows: options.numOfRows,
+    view: options.view,
+    ...(options.filters.region ? { region: options.filters.region } : {}),
+    limit: options.limit,
+    page: options.page,
     itemCount: diagnostics.itemCount,
     filteredCount: diagnostics.filteredCount,
-    returnedCount: views.currentNotices.length,
+    returnedCount: pageResult.notices.length,
+    totalFilteredCount: pageResult.totalFilteredCount,
+    hasMore: pageResult.hasMore,
+    ...(pageResult.nextPage ? { nextPage: pageResult.nextPage } : {}),
     urgentCount: diagnostics.urgentCount,
     pagesFetched: diagnostics.pagesFetched,
     upstreamTotalCount: diagnostics.upstreamTotalCount,
     responseFormat: diagnostics.responseFormat,
-    truncated:
-      diagnostics.truncated ||
-      diagnostics.filteredCount > views.currentNotices.length ||
-      diagnostics.urgentCount > views.urgentNotices.length,
-    viewLimit: MAX_VIEW_ROWS,
+    truncated: diagnostics.truncated,
+    viewLimit: options.limit,
     ...(diagnostics.fallbackReason
       ? { fallbackReason: diagnostics.fallbackReason }
       : {}),
@@ -764,6 +881,14 @@ function parsePositiveInteger(
     return fallback;
   }
   return Math.min(parsed, maximum);
+}
+
+function parseNoticeView(value: QueryValue): NoticeView {
+  const view = firstQueryValue(value);
+  if (view === "urgent" || view === "protected" || view === "archive") {
+    return view;
+  }
+  return "current";
 }
 
 function parseDateQuery(value: QueryValue, fallback: string): string {

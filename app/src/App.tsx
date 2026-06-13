@@ -5,7 +5,7 @@ import {
   RescueWindowLabel,
   rescueWindowLabels,
 } from "./data/mockAnimals";
-import { fallbackAppData, loadAppData } from "./data/exportedData";
+import { fallbackAppData, loadAppData, loadNoticePage } from "./data/exportedData";
 import type {
   AppDataSource,
   ExportedAppData,
@@ -25,6 +25,25 @@ type ViewKey = "overview" | "golden" | "notices" | "regions" | "saved";
 
 const ALL_FILTER = "전체";
 const NOTICE_PAGE_SIZE = 20;
+const REGION_FILTER_OPTIONS = [
+  "서울",
+  "경기",
+  "인천",
+  "부산",
+  "대구",
+  "광주",
+  "대전",
+  "울산",
+  "세종",
+  "강원",
+  "충북",
+  "충남",
+  "전북",
+  "전남",
+  "경북",
+  "경남",
+  "제주",
+];
 
 const viewItems: Array<{ key: ViewKey; label: string; testId: string }> = [
   { key: "overview", label: "홈", testId: "nav-home" },
@@ -48,6 +67,15 @@ type ShelterLoadState = "idle" | "loading" | "success" | "error";
 interface RuntimeAppData extends ExportedAppData {
   source: DataSourceState;
   errorMessage?: string;
+}
+
+interface PagedNoticeState {
+  animals: MockAnimal[];
+  meta: FreshnessMeta;
+  source: DataSourceState;
+  loading: boolean;
+  errorMessage?: string;
+  loadMore: () => void;
 }
 
 interface RegionSignal {
@@ -77,11 +105,168 @@ interface RegionSelectorGroup {
   districts: RegionDistrictOption[];
 }
 
+function usePagedNotices({
+  view,
+  region,
+  animalType = ALL_FILTER,
+  rescueWindowLabel = ALL_FILTER,
+  seedAnimals,
+  seedMeta,
+  seedSource,
+  enabled,
+}: {
+  view: "current" | "urgent";
+  region: string;
+  animalType?: string;
+  rescueWindowLabel?: string;
+  seedAnimals: MockAnimal[];
+  seedMeta: FreshnessMeta;
+  seedSource: DataSourceState;
+  enabled: boolean;
+}): PagedNoticeState {
+  const [state, setState] = useState<Omit<PagedNoticeState, "loadMore">>({
+    animals: seedAnimals,
+    meta: seedMeta,
+    source: seedSource,
+    loading: false,
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    let isMounted = true;
+    setState((current) => ({ ...current, loading: true }));
+    loadNoticePage({
+      view,
+      region: optionalFilterValue(region),
+      animalType: optionalFilterValue(animalType),
+      rescueWindowLabel: optionalFilterValue(rescueWindowLabel),
+      page: 1,
+      limit: NOTICE_PAGE_SIZE,
+    })
+      .then((result) => {
+        if (!isMounted) return;
+        setState({
+          animals: result.notices,
+          meta: result.meta,
+          source: result.source,
+          loading: false,
+        });
+      })
+      .catch((error: unknown) => {
+        if (!isMounted) return;
+        const fallbackAnimals = filterFallbackNotices(
+          seedAnimals,
+          view,
+          region,
+          animalType,
+          rescueWindowLabel
+        ).slice(0, NOTICE_PAGE_SIZE);
+        setState({
+          animals: fallbackAnimals,
+          meta: {
+            ...seedMeta,
+            source: "fallback",
+            view,
+            ...(optionalFilterValue(region) ? { region } : {}),
+            limit: NOTICE_PAGE_SIZE,
+            page: 1,
+            returnedCount: fallbackAnimals.length,
+            totalFilteredCount: fallbackAnimals.length,
+            hasMore: false,
+          },
+          source: "fallback",
+          loading: false,
+          errorMessage: error instanceof Error ? error.message : "notice page load failed",
+        });
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    animalType,
+    enabled,
+    region,
+    rescueWindowLabel,
+    seedAnimals,
+    seedMeta,
+    view,
+  ]);
+
+  const loadMore = () => {
+    if (state.loading || !state.meta.hasMore || !state.meta.nextPage) {
+      return;
+    }
+    setState((current) => ({ ...current, loading: true }));
+    loadNoticePage({
+      view,
+      region: optionalFilterValue(region),
+      animalType: optionalFilterValue(animalType),
+      rescueWindowLabel: optionalFilterValue(rescueWindowLabel),
+      page: state.meta.nextPage,
+      limit: NOTICE_PAGE_SIZE,
+    })
+      .then((result) => {
+        setState((current) => ({
+          animals:
+            current.source === result.source
+              ? mergeNoticePages(current.animals, result.notices)
+              : result.notices,
+          meta: result.meta,
+          source: result.source,
+          loading: false,
+        }));
+      })
+      .catch((error: unknown) => {
+        setState((current) => ({
+          ...current,
+          loading: false,
+          errorMessage: error instanceof Error ? error.message : "notice page load failed",
+        }));
+      });
+  };
+
+  return { ...state, loadMore };
+}
+
+function optionalFilterValue(value: string): string | undefined {
+  return value === ALL_FILTER ? undefined : value;
+}
+
+function filterFallbackNotices(
+  animals: MockAnimal[],
+  view: "current" | "urgent",
+  region: string,
+  animalType: string,
+  rescueWindowLabel: string
+): MockAnimal[] {
+  return animals
+    .filter((animal) =>
+      view === "urgent"
+        ? animal.daysUntilNoticeEnd >= 0 && animal.daysUntilNoticeEnd <= 3
+        : animal.deadlineStatus !== "expired"
+    )
+    .filter((animal) => (region === ALL_FILTER ? true : animal.region.includes(region)))
+    .filter((animal) => (animalType === ALL_FILTER ? true : animal.animalType === animalType))
+    .filter((animal) =>
+      rescueWindowLabel === ALL_FILTER ? true : animal.rescueWindowLabel === rescueWindowLabel
+    )
+    .sort((a, b) => a.daysUntilNoticeEnd - b.daysUntilNoticeEnd || a.id.localeCompare(b.id));
+}
+
+function mergeNoticePages(current: MockAnimal[], next: MockAnimal[]): MockAnimal[] {
+  return Array.from(new Map([...current, ...next].map((animal) => [animal.id, animal])).values());
+}
+
 function App() {
   const [activeView, setActiveView] = useState<ViewKey>("overview");
   const [labelFilter, setLabelFilter] = useState(ALL_FILTER);
   const [typeFilter, setTypeFilter] = useState(ALL_FILTER);
   const [regionFilter, setRegionFilter] = useState(ALL_FILTER);
+  const [urgentRegionFilter, setUrgentRegionFilter] = useState(ALL_FILTER);
   const [detailAnimalId, setDetailAnimalId] = useState<string | null>(null);
   const [runtimeData, setRuntimeData] = useState<RuntimeAppData>({
     ...fallbackAppData,
@@ -128,29 +313,36 @@ function App() {
 
   const animals = runtimeData.currentNotices;
 
-  const animalTypes = useMemo(
-    () => Array.from(new Set(animals.map((animal) => animal.animalType))),
-    [animals]
-  );
-  const regions = useMemo(
-    () => Array.from(new Set(animals.map((animal) => animal.region))).sort(),
-    [animals]
-  );
+  const animalTypes: MockAnimal["animalType"][] = ["개", "고양이", "기타축종"];
+  const regions = REGION_FILTER_OPTIONS;
   const sortedAnimals = useMemo(() => sortByWindow(animals), [animals]);
-  const filteredAnimals = useMemo(() => {
-    return sortedAnimals
-      .filter((animal) =>
-        labelFilter === ALL_FILTER ? true : animal.rescueWindowLabel === labelFilter
-      )
-      .filter((animal) => (typeFilter === ALL_FILTER ? true : animal.animalType === typeFilter))
-      .filter((animal) => (regionFilter === ALL_FILTER ? true : animal.region === regionFilter));
-  }, [labelFilter, regionFilter, sortedAnimals, typeFilter]);
+  const noticePage = usePagedNotices({
+    view: "current",
+    region: regionFilter,
+    animalType: typeFilter,
+    rescueWindowLabel: labelFilter,
+    seedAnimals: runtimeData.currentNotices,
+    seedMeta: runtimeData.meta,
+    seedSource: runtimeData.source,
+    enabled: runtimeData.source !== "loading",
+  });
+  const urgentPage = usePagedNotices({
+    view: "urgent",
+    region: urgentRegionFilter,
+    seedAnimals: runtimeData.urgentNotices,
+    seedMeta: runtimeData.meta,
+    seedSource: runtimeData.source,
+    enabled: runtimeData.source !== "loading" && activeView === "golden",
+  });
 
   const detailAnimal = detailAnimalId
-    ? animals.find((animal) => animal.id === detailAnimalId)
+    ? [...animals, ...noticePage.animals, ...urgentPage.animals].find(
+        (animal) => animal.id === detailAnimalId
+      )
     : undefined;
-  const activeAnimals = runtimeData.protectedAnimals;
-  const urgentAnimals = runtimeData.urgentNotices;
+  const urgentAnimals = animals.filter(
+    (animal) => animal.daysUntilNoticeEnd >= 0 && animal.daysUntilNoticeEnd <= 3
+  );
   const soonEndingAnimals = urgentAnimals.filter(
     (animal) => animal.daysUntilNoticeEnd >= 2 && animal.daysUntilNoticeEnd <= 3
   );
@@ -163,6 +355,8 @@ function App() {
     () => buildRegionSignals(animals, runtimeData.regionSummaries),
     [animals, runtimeData.regionSummaries]
   );
+  const activeDataState =
+    activeView === "golden" ? urgentPage : activeView === "notices" ? noticePage : runtimeData;
 
   const resetFilters = () => {
     setLabelFilter(ALL_FILTER);
@@ -179,27 +373,27 @@ function App() {
       <AppHeader
         dataSource={runtimeData.source}
         errorMessage={runtimeData.errorMessage}
-        animalCount={animals.length}
+        animalCount={runtimeData.meta.filteredCount ?? animals.length}
         origin={runtimeData.meta.origin}
       />
 
       <AppNavigation activeView={activeView} placement="top" onChange={setActiveView} />
 
       <main className="app-main">
-        {runtimeData.source === "fallback" && <FallbackWarning />}
-        {runtimeData.source !== "loading" && (
+        {activeDataState.source === "fallback" && <FallbackWarning />}
+        {activeDataState.source !== "loading" && (
           <DataStatusPanel
-            meta={runtimeData.meta}
-            currentCount={animals.length}
-            urgentCount={urgentAnimals.length}
+            meta={activeDataState.meta}
+            currentCount={activeDataState.animals.length}
+            urgentCount={activeDataState.meta.urgentCount ?? urgentAnimals.length}
           />
         )}
         {activeView === "overview" && (
           <HomeScreen
-            activeCount={activeAnimals.length}
-            urgentCount={urgentAnimals.length}
+            activeCount={runtimeData.meta.counts?.protected ?? 0}
+            urgentCount={runtimeData.meta.urgentCount ?? urgentAnimals.length}
             soonEndingCount={soonEndingAnimals.length}
-            goldenCount={goldenTimeAnimals.length}
+            goldenCount={runtimeData.meta.urgentCount ?? goldenTimeAnimals.length}
             topAnimals={topPriorityAnimals}
             regionSignals={regionSignals}
             rescueWindowSummaries={runtimeData.rescueWindowSummaries}
@@ -213,16 +407,20 @@ function App() {
         )}
         {activeView === "golden" && (
           <GoldenTimeScreen
-            animals={goldenTimeAnimals}
-            totalUrgentCount={runtimeData.meta.urgentCount ?? goldenTimeAnimals.length}
-            truncated={Boolean(runtimeData.meta.truncated)}
+            animals={urgentPage.animals}
+            regionFilter={urgentRegionFilter}
+            regions={regions}
+            meta={urgentPage.meta}
+            loading={urgentPage.loading}
             selectedAnimalId={detailAnimal?.id}
+            onRegionFilter={setUrgentRegionFilter}
+            onLoadMore={urgentPage.loadMore}
             onSelect={openDetail}
           />
         )}
         {activeView === "notices" && (
           <NoticeListScreen
-            animals={filteredAnimals}
+            animals={noticePage.animals}
             selectedAnimalId={detailAnimal?.id}
             labelFilter={labelFilter}
             typeFilter={typeFilter}
@@ -234,8 +432,9 @@ function App() {
             onRegionFilter={setRegionFilter}
             onResetFilters={resetFilters}
             onSelect={openDetail}
-            totalCurrentCount={runtimeData.meta.filteredCount ?? animals.length}
-            truncated={Boolean(runtimeData.meta.truncated)}
+            meta={noticePage.meta}
+            loading={noticePage.loading}
+            onLoadMore={noticePage.loadMore}
           />
         )}
         {activeView === "regions" && <RegionSummaryScreen regionSignals={regionSignals} />}
@@ -302,8 +501,10 @@ function DataStatusPanel({
   const statusItems = [
     ["데이터 소스", meta.source === "api" ? "Live API" : "Fallback"],
     ["조회 기간", `${meta.dateRange.bgnde} ~ ${meta.dateRange.endde}`],
+    ["선택 지역", meta.region || "전체"],
     ["수집 페이지 수", `${meta.pagesFetched ?? 0}페이지`],
-    ["현재 공고 수", `${meta.filteredCount ?? currentCount}건`],
+    ["조회 결과", `${meta.totalFilteredCount ?? meta.filteredCount ?? currentCount}건`],
+    ["현재 표시", `${currentCount}건`],
     ["종료 임박 공고 수", `${meta.urgentCount ?? urgentCount}건`],
     ["마지막 갱신 시각", formatFetchedAt(meta.fetchedAt)],
   ];
@@ -331,10 +532,14 @@ function DataStatusPanel({
           </div>
         ))}
       </dl>
-      {meta.truncated && (
+      {(meta.truncated || meta.hasMore) && (
         <p className="result-scope-note" role="status">
-          전체 조회 결과가 많아 화면에는 최대 {meta.viewLimit ?? currentCount}건만 제공합니다.
-          지역 필터와 더 보기를 사용해 필요한 공고를 먼저 확인해 주세요.
+          {meta.truncated
+            ? "공공 API 최대 수집 범위 때문에 일부 결과가 제외될 수 있습니다. "
+            : ""}
+          {meta.hasMore
+            ? "다음 페이지가 있습니다. 지역 필터와 공고 더 보기를 사용해 확인해 주세요."
+            : ""}
         </p>
       )}
     </section>
@@ -592,36 +797,25 @@ function PriorityAnimalList({
 
 function GoldenTimeScreen({
   animals,
-  totalUrgentCount,
-  truncated,
+  regionFilter,
+  regions,
+  meta,
+  loading,
   selectedAnimalId,
+  onRegionFilter,
+  onLoadMore,
   onSelect,
 }: {
   animals: MockAnimal[];
-  totalUrgentCount: number;
-  truncated: boolean;
+  regionFilter: string;
+  regions: string[];
+  meta: FreshnessMeta;
+  loading: boolean;
   selectedAnimalId?: string;
+  onRegionFilter: (value: string) => void;
+  onLoadMore: () => void;
   onSelect: (id: string) => void;
 }) {
-  const regions = useMemo(
-    () => Array.from(new Set(animals.map((animal) => animal.region))).sort(),
-    [animals]
-  );
-  const [regionFilter, setRegionFilter] = useState(ALL_FILTER);
-  const [visibleCount, setVisibleCount] = useState(NOTICE_PAGE_SIZE);
-  const filteredAnimals = useMemo(
-    () =>
-      regionFilter === ALL_FILTER
-        ? animals
-        : animals.filter((animal) => animal.region === regionFilter),
-    [animals, regionFilter]
-  );
-  const displayedAnimals = filteredAnimals.slice(0, visibleCount);
-
-  useEffect(() => {
-    setVisibleCount(NOTICE_PAGE_SIZE);
-  }, [regionFilter]);
-
   return (
     <div className="screen-stack" data-testid="screen-golden">
       <ScreenHeader
@@ -643,26 +837,28 @@ function GoldenTimeScreen({
           value={regionFilter}
           options={[ALL_FILTER, ...regions]}
           testId="urgent-filter-region"
-          onChange={setRegionFilter}
+          onChange={onRegionFilter}
         />
       </section>
       <ResultScopeNote
-        displayedCount={displayedAnimals.length}
-        resultCount={filteredAnimals.length}
-        totalCount={totalUrgentCount}
-        truncated={truncated}
+        displayedCount={animals.length}
+        totalCount={meta.totalFilteredCount ?? animals.length}
+        hasMore={Boolean(meta.hasMore)}
+        selectedRegion={regionFilter}
         label="종료 임박 공고"
       />
       <AnimalCards
-        animals={displayedAnimals}
+        animals={animals}
         selectedAnimalId={selectedAnimalId}
         onSelect={onSelect}
         priority
       />
       <LoadMoreControl
-        displayedCount={displayedAnimals.length}
-        resultCount={filteredAnimals.length}
-        onLoadMore={() => setVisibleCount((count) => count + NOTICE_PAGE_SIZE)}
+        displayedCount={animals.length}
+        totalCount={meta.totalFilteredCount ?? animals.length}
+        hasMore={Boolean(meta.hasMore)}
+        loading={loading}
+        onLoadMore={onLoadMore}
       />
     </div>
   );
@@ -681,8 +877,9 @@ function NoticeListScreen({
   onRegionFilter,
   onResetFilters,
   onSelect,
-  totalCurrentCount,
-  truncated,
+  meta,
+  loading,
+  onLoadMore,
 }: {
   animals: MockAnimal[];
   selectedAnimalId?: string;
@@ -696,20 +893,15 @@ function NoticeListScreen({
   onRegionFilter: (value: string) => void;
   onResetFilters: () => void;
   onSelect: (id: string) => void;
-  totalCurrentCount: number;
-  truncated: boolean;
+  meta: FreshnessMeta;
+  loading: boolean;
+  onLoadMore: () => void;
 }) {
-  const [visibleCount, setVisibleCount] = useState(NOTICE_PAGE_SIZE);
   const activeFilters = [
     ["지역", regionFilter],
     ["신호", labelFilter],
     ["축종", typeFilter],
   ].filter(([, value]) => value !== ALL_FILTER);
-  const displayedAnimals = animals.slice(0, visibleCount);
-
-  useEffect(() => {
-    setVisibleCount(NOTICE_PAGE_SIZE);
-  }, [labelFilter, regionFilter, typeFilter]);
 
   return (
     <div className="screen-stack" data-testid="screen-notices">
@@ -742,8 +934,8 @@ function NoticeListScreen({
         />
       </section>
       <div className="filter-summary" aria-live="polite">
-        <strong>{displayedAnimals.length}건 표시</strong>
-        {animals.length !== displayedAnimals.length && <span>필터 결과 {animals.length}건 중</span>}
+        <strong>{animals.length}건 표시</strong>
+        <span>서버 필터 결과 {meta.totalFilteredCount ?? animals.length}건 중</span>
         {activeFilters.length ? (
           <>
             {activeFilters.map(([label, value]) => (
@@ -760,37 +952,39 @@ function NoticeListScreen({
         )}
       </div>
       <ResultScopeNote
-        resultCount={animals.length}
-        displayedCount={displayedAnimals.length}
-        totalCount={totalCurrentCount}
-        truncated={truncated}
+        displayedCount={animals.length}
+        totalCount={meta.totalFilteredCount ?? animals.length}
+        hasMore={Boolean(meta.hasMore)}
+        selectedRegion={regionFilter}
         label="현재 공고"
       />
       <AnimalCards
-        animals={displayedAnimals}
+        animals={animals}
         selectedAnimalId={selectedAnimalId}
         onSelect={onSelect}
       />
       <LoadMoreControl
-        displayedCount={displayedAnimals.length}
-        resultCount={animals.length}
-        onLoadMore={() => setVisibleCount((count) => count + NOTICE_PAGE_SIZE)}
+        displayedCount={animals.length}
+        totalCount={meta.totalFilteredCount ?? animals.length}
+        hasMore={Boolean(meta.hasMore)}
+        loading={loading}
+        onLoadMore={onLoadMore}
       />
     </div>
   );
 }
 
 function ResultScopeNote({
-  resultCount,
   displayedCount,
   totalCount,
-  truncated,
+  hasMore,
+  selectedRegion,
   label,
 }: {
-  resultCount: number;
   displayedCount: number;
   totalCount: number;
-  truncated: boolean;
+  hasMore: boolean;
+  selectedRegion: string;
   label: string;
 }) {
   return (
@@ -798,13 +992,12 @@ function ResultScopeNote({
       <div>
         <strong>{label} 표시 범위</strong>
         <p>
-          {truncated
-            ? `API 조회 결과 ${totalCount}건 중 화면 응답으로 제공된 ${resultCount}건을 탐색합니다.`
-            : `조회된 ${resultCount}건을 탐색합니다.`}
+          {selectedRegion === ALL_FILTER ? "전체 지역" : selectedRegion} 서버 조회 결과 {totalCount}
+          건 중 {displayedCount}건을 표시합니다. {hasMore ? "다음 페이지가 있습니다." : ""}
         </p>
       </div>
       <span className="notice-display-count" aria-live="polite">
-        {displayedCount}/{resultCount}건
+        {displayedCount}/{totalCount}건
       </span>
     </section>
   );
@@ -812,24 +1005,28 @@ function ResultScopeNote({
 
 function LoadMoreControl({
   displayedCount,
-  resultCount,
+  totalCount,
+  hasMore,
+  loading,
   onLoadMore,
 }: {
   displayedCount: number;
-  resultCount: number;
+  totalCount: number;
+  hasMore: boolean;
+  loading: boolean;
   onLoadMore: () => void;
 }) {
-  if (displayedCount >= resultCount) {
+  if (!hasMore) {
     return null;
   }
 
   return (
     <div className="load-more-control">
-      <button type="button" data-testid="load-more-notices" onClick={onLoadMore}>
-        공고 더 보기
+      <button type="button" data-testid="load-more-notices" disabled={loading} onClick={onLoadMore}>
+        {loading ? "불러오는 중..." : "공고 더 보기"}
       </button>
       <span>
-        {displayedCount}/{resultCount}건 표시 중
+        {displayedCount}/{totalCount}건 표시 중
       </span>
     </div>
   );
