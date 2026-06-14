@@ -5,6 +5,7 @@
 - Production: https://shelter-signal-ebon.vercel.app/
 - Portfolio case study: [docs/portfolio-case-study.md](docs/portfolio-case-study.md)
 - Verification guide: [VERIFY.md](VERIFY.md)
+- Current Production evidence: [docs/evidence/production-verification-2026-06-15.md](docs/evidence/production-verification-2026-06-15.md)
 
 Shelter Signal은 실제 보호소 운영 서비스가 아니라 public-data service 포트폴리오 프로젝트입니다. 사용자 계정, 저장 persistence, 실제 알림 전송, 운영 SLA는 포함하지 않습니다.
 
@@ -183,6 +184,18 @@ fallbackReason = absent for live/cache response
 
 더 자세한 수동·CI 검증 범위는 [VERIFY.md](VERIFY.md)를 참조합니다.
 
+## Archived Production Evidence
+
+2026-06-15 KST 기준 live-first Production 상태를 public-safe evidence로 보관했습니다.
+
+- [Evidence index](docs/evidence/README.md)
+- [Production verification summary](docs/evidence/production-verification-2026-06-15.md)
+- [Safe API metadata snapshot](docs/evidence/production-api-metadata-2026-06-15.json)
+- [GitHub Actions Verify PASS snapshot](docs/evidence/github-actions-verify-2026-06-15.json)
+- [Live-first Production UI screenshot](docs/screenshots/10-live-first-production-ui-2026-06-15.png)
+
+이 evidence는 UI와 `/api/notices`의 live operating status, freshness 누수 검사, secret-free CI 통과를 확인합니다. 전체 upstream dataset의 완전성·정확성, 기관별 갱신 주기, 운영 SLA 또는 실제 구조 성과를 증명하지 않습니다. API evidence에는 notice rows가 없고, screenshot과 CI snapshot에도 service key, 환경 변수, full upstream URL을 포함하지 않습니다.
+
 ## Screenshots
 
 현재 tracked screenshot set의 `01`~`07`은 제품 흐름 설명용 캡처입니다.
@@ -196,6 +209,10 @@ fallbackReason = absent for live/cache response
 | ![Golden time notices](docs/screenshots/03-golden-time.png) | ![Notice filters](docs/screenshots/04-notices-filter.png) |
 
 `08-operational-db-badge.png`와 `09-api-notices-operational-response.png`는 과거 PostgreSQL-primary 단계의 historical evidence입니다. 현재 Production 근거로 사용하지 않습니다. 자세한 분류는 [docs/screenshots/README.md](docs/screenshots/README.md)를 참조합니다.
+
+현재 live-first Production evidence:
+
+![Shelter Signal live-first Production UI](docs/screenshots/10-live-first-production-ui-2026-06-15.png)
 
 ## Local Development And CI
 

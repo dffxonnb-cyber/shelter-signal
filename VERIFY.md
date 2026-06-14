@@ -8,6 +8,12 @@ Repository verification and Production smoke testing have different purposes.
 - Production smoke testing checks whether the deployed UI and `/api/notices` currently operate through the live-first boundary.
 - Neither step proves the completeness, correctness, or update timing of the entire upstream public dataset.
 
+Archived public-safe Production evidence:
+
+- [2026-06-15 Production verification](docs/evidence/production-verification-2026-06-15.md)
+- [Safe API metadata snapshot](docs/evidence/production-api-metadata-2026-06-15.json)
+- [GitHub Actions Verify PASS snapshot](docs/evidence/github-actions-verify-2026-06-15.json)
+
 ## Secret-free Repository Verification
 
 Run from the repository root:

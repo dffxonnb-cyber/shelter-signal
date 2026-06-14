@@ -1,0 +1,48 @@
+{
+  "evidenceDateKst": "2026-06-15",
+  "endpoint": "/api/notices?view=current&region=서울&limit=20",
+  "source": "api",
+  "fetchedAt": "2026-06-14T22:32:08.431Z",
+  "dateRange": {
+    "bgnde": "2026-05-16",
+    "endde": "2026-06-15"
+  },
+  "requestState": "notice",
+  "view": "current",
+  "region": "서울",
+  "page": 1,
+  "limit": 20,
+  "pagesFetched": 3,
+  "upstreamTotalCount": 2831,
+  "itemCount": 2831,
+  "normalizedItemCount": 2831,
+  "filteredCount": 185,
+  "returnedCount": 20,
+  "totalFilteredCount": 185,
+  "hasMore": true,
+  "nextPage": 2,
+  "urgentCount": 55,
+  "truncated": false,
+  "cacheStatus": "hit",
+  "cacheTtlSeconds": 300,
+  "cacheGeneratedAt": "2026-06-14T22:32:08.431Z",
+  "cacheAgeSeconds": 225,
+  "cacheScope": "notice-window-v1",
+  "upstreamFetchDurationMs": 7828,
+  "upstreamFetchCount": 3,
+  "inFlightMerged": false,
+  "fallbackReason": null,
+  "checks": {
+    "currentExpiredOrMissingDeadlineLeak": 0,
+    "urgentExpiredMissingOrOutOfRangeLeak": 0,
+    "urgentSortedByDaysLeftAscending": true,
+    "urgentReturnedCount": 55,
+    "urgentTotalFilteredCount": 55
+  },
+  "publicSafe": {
+    "noticeRowsIncluded": false,
+    "serviceKeyIncluded": false,
+    "databaseUrlIncluded": false,
+    "fullUpstreamUrlIncluded": false
+  }
+}

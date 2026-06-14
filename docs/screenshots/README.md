@@ -23,6 +23,20 @@
 
 이 두 파일은 현재 Production source 또는 현재 UI 상태를 나타내지 않습니다. 현재 Production은 live-first public API 구조이며, 성공 응답은 `source: "api"`와 `Live API` 상태를 사용합니다.
 
+## Current Live-first Production Evidence
+
+- `10-live-first-production-ui-2026-06-15.png`
+
+2026-06-15 KST Production smoke test에서 캡처했습니다. 화면은 `Live API`, KST 조회 기간, 수집 페이지 수, 결과 수, cache hit, 다음 페이지 상태를 보여주며 fallback warning은 표시되지 않습니다.
+
+이 캡처는 현재 live operating state를 설명하기 위한 evidence이며 전체 upstream dataset 품질이나 장기 운영 안정성을 증명하지 않습니다.
+
+Related evidence:
+
+- [Production verification summary](../evidence/production-verification-2026-06-15.md)
+- [Safe API metadata](../evidence/production-api-metadata-2026-06-15.json)
+- [GitHub Actions Verify PASS](../evidence/github-actions-verify-2026-06-15.json)
+
 ## Capture Safety
 
 - service key, `DATABASE_URL`, connection string, secret 환경 값, full upstream URL을 포함하지 않습니다.

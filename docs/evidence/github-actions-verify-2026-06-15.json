@@ -1,0 +1,28 @@
+{
+  "evidenceDateKst": "2026-06-15",
+  "workflow": "Verify",
+  "event": "push",
+  "status": "completed",
+  "conclusion": "success",
+  "headSha": "b09b1ea63ddb054ca6b262b01cd8df23a37ac0ba",
+  "createdAt": "2026-06-14T22:30:34Z",
+  "updatedAt": "2026-06-14T22:31:02Z",
+  "runUrl": "https://github.com/dffxonnb-cyber/shelter-signal/actions/runs/27514096587",
+  "job": {
+    "name": "app",
+    "conclusion": "success",
+    "steps": {
+      "checkout": "success",
+      "setupNode": "success",
+      "npmCi": "success",
+      "lint": "success",
+      "typecheck": "success",
+      "build": "success"
+    }
+  },
+  "publicSafe": {
+    "secretReferencesInWorkflow": false,
+    "externalApiCallsInWorkflow": false,
+    "secretValuesIncluded": false
+  }
+}
