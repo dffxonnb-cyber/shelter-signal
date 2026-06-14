@@ -42,6 +42,27 @@ variants such as `서울`/`서울특별시`. It treats the leading administrativ
 region in `orgNm` as authoritative, then checks `happenPlace`, `careAddr`, and
 `careNm` only when higher-priority fields do not identify a region.
 
+The route keeps the normalized live upstream dataset in a server-only in-memory
+cache for 5 minutes by default. Its base key includes the KST classification
+date, live date/update ranges, upstream state, `pageNo`, and `numOfRows`.
+`view`, `region`, response `page`, and `limit` are derived from that cached
+dataset, so moving between filters and pages does not require another full
+upstream collection while the cache is warm.
+
+Responses include `cacheStatus`, `cacheTtlSeconds`, `cacheGeneratedAt`,
+`cacheAgeSeconds`, and optional stale-refresh diagnostics. Set the server-only
+`NOTICES_CACHE_TTL_SECONDS` to `0` to disable the instance cache or to a value up
+to `600`. A short stale-if-error window can preserve previously fetched live
+data when refresh fails; it remains `source: "api"` and is explicitly marked
+`cacheStale`. This differs from PostgreSQL/static/mock fallback, which always
+uses `source: "fallback"` and displays the fallback warning. Empty usable live
+results are cached and never trigger fallback.
+
+The cache never contains the service key. Vercel serverless memory is
+instance-local and may be lost on a cold start, deployment, or request routed to
+another function instance, so cache hits are not guaranteed across every
+request.
+
 If the public API fails, the route can query `mart.animals_clean` as a clearly
 labeled fallback. If the route is unavailable, the frontend tries static JSON and
 then mock data. Static/mock rows pass through the same current-date classifier, so
@@ -65,7 +86,8 @@ Fallback metadata uses `source: "fallback"`, an ISO `fetchedAt`, the rolling
 Safe response diagnostics include `source`, `fetchedAt`, `dateRange`,
 `requestState`, `itemCount`, `filteredCount`, `returnedCount`, `urgentCount`,
 `pagesFetched`, `upstreamTotalCount`, `responseFormat`, `truncated`, `viewLimit`,
-`totalFilteredCount`, `hasMore`, `nextPage`, and `fallbackReason`.
+`totalFilteredCount`, `hasMore`, `nextPage`, `cacheStatus`, `cacheTtlSeconds`,
+`cacheGeneratedAt`, and `fallbackReason`.
 
 The UI renders those diagnostics in a compact Korean-first status panel. Notice
 lists start with a server-filtered 20-row page. Region changes request page 1
@@ -80,8 +102,9 @@ failure or unusable upstream data and is always explicitly labeled.
 Known limitations: the public API can be affected by service approval, quotas,
 intermittent non-JSON errors, and agency update timing. Each upstream page is
 capped at 1000 rows and the route follows at most 10 pages. Response pagination
-is applied after collecting the available upstream window, so an uncached
-filtered request can still call several upstream pages.
+is applied after collecting the available upstream window, so a cache miss can
+still call several upstream pages. The short cache is instance-local and cannot
+guarantee hits across Vercel cold starts or different serverless instances.
 
 Shelter/contact context is handled separately through `/api/shelters`. That route calls the data.go.kr rescued-animal notice API server-side and derives shelter summaries from notice fields such as `careNm`, `careTel`, `careAddr`, and `orgNm`. It is notice-derived context, not a complete official shelter directory.
 
@@ -152,12 +175,14 @@ Server-side environment variables:
 ```text
 DATA_GO_KR_SERVICE_KEY=  # required for live public API
 DATABASE_URL=            # optional PostgreSQL fallback
+NOTICES_CACHE_TTL_SECONDS=300  # optional, server-only; 0 disables, max 600
 ```
 
 `DATA_GO_KR_SERVICE_KEY` is used server-side by `/api/notices` and
 `/api/shelters`. `DATABASE_URL` is used only by the `/api/notices` PostgreSQL
-fallback. Do not add a `VITE_` prefix to either value, because they must not be
-exposed to browser code.
+fallback. `NOTICES_CACHE_TTL_SECONDS` controls only the server-side normalized
+notice cache. Do not add a `VITE_` prefix to these values, because they must not
+be exposed to browser code.
 
 ## Troubleshooting
 

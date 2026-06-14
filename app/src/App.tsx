@@ -506,6 +506,7 @@ function DataStatusPanel({
     ["조회 결과", `${meta.totalFilteredCount ?? meta.filteredCount ?? currentCount}건`],
     ["현재 표시", `${currentCount}건`],
     ["종료 임박 공고 수", `${meta.urgentCount ?? urgentCount}건`],
+    ["데이터 캐시", formatCacheStatus(meta)],
     ["마지막 갱신 시각", formatFetchedAt(meta.fetchedAt)],
   ];
 
@@ -1803,6 +1804,20 @@ function formatFetchedAt(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function formatCacheStatus(meta: FreshnessMeta): string {
+  if (meta.cacheStatus === "hit") {
+    if (meta.cacheStale) {
+      return "hit · 갱신 오류로 이전 live 데이터 사용";
+    }
+    const minutes = Math.max(1, Math.round((meta.cacheTtlSeconds ?? 300) / 60));
+    return `hit · ${minutes}분 이내 갱신`;
+  }
+  if (meta.cacheStatus === "miss") {
+    return "miss · 새 live 데이터";
+  }
+  return "사용 안 함";
 }
 
 function labelClass(label: RescueWindowLabel) {

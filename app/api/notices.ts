@@ -4,6 +4,7 @@ type QueryValue = string | string[] | undefined;
 type NoticeSource = "api" | "fallback";
 type NoticeView = "current" | "urgent" | "protected" | "archive";
 type DeadlineStatus = "D-Day" | "D-1" | "D-2" | "D-3" | "active" | "expired";
+type CacheStatus = "hit" | "miss" | "disabled";
 type FallbackReason =
   | "missing_service_key"
   | "upstream_http_error"
@@ -82,6 +83,12 @@ interface NoticeMeta {
   responseFormat: "json" | "xml" | "empty" | "fallback";
   truncated: boolean;
   viewLimit: number;
+  cacheStatus: CacheStatus;
+  cacheTtlSeconds: number;
+  cacheGeneratedAt?: string;
+  cacheAgeSeconds?: number;
+  cacheStale?: boolean;
+  cacheRefreshError?: FallbackReason;
   fallbackReason?: FallbackReason;
   warning?: string;
   counts: {
@@ -131,7 +138,38 @@ interface NoticeDiagnostics {
   upstreamTotalCount: number;
   responseFormat: NoticeMeta["responseFormat"];
   truncated: boolean;
+  fetchedAt?: string;
+  cacheStatus: CacheStatus;
+  cacheTtlSeconds: number;
+  cacheGeneratedAt?: string;
+  cacheAgeSeconds?: number;
+  cacheStale?: boolean;
+  cacheRefreshError?: FallbackReason;
   fallbackReason?: FallbackReason;
+}
+
+interface LiveDataset {
+  records: NoticeRecord[];
+  generatedAt: string;
+  expiresAt: number;
+  staleUntil: number;
+  diagnostics: Pick<
+    NoticeDiagnostics,
+    | "itemCount"
+    | "pagesFetched"
+    | "upstreamTotalCount"
+    | "responseFormat"
+    | "truncated"
+  >;
+}
+
+interface LiveDatasetResult {
+  dataset: LiveDataset;
+  cacheStatus: CacheStatus;
+  cacheTtlSeconds: number;
+  cacheAgeSeconds: number;
+  cacheStale?: boolean;
+  cacheRefreshError?: FallbackReason;
 }
 
 interface PaginatedViews {
@@ -151,6 +189,10 @@ const MAX_NUM_OF_ROWS = 1000;
 const MAX_UPSTREAM_PAGES = 10;
 const DEFAULT_PAGE_LIMIT = 20;
 const MAX_PAGE_LIMIT = 100;
+const DEFAULT_CACHE_TTL_SECONDS = 300;
+const MAX_CACHE_TTL_SECONDS = 600;
+const STALE_IF_ERROR_SECONDS = 900;
+const MAX_CACHE_ENTRIES = 8;
 const MAX_DATABASE_ROWS = 10_000;
 const DEFAULT_STATE = "notice";
 const SEOUL_TIME_ZONE = "Asia/Seoul";
@@ -176,6 +218,18 @@ const KOREAN_REGION_ALIASES = [
 
 let cachedPool: Pool | null = null;
 let cachedDatabaseUrl: string | null = null;
+const liveDatasetCache = new Map<string, LiveDataset>();
+const liveDatasetFetches = new Map<string, Promise<LiveDataset>>();
+
+class LiveApiError extends Error {
+  reason: FallbackReason;
+
+  constructor(reason: FallbackReason, message: string) {
+    super(message);
+    this.name = "LiveApiError";
+    this.reason = reason;
+  }
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -203,52 +257,13 @@ export default async function handler(
       console.warn("[notices-api] using legacy ANIMAL_API_KEY server-side alias");
     }
     try {
-      const upstreamResult = await fetchPublicNotices(serviceKey, options);
-      if (
-        upstreamResult.status >= 200 &&
-        upstreamResult.status < 300 &&
-        !upstreamResult.errorMessage
-      ) {
-        const records = upstreamResult.items
-          .map(normalizePublicNotice)
-          .map((record) => decorateNotice(record, today));
-        const hasUsableDates =
-          records.length === 0 ||
-          records.some((record) => Boolean(record.notice_edt));
-
-        if (hasUsableDates) {
-          const allViews = buildViews(records, options.includeExpired, options.filters);
-          const pageResult = paginateViews(allViews, options);
-
-          res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=900");
-          res.status(200).json({
-            ok: true,
-            notices: pageResult.notices,
-            views: pageResult.views,
-            source: "api",
-            meta: buildMeta("api", "public-api", options, allViews, pageResult, {
-              itemCount: upstreamResult.items.length,
-              filteredCount: allViews.currentNotices.length,
-              urgentCount: allViews.urgentNotices.length,
-              pagesFetched: upstreamResult.pagesFetched,
-              upstreamTotalCount: upstreamResult.totalCount,
-              responseFormat: upstreamResult.responseFormat,
-              truncated: upstreamResult.truncated,
-            }),
-          });
-          return;
-        }
-
-        upstreamError = "Public data API records did not contain usable noticeEdt values";
-        fallbackReason = "upstream_api_error";
-      } else {
-        upstreamError =
-          upstreamResult.errorMessage || `Public data API returned ${upstreamResult.status}`;
-        fallbackReason = upstreamResult.errorReason || "upstream_api_error";
-      }
+      const liveResult = await getLiveDataset(serviceKey, options, today);
+      sendLiveResponse(res, options, liveResult);
+      return;
     } catch (error) {
       upstreamError = sanitizeDiagnosticText(errorMessage(error));
-      fallbackReason = "upstream_request_failed";
+      fallbackReason =
+        error instanceof LiveApiError ? error.reason : "upstream_request_failed";
     }
   } else {
     upstreamError = "DATA_GO_KR_SERVICE_KEY or ANIMAL_API_KEY is not configured";
@@ -294,6 +309,8 @@ export default async function handler(
           upstreamTotalCount: 0,
           responseFormat: "fallback",
           truncated: false,
+          cacheStatus: "disabled",
+          cacheTtlSeconds: noticeCacheTtlSeconds(),
           fallbackReason,
         },
         FALLBACK_WARNING,
@@ -309,6 +326,185 @@ export default async function handler(
       notices: [],
     });
   }
+}
+
+async function getLiveDataset(
+  serviceKey: string,
+  options: RequestOptions,
+  today: string,
+): Promise<LiveDatasetResult> {
+  const cacheTtlSeconds = noticeCacheTtlSeconds();
+  if (cacheTtlSeconds === 0) {
+    const dataset = await fetchLiveDataset(serviceKey, options, today, cacheTtlSeconds);
+    return {
+      dataset,
+      cacheStatus: "disabled",
+      cacheTtlSeconds,
+      cacheAgeSeconds: 0,
+    };
+  }
+
+  const cacheKey = liveDatasetCacheKey(options, today);
+  const now = Date.now();
+  const cached = liveDatasetCache.get(cacheKey);
+  if (cached && now < cached.expiresAt) {
+    return liveDatasetResult(cached, "hit", cacheTtlSeconds, now);
+  }
+
+  try {
+    const activeFetch = liveDatasetFetches.get(cacheKey);
+    if (activeFetch) {
+      const dataset = await activeFetch;
+      return liveDatasetResult(dataset, "hit", cacheTtlSeconds, Date.now());
+    }
+
+    const fetchPromise = fetchLiveDataset(serviceKey, options, today, cacheTtlSeconds);
+    liveDatasetFetches.set(cacheKey, fetchPromise);
+    try {
+      const dataset = await fetchPromise;
+      storeLiveDataset(cacheKey, dataset);
+      return liveDatasetResult(dataset, "miss", cacheTtlSeconds, Date.now());
+    } finally {
+      liveDatasetFetches.delete(cacheKey);
+    }
+  } catch (error) {
+    if (cached && Date.now() < cached.staleUntil) {
+      return {
+        ...liveDatasetResult(cached, "hit", cacheTtlSeconds, now),
+        cacheStale: true,
+        cacheRefreshError:
+          error instanceof LiveApiError ? error.reason : "upstream_request_failed",
+      };
+    }
+    throw error;
+  }
+}
+
+async function fetchLiveDataset(
+  serviceKey: string,
+  options: RequestOptions,
+  today: string,
+  cacheTtlSeconds: number,
+): Promise<LiveDataset> {
+  const upstreamResult = await fetchPublicNotices(serviceKey, options);
+  if (
+    upstreamResult.status < 200 ||
+    upstreamResult.status >= 300 ||
+    upstreamResult.errorMessage
+  ) {
+    throw new LiveApiError(
+      upstreamResult.errorReason || "upstream_api_error",
+      upstreamResult.errorMessage || `Public data API returned ${upstreamResult.status}`,
+    );
+  }
+
+  const records = upstreamResult.items
+    .map(normalizePublicNotice)
+    .map((record) => decorateNotice(record, today));
+  const hasUsableDates =
+    records.length === 0 || records.some((record) => Boolean(record.notice_edt));
+  if (!hasUsableDates) {
+    throw new LiveApiError(
+      "upstream_api_error",
+      "Public data API records did not contain usable noticeEdt values",
+    );
+  }
+
+  const generatedAt = new Date().toISOString();
+  const generatedAtMs = Date.parse(generatedAt);
+  return {
+    records,
+    generatedAt,
+    expiresAt: generatedAtMs + cacheTtlSeconds * 1000,
+    staleUntil: generatedAtMs + (cacheTtlSeconds + STALE_IF_ERROR_SECONDS) * 1000,
+    diagnostics: {
+      itemCount: upstreamResult.items.length,
+      pagesFetched: upstreamResult.pagesFetched,
+      upstreamTotalCount: upstreamResult.totalCount,
+      responseFormat: upstreamResult.responseFormat,
+      truncated: upstreamResult.truncated,
+    },
+  };
+}
+
+function sendLiveResponse(
+  res: VercelResponse,
+  options: RequestOptions,
+  liveResult: LiveDatasetResult,
+): void {
+  const { dataset } = liveResult;
+  const allViews = buildViews(dataset.records, options.includeExpired, options.filters);
+  const pageResult = paginateViews(allViews, options);
+
+  res.setHeader("Cache-Control", "private, no-store");
+  res.status(200).json({
+    ok: true,
+    notices: pageResult.notices,
+    views: pageResult.views,
+    source: "api",
+    meta: buildMeta("api", "public-api", options, allViews, pageResult, {
+      ...dataset.diagnostics,
+      filteredCount: allViews.currentNotices.length,
+      urgentCount: allViews.urgentNotices.length,
+      fetchedAt: dataset.generatedAt,
+      cacheStatus: liveResult.cacheStatus,
+      cacheTtlSeconds: liveResult.cacheTtlSeconds,
+      cacheGeneratedAt: dataset.generatedAt,
+      cacheAgeSeconds: liveResult.cacheAgeSeconds,
+      ...(liveResult.cacheStale ? { cacheStale: true } : {}),
+      ...(liveResult.cacheRefreshError
+        ? { cacheRefreshError: liveResult.cacheRefreshError }
+        : {}),
+    }),
+  });
+}
+
+function liveDatasetCacheKey(options: RequestOptions, today: string): string {
+  return JSON.stringify({
+    version: 1,
+    today,
+    bgnde: options.bgnde,
+    endde: options.endde,
+    state: options.state,
+    bgupd: options.bgupd || "",
+    enupd: options.enupd || "",
+    pageNo: options.pageNo,
+    numOfRows: options.numOfRows,
+  });
+}
+
+function liveDatasetResult(
+  dataset: LiveDataset,
+  cacheStatus: CacheStatus,
+  cacheTtlSeconds: number,
+  now: number,
+): LiveDatasetResult {
+  return {
+    dataset,
+    cacheStatus,
+    cacheTtlSeconds,
+    cacheAgeSeconds: Math.max(0, Math.floor((now - Date.parse(dataset.generatedAt)) / 1000)),
+  };
+}
+
+function storeLiveDataset(cacheKey: string, dataset: LiveDataset): void {
+  liveDatasetCache.delete(cacheKey);
+  liveDatasetCache.set(cacheKey, dataset);
+  while (liveDatasetCache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = liveDatasetCache.keys().next().value;
+    if (typeof oldestKey !== "string") {
+      break;
+    }
+    liveDatasetCache.delete(oldestKey);
+  }
+}
+
+function noticeCacheTtlSeconds(): number {
+  const configured = Number.parseInt(process.env.NOTICES_CACHE_TTL_SECONDS || "", 10);
+  if (!Number.isFinite(configured)) {
+    return DEFAULT_CACHE_TTL_SECONDS;
+  }
+  return Math.max(0, Math.min(configured, MAX_CACHE_TTL_SECONDS));
 }
 
 function parseRequestOptions(
@@ -818,7 +1014,7 @@ function buildMeta(
   return {
     source,
     origin,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: diagnostics.fetchedAt || new Date().toISOString(),
     dateRange: {
       bgnde: options.bgnde,
       endde: options.endde,
@@ -845,6 +1041,18 @@ function buildMeta(
     responseFormat: diagnostics.responseFormat,
     truncated: diagnostics.truncated,
     viewLimit: options.limit,
+    cacheStatus: diagnostics.cacheStatus,
+    cacheTtlSeconds: diagnostics.cacheTtlSeconds,
+    ...(diagnostics.cacheGeneratedAt
+      ? { cacheGeneratedAt: diagnostics.cacheGeneratedAt }
+      : {}),
+    ...(diagnostics.cacheAgeSeconds !== undefined
+      ? { cacheAgeSeconds: diagnostics.cacheAgeSeconds }
+      : {}),
+    ...(diagnostics.cacheStale ? { cacheStale: true } : {}),
+    ...(diagnostics.cacheRefreshError
+      ? { cacheRefreshError: diagnostics.cacheRefreshError }
+      : {}),
     ...(diagnostics.fallbackReason
       ? { fallbackReason: diagnostics.fallbackReason }
       : {}),

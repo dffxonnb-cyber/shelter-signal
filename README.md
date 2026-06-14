@@ -252,6 +252,32 @@ region.
 Pagination metadata includes `limit`, `page`, `returnedCount`,
 `totalFilteredCount`, `hasMore`, and `nextPage`.
 
+### Short live-data cache
+
+`/api/notices` keeps the normalized live upstream dataset in a server-only
+in-memory cache for 5 minutes by default. The cache key contains the KST
+classification date, notice/update date ranges, upstream `state`, `pageNo`, and
+`numOfRows`. Response-layer `view`, `region`, `page`, and `limit` do not change
+the base key, so those derived filters can reuse one upstream collection.
+
+Safe cache metadata includes `cacheStatus` (`hit`, `miss`, or `disabled`),
+`cacheTtlSeconds`, `cacheGeneratedAt`, `cacheAgeSeconds`, and optional
+`cacheStale`/`cacheRefreshError`. Server-only `NOTICES_CACHE_TTL_SECONDS` can
+disable the instance cache with `0` or set a TTL up to 10 minutes. If refresh
+fails just after expiry, the route may reuse the previous live dataset for up to
+15 additional minutes and marks it as stale live cache data.
+
+Cache data is not fallback data. A cache hit remains `source: "api"` because it
+came from a usable live response. PostgreSQL/static/mock fallback is used only
+when no usable live or allowed stale-live dataset exists and is always labeled
+`source: "fallback"`. Empty usable live datasets are cached and remain normal
+empty `source: "api"` responses.
+
+The cache never stores or returns the service key. Vercel serverless memory can
+be instance-local and is not guaranteed across cold starts, deployments, or
+different function instances, so a later request can legitimately report
+another cache miss.
+
 The route treats `noticeEdt` as the public notice end date. It recalculates
 `days_left` against the current `Asia/Seoul` date and derives
 `deadline_status` as one of:
@@ -293,9 +319,9 @@ silently switch to stale samples.
 Safe `/api/notices` metadata includes `source`, `fetchedAt`, `dateRange`,
 `requestState`, `itemCount`, `filteredCount`, `returnedCount`, `urgentCount`,
 `pagesFetched`, `upstreamTotalCount`, `responseFormat`, `truncated`, `viewLimit`,
-`totalFilteredCount`, `hasMore`, `nextPage`, and `fallbackReason` when
-applicable. No service key or upstream URL containing the service key is returned
-or logged.
+`totalFilteredCount`, `hasMore`, `nextPage`, `cacheStatus`, `cacheTtlSeconds`,
+`cacheGeneratedAt`, and `fallbackReason` when applicable. No service key or
+upstream URL containing the service key is returned or logged.
 
 Large public API results are not rendered at once. Region changes request a new
 server-filtered first page, and `공고 더 보기` requests the next server page.
@@ -309,8 +335,10 @@ Known public API limitations:
 - A single upstream request is capped at `1000` rows. The route follows up to 10
   pages, so unusually large date ranges can still be truncated.
 - Page and region filters are applied after the server collects the available
-  upstream window. An uncached filtered request can therefore still require
-  several public API calls.
+  upstream window. A cache miss can therefore still require several public API
+  calls.
+- The short cache is Vercel function-instance memory and is not shared reliably
+  across cold starts or all concurrent instances.
 - `state=notice` and `noticeEdt` reflect public-source fields, but agencies can
   update notice/process state on their own schedule.
 - Notice-derived shelter contact data is not a complete official shelter directory.
@@ -421,6 +449,7 @@ For local API-route testing through Vercel, configure local secrets outside git:
 ```text
 DATABASE_URL=
 DATA_GO_KR_SERVICE_KEY=
+NOTICES_CACHE_TTL_SECONDS=300
 ```
 
 ### Data Pipeline
