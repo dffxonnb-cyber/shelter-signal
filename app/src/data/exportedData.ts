@@ -98,6 +98,12 @@ export interface FreshnessMeta {
   responseFormat?: string;
   truncated?: boolean;
   viewLimit?: number;
+  cacheStatus?: "hit" | "miss" | "disabled";
+  cacheTtlSeconds?: number;
+  cacheGeneratedAt?: string;
+  cacheAgeSeconds?: number;
+  cacheStale?: boolean;
+  cacheRefreshError?: string;
   fallbackReason?: string;
   warning?: string;
   counts?: {
@@ -345,6 +351,24 @@ function normalizeApiMeta(value: unknown, sourceValue: unknown): FreshnessMeta {
     ...(nullableNumber(meta.viewLimit) !== null
       ? { viewLimit: nullableNumber(meta.viewLimit)! }
       : {}),
+    ...(normalizeCacheStatus(meta.cacheStatus)
+      ? { cacheStatus: normalizeCacheStatus(meta.cacheStatus)! }
+      : {}),
+    ...(nullableNumber(meta.cacheTtlSeconds) !== null
+      ? { cacheTtlSeconds: nullableNumber(meta.cacheTtlSeconds)! }
+      : {}),
+    ...(textFromUnknown(meta.cacheGeneratedAt)
+      ? { cacheGeneratedAt: textFromUnknown(meta.cacheGeneratedAt) }
+      : {}),
+    ...(nullableNumber(meta.cacheAgeSeconds) !== null
+      ? { cacheAgeSeconds: nullableNumber(meta.cacheAgeSeconds)! }
+      : {}),
+    ...(nullableBoolean(meta.cacheStale) !== null
+      ? { cacheStale: nullableBoolean(meta.cacheStale)! }
+      : {}),
+    ...(textFromUnknown(meta.cacheRefreshError)
+      ? { cacheRefreshError: textFromUnknown(meta.cacheRefreshError) }
+      : {}),
     ...(textFromUnknown(meta.fallbackReason)
       ? { fallbackReason: textFromUnknown(meta.fallbackReason) }
       : {}),
@@ -510,6 +534,8 @@ function buildAppData(animals: MockAnimal[], meta: FreshnessMeta): ExportedAppDa
       responseFormat: meta.responseFormat || "fallback",
       truncated: meta.truncated ?? false,
       viewLimit: meta.viewLimit ?? views.currentNotices.length,
+      cacheStatus: meta.cacheStatus ?? "disabled",
+      cacheTtlSeconds: meta.cacheTtlSeconds ?? 0,
       counts:
         meta.counts ?? {
           current: views.currentNotices.length,
@@ -554,8 +580,19 @@ function fallbackMeta(origin: "static-export" | "mock"): FreshnessMeta {
     fetchedAt: new Date().toISOString(),
     dateRange: rollingDateRange(),
     state: "notice",
+    cacheStatus: "disabled",
+    cacheTtlSeconds: 0,
     warning: FALLBACK_WARNING,
   };
+}
+
+function normalizeCacheStatus(
+  value: unknown,
+): FreshnessMeta["cacheStatus"] | null {
+  const status = textFromUnknown(value);
+  return status === "hit" || status === "miss" || status === "disabled"
+    ? status
+    : null;
 }
 
 function rollingDateRange(): { bgnde: string; endde: string } {
