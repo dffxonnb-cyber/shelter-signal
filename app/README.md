@@ -50,7 +50,13 @@ dataset, so moving between filters and pages does not require another full
 upstream collection while the cache is warm.
 
 Responses include `cacheStatus`, `cacheTtlSeconds`, `cacheGeneratedAt`,
-`cacheAgeSeconds`, and optional stale-refresh diagnostics. Set the server-only
+`cacheAgeSeconds`, and optional stale-refresh diagnostics. Lightweight
+observability adds a safe cache scope, upstream duration/fetch count, normalized
+item count, and concurrent-request merge flag. Hit/miss tracking helps explain
+whether a request reused normalized data or paid the full upstream collection
+cost. Safe structured logs contain only cache, timing, count, view, and
+pagination fields; they never include the service key, secret-bearing request
+URL, or sensitive environment values. Set the server-only
 `NOTICES_CACHE_TTL_SECONDS` to `0` to disable the instance cache or to a value up
 to `600`. A short stale-if-error window can preserve previously fetched live
 data when refresh fails; it remains `source: "api"` and is explicitly marked
@@ -61,7 +67,8 @@ results are cached and never trigger fallback.
 The cache never contains the service key. Vercel serverless memory is
 instance-local and may be lost on a cold start, deployment, or request routed to
 another function instance, so cache hits are not guaranteed across every
-request.
+request. Redis or Vercel Runtime Cache would be considered later if shared
+cross-instance caching or aggregated metrics become necessary.
 
 If the public API fails, the route can query `mart.animals_clean` as a clearly
 labeled fallback. If the route is unavailable, the frontend tries static JSON and
@@ -87,7 +94,9 @@ Safe response diagnostics include `source`, `fetchedAt`, `dateRange`,
 `requestState`, `itemCount`, `filteredCount`, `returnedCount`, `urgentCount`,
 `pagesFetched`, `upstreamTotalCount`, `responseFormat`, `truncated`, `viewLimit`,
 `totalFilteredCount`, `hasMore`, `nextPage`, `cacheStatus`, `cacheTtlSeconds`,
-`cacheGeneratedAt`, and `fallbackReason`.
+`cacheGeneratedAt`, `cacheAgeSeconds`, `cacheScope`, `upstreamFetchDurationMs`,
+`upstreamFetchCount`, `normalizedItemCount`, `inFlightMerged`, and
+`fallbackReason`.
 
 The UI renders those diagnostics in a compact Korean-first status panel. Notice
 lists start with a server-filtered 20-row page. Region changes request page 1

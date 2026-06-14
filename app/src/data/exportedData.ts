@@ -104,6 +104,11 @@ export interface FreshnessMeta {
   cacheAgeSeconds?: number;
   cacheStale?: boolean;
   cacheRefreshError?: string;
+  cacheScope?: string;
+  upstreamFetchDurationMs?: number;
+  upstreamFetchCount?: number;
+  normalizedItemCount?: number;
+  inFlightMerged?: boolean;
   fallbackReason?: string;
   warning?: string;
   counts?: {
@@ -368,6 +373,21 @@ function normalizeApiMeta(value: unknown, sourceValue: unknown): FreshnessMeta {
       : {}),
     ...(textFromUnknown(meta.cacheRefreshError)
       ? { cacheRefreshError: textFromUnknown(meta.cacheRefreshError) }
+      : {}),
+    ...(textFromUnknown(meta.cacheScope)
+      ? { cacheScope: textFromUnknown(meta.cacheScope) }
+      : {}),
+    ...(nullableNumber(meta.upstreamFetchDurationMs) !== null
+      ? { upstreamFetchDurationMs: nullableNumber(meta.upstreamFetchDurationMs)! }
+      : {}),
+    ...(nullableNumber(meta.upstreamFetchCount) !== null
+      ? { upstreamFetchCount: nullableNumber(meta.upstreamFetchCount)! }
+      : {}),
+    ...(nullableNumber(meta.normalizedItemCount) !== null
+      ? { normalizedItemCount: nullableNumber(meta.normalizedItemCount)! }
+      : {}),
+    ...(nullableBoolean(meta.inFlightMerged) !== null
+      ? { inFlightMerged: nullableBoolean(meta.inFlightMerged)! }
       : {}),
     ...(textFromUnknown(meta.fallbackReason)
       ? { fallbackReason: textFromUnknown(meta.fallbackReason) }

@@ -1809,7 +1809,7 @@ function formatFetchedAt(value: string): string {
 function formatCacheStatus(meta: FreshnessMeta): string {
   if (meta.cacheStatus === "hit") {
     if (meta.cacheStale) {
-      return "hit · 갱신 오류로 이전 live 데이터 사용";
+      return "stale · 최근 live 데이터 사용 중";
     }
     const minutes = Math.max(1, Math.round((meta.cacheTtlSeconds ?? 300) / 60));
     return `hit · ${minutes}분 이내 갱신`;
