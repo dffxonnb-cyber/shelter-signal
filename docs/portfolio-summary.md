@@ -1,112 +1,53 @@
 # Shelter Signal Portfolio Summary
 
-## Project Title
+## Project
 
-Shelter Signal
+**Shelter Signal | 공공데이터 기반 구조동물 공고 탐색 PWA**
 
-Production link: https://shelter-signal-ebon.vercel.app/
+Production: https://shelter-signal-ebon.vercel.app/
 
-## Portfolio Card Copy
+## One-line Description
 
-Shelter Signal is a portfolio-ready PWA prototype that turns rescued-animal public notices into a prioritized, mobile-first review experience with shelter/contact context.
+구조동물 공고의 종료일과 데이터 출처를 기준으로 현재·종료 임박·보호·기록 상태를 분리하고, live/cache/fallback 상태를 명확히 보여주는 public-data service입니다.
 
-## V1.5 Summary
-
-Shelter Signal V1.5 is a public-data-based rescued-animal notice PWA with a verified operational database read path.
-
-The deployed app reads notice data through:
+## Current Production Architecture
 
 ```text
-Neon PostgreSQL
--> Vercel /api/notices
--> React PWA
--> static JSON fallback
--> mock fallback
+data.go.kr live notice API
+→ Vercel /api/notices
+→ normalized server cache
+→ KST freshness and urgency classification
+→ server-side region/view/page filtering
+→ React PWA
 ```
 
-Verified deployment state:
+PostgreSQL, static JSON, and mock data are fallback or local validation paths. They are not the current primary Production source.
 
-```text
-/api/notices?limit=100
-ok=true
-source=operational-postgres
-notices=20
-```
+## Key Technical Points
 
-The current hosted data is based on local validation mock/export rows. Loading actual public-data rows into the hosted DB is a later step.
+- KST rolling 30-day upstream collection
+- `noticeEdt`-based expired and missing-deadline filtering
+- `days_left` and `D-Day`~`D-3` urgency classification
+- `current`, `urgent`, `protected`, `archive` views
+- Korean region alias matching and page/limit pagination
+- 5-minute normalized live-data cache and in-flight request sharing
+- explicit `source`, cache, fallback, empty-state, and pagination metadata
+- server-only public API key and safe structured logs
 
-Shelter contact context is handled separately through `/api/shelters`, which calls the data.go.kr rescued-animal notice API server-side and derives contact summaries from `careNm`, `careTel`, `careAddr`, and `orgNm`.
+## Verification Boundary
 
-## V2 Digest Preview Scope
+Repository CI runs lint, typecheck, and build without secrets or external API calls. Manual Production smoke testing checks the UI and safe `/api/notices` metadata to confirm live operating status.
 
-V2/n8n work is limited to local preview and dry-run validation.
+The smoke test does not claim full upstream dataset completeness or public-service impact.
 
-It may include:
+## Historical Evidence
 
-- `mart.alert_candidates` SQL candidate view
-- daily digest JSON/HTML preview
-- local dry-run script
-- local HTTP bridge for n8n HTTP Request testing
-- optional local-only Mailpit/manual test artifacts if already present
-
-It does not include:
-
-- real external email sending
-- SMTP/Gmail credentials
-- real recipients
-- subscriptions
-- auth
-- SMS
-- push notifications
-- production monitoring
-- activated production n8n schedules
-
-## Screenshot References
-
-- Landing hero: `docs/screenshots/01-landing-hero.png`
-- App preview: `docs/screenshots/02-app-preview-home.png`
-- Golden time: `docs/screenshots/03-golden-time.png`
-- Notice filter: `docs/screenshots/04-notices-filter.png`
-- Region explorer: `docs/screenshots/05-region-explorer.png`
-- Detail sheet: `docs/screenshots/06-detail-sheet.png`
-- Data pipeline: `docs/screenshots/07-data-pipeline.png`
-- Operational DB badge: `docs/screenshots/08-operational-db-badge.png`
-- `/api/notices` operational response: `docs/screenshots/09-api-notices-operational-response.png`
-
-## Technical Stack
-
-- Python
-- PostgreSQL
-- Docker Compose
-- Neon PostgreSQL
-- SQL migrations, models, and tests
-- Static JSON export
-- Vercel serverless API routes
-- Vite
-- React
-- TypeScript
-- PWA metadata and SVG brand assets
-- n8n preview/dry-run documentation
-
-## Key Contribution
-
-This project connects data analysis, data modeling, backend API boundaries, and frontend product design into one portfolio artifact. It is not a generic CRUD demo: it defines a Rescue Window Score, models alert candidates in SQL, exports app-ready JSON, serves operational data through a serverless route, and keeps graceful fallbacks for portfolio reliability.
-
-In V1.5, the local Docker validation path and the hosted Neon read path are separated on purpose. That separation shows both data pipeline discipline and deployed product behavior without exposing database credentials to the browser.
-
-## Why This Project Matters
-
-Shelter Signal turns public notices from a passive lookup table into a decision-support interface. Reviewers can quickly see which notices are time-sensitive, where they are concentrated, and what shelter/contact context is available.
-
-The project also demonstrates practical constraints: public API permissions, imperfect source data, secret handling, operational DB failures, and fallback design.
+`08-operational-db-badge.png` and `09-api-notices-operational-response.png` document an earlier PostgreSQL-primary deployment stage. They are historical evidence and must not be presented as the current Production architecture.
 
 ## Boundaries
 
-- Shelter Signal is not a production shelter service.
-- The shelter/contact summaries are notice-derived, not a complete official shelter directory.
-- Rescue Window Score is an internal exploration signal, not an official risk score or prediction model.
-- Current Neon data is mock/export based and contains 20 validation rows.
-- Actual public-data ingestion into the hosted DB is a future task.
-- V2 digest work is preview/dry-run only.
-- Real email/SMS/push/auth/subscription/monitoring are intentionally not implemented.
-- Secrets such as `DATABASE_URL`, Neon passwords, service keys, email credentials, and real recipients must never be committed or logged.
+- Portfolio prototype, not a production shelter service
+- Notice-derived contact context, not a complete official shelter directory
+- No user accounts, persisted saves, real notifications, monitoring, or SLA
+- Public API quota, response format, update cycle, and page-cap limitations remain
+- No secret values, service keys, connection strings, or real recipient data are committed

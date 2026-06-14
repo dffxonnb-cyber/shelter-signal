@@ -2,205 +2,118 @@
 
 ## Project Summary
 
-Shelter Signal is a portfolio-ready mobile PWA prototype that reorganizes public rescued-animal notices into a clearer priority and contact workflow.
+Shelter Signal은 구조동물 공고를 공고 생명주기와 데이터 신뢰 상태에 따라 다시 정리한 모바일 public-data PWA입니다.
 
-The project uses public data, a local PostgreSQL/SQL modeling pipeline, Neon hosted PostgreSQL, a Vite React PWA, and Vercel serverless API routes. V1.5 focuses on helping reviewers understand how public-sector data can become a usable data product surface without exposing database credentials or API keys in browser code.
-
-Live app: https://shelter-signal-ebon.vercel.app/
-
-One-line summary:
-
-> A public-data PWA that helps users identify rescued-animal notices to check first and see notice-derived shelter contact context.
+- Production: https://shelter-signal-ebon.vercel.app/
+- Primary production source: live public rescued-animal notice API
+- Product boundary: portfolio prototype, not a production shelter service
 
 ## Problem
 
-Rescued-animal notices contain important information such as notice end dates, region, shelter names, phone numbers, addresses, animal type, and photo availability. In the raw notice format, those fields are scattered and hard to scan quickly.
+구조동물 원천 공고에는 현재 공고와 과거 기록이 섞일 수 있고, 종료 임박 공고가 긴 목록 안에 묻히기 쉽습니다. 또한 공공 API 장애나 빈 결과와 sample fallback을 같은 상태로 보여주면 사용자가 데이터 신뢰 수준을 판단하기 어렵습니다.
 
-The product question was:
+핵심 질문은 다음과 같습니다.
 
-> How can a user quickly understand which notices deserve attention first, and what official contact context is available?
+> 현재 확인 가능한 공고와 종료 임박 공고를 빠르게 찾고, 지금 보고 있는 데이터가 live인지 fallback인지 어떻게 분명하게 알릴 수 있는가?
 
-The project also needed to handle practical data constraints:
+## Current Operating Architecture
 
-- Public API access can be inconsistent or permission-limited.
-- API keys must not be exposed in frontend code.
-- A portfolio demo should continue to render even when live data is unavailable.
-- Shelter contact information should not be overstated as a complete official directory.
+```text
+React PWA
+→ Vercel /api/notices
+→ server-side normalized-data cache
+→ data.go.kr rescued-animal notice API
+→ KST freshness normalization
+→ current / urgent / protected / archive views
+→ server-side region filter and page/limit response
+```
 
-## My Approach
-
-I treated Shelter Signal as a small data product rather than a simple list UI.
-
-The approach was to separate responsibilities:
-
-- Use Python and PostgreSQL for local ingestion and modeling.
-- Use SQL views to produce explainable summary data.
-- Validate the data pipeline locally with Docker Compose PostgreSQL.
-- Use Neon PostgreSQL as the hosted operational read database for the deployed app.
-- Use Vercel `/api/notices` so the browser never connects directly to the database.
-- Keep static JSON and mock data as safe fallbacks when the DB route fails.
-- Use a Vercel serverless route for live shelter/contact lookup.
-- Keep public-data API secrets server-side with `DATA_GO_KR_SERVICE_KEY`.
-
-This lets the deployed app stay simple, inspectable, and stable while demonstrating a full data-product path: local validation, hosted operational DB read, serverless API boundary, frontend normalization, and fallback UX.
+브라우저는 공공 API service key나 데이터베이스 credential을 받지 않습니다. `/api/notices`와 `/api/shelters`만 server-side 환경 변수를 읽습니다.
 
 ## What I Built
 
-Shelter Signal V1 includes:
-
-- Mobile-first Vite React PWA
-- Home signal overview
-- Golden Time list for `긴급 확인` and `곧 종료` notices
-- Rescue Window Score display and sorting
-- Notice filters by signal, animal type, and region
-- Notice display count control
-- Region explorer with 시/도 and 시/군/구 selectors
-- Vercel `/api/notices` route connected to Neon-backed operational PostgreSQL reads
-- Vercel `/api/shelters` route for notice-derived shelter contact summaries
-- Detail sheet with official notice fields, animal information, shelter contact fields, and contact actions
-- Saved-notice placeholder for a later persistence phase
-- PWA manifest, service worker, SVG icon, and OG image assets
-- Portfolio screenshots and deployment documentation
-
-## Data Pipeline
-
-V1.5 uses an operational DB read path as the primary app data source:
-
-```text
-Public API / mock data
-→ PostgreSQL raw table
-→ SQL models and tests
-→ Rescue Window Score
-→ Neon hosted PostgreSQL
-→ Vercel /api/notices
-→ Vite React PWA
-```
-
-Local validation still uses Docker Compose PostgreSQL for migrations, mock data load, SQL models, SQL tests, and app JSON export validation. In the deployed environment, Neon PostgreSQL and a Vercel API route provide the operational read path.
-
-The fallback path remains:
-
-```text
-/api/notices failure or empty result
-→ static JSON export
-→ mock fallback
-```
-
-The fallback files are:
-
-```text
-app/public/data/animals.json
-app/public/data/region_summary.json
-app/public/data/rescue_window_summary.json
-app/public/data/shelter_summary.json
-app/public/data/kind_summary.json
-```
-
-Verified V1.5 deployment state:
-
-```text
-/api/notices?limit=100
-ok=true
-source=operational-postgres
-notices=20
-```
-
-The current hosted Neon data is based on local validation mock/export data. Actual public-data rows in the hosted DB are a later step.
-
-Shelter/contact lookup uses a separate server-side route:
-
-```text
-PWA region selector
-→ /api/shelters
-→ Vercel Serverless Function
-→ data.go.kr rescued-animal notice API
-→ careNm/careTel/careAddr/orgNm dedupe
-→ frontend shelter contact cards
-```
-
-The browser never connects directly to PostgreSQL or data.go.kr. The service key is read only by the serverless function.
+- KST 기준 최근 30일 live notice collection
+- `noticeEdt` 기반 current/urgent/protected/archive 분리
+- `days_left` 및 `D-Day`~`D-3` urgency classification
+- 만료·마감일 누락 공고의 current/urgent 제외
+- Korean region alias를 처리하는 server-side region filtering
+- 기본 20건, 최대 100건의 page/limit pagination
+- normalized live dataset 대상 5분 server-side cache
+- concurrent request의 in-flight fetch 공유
+- live/cache/fallback/empty state를 구분하는 API metadata와 UI
+- fallback에서만 표시되는 명시적 경고
+- notice-derived shelter contact context
+- local PostgreSQL/SQL models와 static/mock fallback 검증 경로
 
 ## Key Decisions
 
-**Operational DB first, fallback always available**
+### Live-first, fallback explicitly labeled
 
-The PWA now calls `/api/notices?limit=100` first. If the DB route fails, returns `ok=false`, or returns an empty notices array, the app falls back to static JSON and then mock data. This prevents the portfolio app from breaking while still proving a deployed operational DB read path.
+Production의 primary read path는 live public API입니다. Live API가 실패하거나 unusable response를 반환하고 사용할 수 있는 live cache도 없을 때만 PostgreSQL, static JSON, mock fallback을 사용합니다.
 
-**Docker locally, Neon in deployment**
+Fallback 데이터는 항상 `source: "fallback"`과 경고를 표시합니다. 정상적인 live empty result는 `source: "api"`를 유지합니다.
 
-로컬에서는 Docker Compose PostgreSQL로 데이터 파이프라인을 검증하고, 배포 환경에서는 Neon PostgreSQL과 Vercel API route를 통해 operational read path를 구성했다.
+### Freshness is a server boundary
 
-**DB failure does not break the app**
+서버가 `noticeEdt`를 KST 날짜 기준으로 계산해 expired·missing deadline 행을 current/urgent에서 제외합니다. UI는 이미 분류된 view를 받아 표시하므로 만료 공고가 기본 목록에 섞이지 않습니다.
 
-DB route가 실패해도 static JSON과 mock fallback으로 앱이 깨지지 않도록 설계했다.
+### Large live results are filtered before rendering
 
-**Server-only public API key**
+지역, view, page, limit를 server response layer에서 적용합니다. 지역 변경과 `공고 더 보기`는 새로운 server-filtered page를 요청하며, 전체 live dataset을 한 번에 브라우저로 보내지 않습니다.
 
-The frontend calls `/api/shelters`; it never receives or stores the public-data service key. The Vercel function reads `DATA_GO_KR_SERVICE_KEY` from the deployment environment.
+### Cache is not fallback
 
-**Server-only database URL**
+Cache hit와 허용된 stale-live 응답은 usable live data에서 생성되었으므로 `source: "api"`입니다. Serverless instance cache는 cold start와 instance 간 공유를 보장하지 않는다는 한계를 함께 문서화합니다.
 
-The frontend calls `/api/notices`; it never receives or stores `DATABASE_URL`. The Vercel function reads the Neon pooled connection string only from the deployment environment.
+### Safe observability
 
-**Notice-derived shelter summaries**
+응답과 structured log에는 cache 상태, duration, count, view, pagination 진단만 포함합니다. Service key, secret 환경 변수, secret-bearing upstream URL은 반환하거나 기록하지 않습니다.
 
-The shelter list is not presented as a complete official shelter directory. It is derived from rescued-animal notice fields already present in API rows: `careNm`, `careTel`, `careAddr`, and `orgNm`.
+## Verification Evidence
 
-**Explainable priority signal**
+Production smoke testing checks:
 
-Rescue Window Score is an internal exploration signal, not an official risk score or adoption prediction. The UI and documentation avoid claiming legal, medical, or public-agency status.
+- UI data status is `Live API`
+- fallback warning is hidden for live/cache responses
+- region selection and load-more request server-filtered pages
+- `/api/notices` returns `source: "api"`
+- `cacheStatus`, `dateRange`, count, pagination metadata are present
+- `fallbackReason` is absent for live/cache responses
+- expired or missing-deadline records do not leak into current/urgent
 
-**V1/V2 separation**
+This smoke test verifies the operating boundary, not the completeness or accuracy of the entire upstream public dataset.
 
-V1 stays focused on the PWA and shelter lookup. V2 planning explores n8n, digest preview, and alert candidates without changing V1 into an unfinished production notification service.
+## Historical Architecture Context
+
+An earlier V1.5 stage validated Docker PostgreSQL → Neon PostgreSQL → Vercel `/api/notices` as a primary operational read path. That path is no longer the current Production primary architecture.
+
+PostgreSQL/Neon materials are retained only as:
+
+- historical implementation evidence
+- optional server-side fallback
+- local SQL modeling and alert-candidate validation
+
+See [neon-deployment.md](neon-deployment.md) for the archived plan.
 
 ## Technical Stack
 
-- Vite
-- React
-- TypeScript
+- Vite, React, TypeScript
 - Vercel Functions
-- Python
-- PostgreSQL
-- Neon PostgreSQL
-- SQL migrations, models, and tests
-- Docker Compose
-- Static JSON export
-- PWA manifest and service worker
-- SVG app and Open Graph assets
+- data.go.kr public API
+- Python, PostgreSQL, SQL, Docker Compose
+- Static JSON and mock fallback
+- GitHub Actions
 
 ## Limitations
 
-Shelter Signal V1 is not a production shelter service.
+- Public API quota, permission, latency, and XML/plain-text errors can affect live collection.
+- The upstream page cap can limit unusually large result windows.
+- Source agencies can update notice and process state on different schedules.
+- Vercel instance memory cache is not guaranteed across cold starts or instances.
+- Notice-derived shelter summaries are not a complete official shelter directory.
+- Rescue Window Score is an internal exploration signal, not an official score or outcome prediction.
+- User accounts, persisted saves, real notifications, monitoring, and SLA are not implemented.
 
-Current limitations:
+## Portfolio Value
 
-- No user accounts or authentication
-- No persisted saved notices
-- No push notifications
-- No real email or SMS delivery
-- No production n8n automation
-- No production monitoring
-- No map SDK
-- No shelter homepage, operating-hours, or coordinate enrichment
-- No claim that notice-derived shelter summaries are a complete official directory
-- Rescue Window Score is not an official risk score or outcome prediction
-- Current Neon data is based on local mock/export validation data, not live hosted public-data ingestion
-
-## V2 Roadmap
-
-V2 is planned around an n8n/email digest pipeline, but it remains outside the V1 production surface.
-
-Next V2 steps:
-
-- Sync `v2/n8n-email-alerts` with the latest `main` branch changes.
-- Load actual public-data rows into the hosted database path after reviewing API permissions and data refresh strategy.
-- Revalidate `python scripts/run_daily_digest_dry_run.py`.
-- Continue digest preview work from the `mart.alert_candidates` view.
-- Keep production auth, subscription management, real email/SMS sending, and monitoring out of scope until the preview workflow is reviewed.
-
-## Portfolio Description
-
-Shelter Signal is a public-data rescued-animal notice PWA that turns scattered notice fields into a clearer priority and contact workflow. I built the project as an end-to-end data product prototype: Python ingestion, PostgreSQL modeling, SQL tests, Docker local validation, Neon hosted read path, React PWA screens, and Vercel serverless API routes that keep database credentials and public-data keys out of browser code.
-
-The strongest portfolio points are the product framing, data analysis-to-product translation, explainable Rescue Window Score, Docker-to-Neon deployment path, fallback architecture, and server-side API boundaries.
+Shelter Signal demonstrates how to turn unstable public-data rows into a reviewable product surface with explicit freshness, pagination, cache, fallback, secret, and verification boundaries. The project emphasizes data trust and operating-state communication rather than claiming public-service outcomes.

@@ -1,33 +1,41 @@
 # Shelter Signal Screenshots
 
-이 폴더는 포트폴리오와 배포 문서에 사용할 앱 화면 캡처를 보관하기 위한 자리입니다.
+이 폴더는 Shelter Signal의 제품 흐름과 구현 이력을 설명하는 tracked screenshot set입니다.
 
-현재 대표 캡처 환경은 반응형 제품 페이지 구성을 보여주기 위해 데스크톱 기준 `1280x900`입니다. 모바일 `390x844`, 태블릿 `768x1024`은 보조 검증용으로 사용합니다.
+## Product-flow Screenshots
 
-## Capture Checklist
+다음 캡처는 제품 흐름 설명용입니다. UI가 변경되면 Production과 일치하는지 다시 확인해야 합니다.
 
-- `01-landing-hero`: 제품 메시지, 데이터 상태 칩, CTA가 보이는 랜딩 히어로
-- `02-app-preview-home`: 제품 페이지 안에 삽입된 앱 preview 홈 화면
-- `03-golden-time`: 보호 종료가 가까운 공고 중심의 골든타임 탭
-- `04-notices-filter`: 공고 필터와 표시 수 조절 컨트롤이 함께 보이는 공고 탭
-- `05-region-explorer`: 권역 선택 패널과 지역 신호가 보이는 지역 탐색 탭
-- `06-detail-sheet`: 공식 공고 정보, 동물 정보, 보호소 및 연락처가 보이는 상세 시트
-- `07-data-pipeline`: Public API에서 Static JSON, PWA까지 이어지는 파이프라인 섹션
-- `08-operational-db-badge`: 배포된 PWA에서 Operational DB badge가 보이는 모바일 화면
-- `09-api-notices-operational-response`: `/api/notices?limit=100` operational response 확인 화면
+- `01-landing-hero.png`: 제품 메시지와 CTA
+- `02-app-preview-home.png`: 앱 preview 홈
+- `03-golden-time.png`: 종료 임박 공고 흐름
+- `04-notices-filter.png`: 공고 필터
+- `05-region-explorer.png`: 지역 탐색
+- `06-detail-sheet.png`: 공고 상세와 연락 맥락
+- `07-data-pipeline.png`: 당시 데이터 흐름 설명
 
-## Current Screenshot Set
+## Historical Operational DB Evidence
 
-```text
-01-landing-hero.png
-02-app-preview-home.png
-03-golden-time.png
-04-notices-filter.png
-05-region-explorer.png
-06-detail-sheet.png
-07-data-pipeline.png
-08-operational-db-badge.png
-09-api-notices-operational-response.png
-```
+다음 캡처는 2026-06-05 이전 PostgreSQL-primary 검증 단계의 historical evidence입니다.
 
-스크린샷은 실제 운영 기능을 과장하지 않도록 현재 구현된 V1.5 상태를 그대로 보여줍니다. `09-api-notices-operational-response.png`는 공개 API 응답 필드만 포함하며 `DATABASE_URL`, Neon password, service key 같은 secret을 포함하지 않습니다.
+- `08-operational-db-badge.png`
+- `09-api-notices-operational-response.png`
+
+이 두 파일은 현재 Production source 또는 현재 UI 상태를 나타내지 않습니다. 현재 Production은 live-first public API 구조이며, 성공 응답은 `source: "api"`와 `Live API` 상태를 사용합니다.
+
+## Capture Safety
+
+- service key, `DATABASE_URL`, connection string, secret 환경 값, full upstream URL을 포함하지 않습니다.
+- API evidence에는 safe response metadata만 사용합니다.
+- fallback 화면은 live 화면으로 소개하지 않습니다.
+- 캡처 시점과 현재 구현이 다르면 historical 또는 archived로 명확히 표시합니다.
+
+## Recommended Current Evidence
+
+새 Production evidence를 캡처할 때는 다음을 우선 확인합니다.
+
+- UI data status panel의 `Live API`
+- fallback warning이 숨겨진 상태
+- 지역 필터와 `공고 더 보기`
+- `/api/notices`의 `source`, `cacheStatus`, `dateRange`, count, pagination metadata
+- `fallbackReason`이 live/cache 응답에서 비어 있는 상태
