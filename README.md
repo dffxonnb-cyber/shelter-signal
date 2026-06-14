@@ -262,10 +262,15 @@ the base key, so those derived filters can reuse one upstream collection.
 
 Safe cache metadata includes `cacheStatus` (`hit`, `miss`, or `disabled`),
 `cacheTtlSeconds`, `cacheGeneratedAt`, `cacheAgeSeconds`, and optional
-`cacheStale`/`cacheRefreshError`. Server-only `NOTICES_CACHE_TTL_SECONDS` can
-disable the instance cache with `0` or set a TTL up to 10 minutes. If refresh
-fails just after expiry, the route may reuse the previous live dataset for up to
-15 additional minutes and marks it as stale live cache data.
+`cacheStale`/`cacheRefreshError`. Lightweight observability also reports a safe
+`cacheScope`, `upstreamFetchDurationMs`, `upstreamFetchCount`,
+`normalizedItemCount`, and `inFlightMerged`. This makes cache hit/miss behavior,
+upstream collection cost, and concurrent-request sharing visible without
+logging a service key, secret-bearing URL, or sensitive environment value.
+Server-only `NOTICES_CACHE_TTL_SECONDS` can disable the instance cache with `0`
+or set a TTL up to 10 minutes. If refresh fails just after expiry, the route may
+reuse the previous live dataset for up to 15 additional minutes and marks it as
+stale live cache data.
 
 Cache data is not fallback data. A cache hit remains `source: "api"` because it
 came from a usable live response. PostgreSQL/static/mock fallback is used only
@@ -276,7 +281,9 @@ empty `source: "api"` responses.
 The cache never stores or returns the service key. Vercel serverless memory can
 be instance-local and is not guaranteed across cold starts, deployments, or
 different function instances, so a later request can legitimately report
-another cache miss.
+another cache miss. A shared Redis or Vercel Runtime Cache would be considered
+later only if cross-instance cache consistency or aggregated operational
+metrics become necessary.
 
 The route treats `noticeEdt` as the public notice end date. It recalculates
 `days_left` against the current `Asia/Seoul` date and derives
@@ -320,8 +327,12 @@ Safe `/api/notices` metadata includes `source`, `fetchedAt`, `dateRange`,
 `requestState`, `itemCount`, `filteredCount`, `returnedCount`, `urgentCount`,
 `pagesFetched`, `upstreamTotalCount`, `responseFormat`, `truncated`, `viewLimit`,
 `totalFilteredCount`, `hasMore`, `nextPage`, `cacheStatus`, `cacheTtlSeconds`,
-`cacheGeneratedAt`, and `fallbackReason` when applicable. No service key or
-upstream URL containing the service key is returned or logged.
+`cacheGeneratedAt`, `cacheAgeSeconds`, `cacheScope`, `upstreamFetchDurationMs`,
+`upstreamFetchCount`, `normalizedItemCount`, `inFlightMerged`, and
+`fallbackReason` when applicable. Safe structured logs include only cache,
+timing, count, view, and pagination diagnostics. No service key, sensitive
+environment value, or upstream URL containing the service key is returned or
+logged.
 
 Large public API results are not rendered at once. Region changes request a new
 server-filtered first page, and `공고 더 보기` requests the next server page.

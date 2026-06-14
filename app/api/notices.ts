@@ -89,6 +89,11 @@ interface NoticeMeta {
   cacheAgeSeconds?: number;
   cacheStale?: boolean;
   cacheRefreshError?: FallbackReason;
+  cacheScope?: string;
+  upstreamFetchDurationMs?: number;
+  upstreamFetchCount?: number;
+  normalizedItemCount?: number;
+  inFlightMerged?: boolean;
   fallbackReason?: FallbackReason;
   warning?: string;
   counts: {
@@ -145,6 +150,11 @@ interface NoticeDiagnostics {
   cacheAgeSeconds?: number;
   cacheStale?: boolean;
   cacheRefreshError?: FallbackReason;
+  cacheScope?: string;
+  upstreamFetchDurationMs?: number;
+  upstreamFetchCount?: number;
+  normalizedItemCount?: number;
+  inFlightMerged?: boolean;
   fallbackReason?: FallbackReason;
 }
 
@@ -160,6 +170,9 @@ interface LiveDataset {
     | "upstreamTotalCount"
     | "responseFormat"
     | "truncated"
+    | "upstreamFetchDurationMs"
+    | "upstreamFetchCount"
+    | "normalizedItemCount"
   >;
 }
 
@@ -170,6 +183,7 @@ interface LiveDatasetResult {
   cacheAgeSeconds: number;
   cacheStale?: boolean;
   cacheRefreshError?: FallbackReason;
+  inFlightMerged: boolean;
 }
 
 interface PaginatedViews {
@@ -193,6 +207,7 @@ const DEFAULT_CACHE_TTL_SECONDS = 300;
 const MAX_CACHE_TTL_SECONDS = 600;
 const STALE_IF_ERROR_SECONDS = 900;
 const MAX_CACHE_ENTRIES = 8;
+const LIVE_CACHE_SCOPE = "notice-window-v1";
 const MAX_DATABASE_ROWS = 10_000;
 const DEFAULT_STATE = "notice";
 const SEOUL_TIME_ZONE = "Asia/Seoul";
@@ -341,6 +356,7 @@ async function getLiveDataset(
       cacheStatus: "disabled",
       cacheTtlSeconds,
       cacheAgeSeconds: 0,
+      inFlightMerged: false,
     };
   }
 
@@ -348,14 +364,16 @@ async function getLiveDataset(
   const now = Date.now();
   const cached = liveDatasetCache.get(cacheKey);
   if (cached && now < cached.expiresAt) {
-    return liveDatasetResult(cached, "hit", cacheTtlSeconds, now);
+    return liveDatasetResult(cached, "hit", cacheTtlSeconds, now, false);
   }
 
+  let inFlightMerged = false;
   try {
     const activeFetch = liveDatasetFetches.get(cacheKey);
     if (activeFetch) {
+      inFlightMerged = true;
       const dataset = await activeFetch;
-      return liveDatasetResult(dataset, "hit", cacheTtlSeconds, Date.now());
+      return liveDatasetResult(dataset, "hit", cacheTtlSeconds, Date.now(), true);
     }
 
     const fetchPromise = fetchLiveDataset(serviceKey, options, today, cacheTtlSeconds);
@@ -363,14 +381,14 @@ async function getLiveDataset(
     try {
       const dataset = await fetchPromise;
       storeLiveDataset(cacheKey, dataset);
-      return liveDatasetResult(dataset, "miss", cacheTtlSeconds, Date.now());
+      return liveDatasetResult(dataset, "miss", cacheTtlSeconds, Date.now(), false);
     } finally {
       liveDatasetFetches.delete(cacheKey);
     }
   } catch (error) {
     if (cached && Date.now() < cached.staleUntil) {
       return {
-        ...liveDatasetResult(cached, "hit", cacheTtlSeconds, now),
+        ...liveDatasetResult(cached, "hit", cacheTtlSeconds, now, inFlightMerged),
         cacheStale: true,
         cacheRefreshError:
           error instanceof LiveApiError ? error.reason : "upstream_request_failed",
@@ -386,7 +404,9 @@ async function fetchLiveDataset(
   today: string,
   cacheTtlSeconds: number,
 ): Promise<LiveDataset> {
+  const fetchStartedAt = Date.now();
   const upstreamResult = await fetchPublicNotices(serviceKey, options);
+  const upstreamFetchDurationMs = Date.now() - fetchStartedAt;
   if (
     upstreamResult.status < 200 ||
     upstreamResult.status >= 300 ||
@@ -423,6 +443,9 @@ async function fetchLiveDataset(
       upstreamTotalCount: upstreamResult.totalCount,
       responseFormat: upstreamResult.responseFormat,
       truncated: upstreamResult.truncated,
+      upstreamFetchDurationMs,
+      upstreamFetchCount: upstreamResult.pagesFetched,
+      normalizedItemCount: records.length,
     },
   };
 }
@@ -435,6 +458,7 @@ function sendLiveResponse(
   const { dataset } = liveResult;
   const allViews = buildViews(dataset.records, options.includeExpired, options.filters);
   const pageResult = paginateViews(allViews, options);
+  logLiveDiagnostics(options, liveResult, allViews, pageResult);
 
   res.setHeader("Cache-Control", "private, no-store");
   res.status(200).json({
@@ -451,6 +475,8 @@ function sendLiveResponse(
       cacheTtlSeconds: liveResult.cacheTtlSeconds,
       cacheGeneratedAt: dataset.generatedAt,
       cacheAgeSeconds: liveResult.cacheAgeSeconds,
+      cacheScope: LIVE_CACHE_SCOPE,
+      inFlightMerged: liveResult.inFlightMerged,
       ...(liveResult.cacheStale ? { cacheStale: true } : {}),
       ...(liveResult.cacheRefreshError
         ? { cacheRefreshError: liveResult.cacheRefreshError }
@@ -478,13 +504,39 @@ function liveDatasetResult(
   cacheStatus: CacheStatus,
   cacheTtlSeconds: number,
   now: number,
+  inFlightMerged: boolean,
 ): LiveDatasetResult {
   return {
     dataset,
     cacheStatus,
     cacheTtlSeconds,
     cacheAgeSeconds: Math.max(0, Math.floor((now - Date.parse(dataset.generatedAt)) / 1000)),
+    inFlightMerged,
   };
+}
+
+function logLiveDiagnostics(
+  options: RequestOptions,
+  liveResult: LiveDatasetResult,
+  views: NoticeViews,
+  pageResult: PaginatedViews,
+): void {
+  console.info("[notices-api] live response", {
+    cacheScope: LIVE_CACHE_SCOPE,
+    cacheStatus: liveResult.cacheStatus,
+    cacheAgeSeconds: liveResult.cacheAgeSeconds,
+    cacheStale: Boolean(liveResult.cacheStale),
+    inFlightMerged: liveResult.inFlightMerged,
+    upstreamFetchDurationMs: liveResult.dataset.diagnostics.upstreamFetchDurationMs,
+    upstreamFetchCount: liveResult.dataset.diagnostics.upstreamFetchCount,
+    normalizedItemCount: liveResult.dataset.diagnostics.normalizedItemCount,
+    filteredItemCount: views.currentNotices.length,
+    totalFilteredCount: pageResult.totalFilteredCount,
+    returnedItemCount: pageResult.notices.length,
+    view: options.view,
+    page: options.page,
+    limit: options.limit,
+  });
 }
 
 function storeLiveDataset(cacheKey: string, dataset: LiveDataset): void {
@@ -1052,6 +1104,19 @@ function buildMeta(
     ...(diagnostics.cacheStale ? { cacheStale: true } : {}),
     ...(diagnostics.cacheRefreshError
       ? { cacheRefreshError: diagnostics.cacheRefreshError }
+      : {}),
+    ...(diagnostics.cacheScope ? { cacheScope: diagnostics.cacheScope } : {}),
+    ...(diagnostics.upstreamFetchDurationMs !== undefined
+      ? { upstreamFetchDurationMs: diagnostics.upstreamFetchDurationMs }
+      : {}),
+    ...(diagnostics.upstreamFetchCount !== undefined
+      ? { upstreamFetchCount: diagnostics.upstreamFetchCount }
+      : {}),
+    ...(diagnostics.normalizedItemCount !== undefined
+      ? { normalizedItemCount: diagnostics.normalizedItemCount }
+      : {}),
+    ...(diagnostics.inFlightMerged !== undefined
+      ? { inFlightMerged: diagnostics.inFlightMerged }
       : {}),
     ...(diagnostics.fallbackReason
       ? { fallbackReason: diagnostics.fallbackReason }
