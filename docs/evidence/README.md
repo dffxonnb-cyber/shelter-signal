@@ -11,6 +11,23 @@ Evidence date: **2026-06-15 KST**
 - [GitHub Actions Verify result](github-actions-verify-2026-06-15.json)
 - [Production UI screenshot](../screenshots/10-live-first-production-ui-2026-06-15.png)
 
+## V2 Dry-run Evidence
+
+Evidence date: **2026-06-19 KST**
+
+- [V2 dry-run evidence](v2-dry-run-2026-06-19.md)
+
+This evidence documents the local preview path for:
+
+```text
+mart.alert_candidates
+→ daily digest JSON/HTML preview
+→ local dry-run validation
+
+This is not Production notification evidence.
+
+It does not claim real email, SMS, push delivery, real recipients, subscription management, Production schedules, monitoring, or delivery SLA.
+
 ## Evidence Boundary
 
 현재 evidence는 다음을 확인합니다.
