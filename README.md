@@ -196,6 +196,15 @@ fallbackReason = absent for live/cache response
 
 이 evidence는 UI와 `/api/notices`의 live operating status, freshness 누수 검사, secret-free CI 통과를 확인합니다. 전체 upstream dataset의 완전성·정확성, 기관별 갱신 주기, 운영 SLA 또는 실제 구조 성과를 증명하지 않습니다. API evidence에는 notice rows가 없고, screenshot과 CI snapshot에도 service key, 환경 변수, full upstream URL을 포함하지 않습니다.
 
+## V2 Dry-run Evidence
+
+Shelter Signal V2 is a local preview and dry-run track for alert candidate and digest generation.
+
+- [V2 dry-run evidence · 2026-06-19](docs/evidence/v2-dry-run-2026-06-19.md)
+
+This does not claim Production notification delivery.  
+Real email, SMS, push delivery, real recipients, subscription management, Production schedules, monitoring, and delivery SLA are out of scope.
+
 ## Screenshots
 
 현재 tracked screenshot set의 `01`~`07`은 제품 흐름 설명용 캡처입니다.
