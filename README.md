@@ -1,5 +1,11 @@
 # Shelter Signal
 
+[![Verify](https://github.com/dffxonnb-cyber/shelter-signal/actions/workflows/verify.yml/badge.svg)](https://github.com/dffxonnb-cyber/shelter-signal/actions/workflows/verify.yml)
+[![Live](https://img.shields.io/badge/live-Vercel-000000?logo=vercel&logoColor=white)](https://shelter-signal-ebon.vercel.app/)
+[![Source](https://img.shields.io/badge/source-live%20API-2563eb)](https://shelter-signal-ebon.vercel.app/api/notices?view=current&limit=20)
+[![PWA](https://img.shields.io/badge/app-mobile%20PWA-0f766e)](https://shelter-signal-ebon.vercel.app/)
+[![Evidence](https://img.shields.io/badge/evidence-public--safe-6b7280)](docs/evidence/production-verification-2026-06-15.md)
+
 **Shelter Signal은 불안정한 공공데이터 구조동물 공고 API를 사용자가 신뢰할 수 있는 마감 중심 탐색 흐름으로 감싼 모바일 PWA입니다.**
 
 - Production: https://shelter-signal-ebon.vercel.app/
