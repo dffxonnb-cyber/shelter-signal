@@ -1,6 +1,6 @@
 # Shelter Signal
 
-**Shelter Signal은 공공데이터 구조동물 공고를 현재 공고, 종료 임박 공고, 보호 중 공고, 기록 보관으로 나누어 탐색하는 모바일 PWA입니다.**
+**Shelter Signal은 불안정한 공공데이터 구조동물 공고 API를 사용자가 신뢰할 수 있는 마감 중심 탐색 흐름으로 감싼 모바일 PWA입니다.**
 
 - Production: https://shelter-signal-ebon.vercel.app/
 - Portfolio case study: [docs/portfolio-case-study.md](docs/portfolio-case-study.md)
@@ -9,18 +9,28 @@
 
 Shelter Signal은 실제 보호소 운영 서비스가 아니라 public-data service 포트폴리오 프로젝트입니다. 사용자 계정, 저장 persistence, 실제 알림 전송, 운영 SLA는 포함하지 않습니다.
 
-## Reviewer Snapshot
+## 3-Minute Reviewer Path
 
-| 항목 | 현재 구현 |
+| Step | Open | What to check |
+| --- | --- | --- |
+| 1 | [Production PWA](https://shelter-signal-ebon.vercel.app/) | Live API 상태, 모바일 우선 탐색 화면, fallback 경고 여부 |
+| 2 | [Production evidence](docs/evidence/production-verification-2026-06-15.md) | live-first Production 상태와 public-safe evidence boundary |
+| 3 | [VERIFY.md](VERIFY.md) | 수동 검증, CI 검증, secret-free test 범위 |
+| 4 | [V2 dry-run evidence](docs/evidence/v2-dry-run-2026-06-19.md) | 실제 발송이 아닌 alert candidate와 digest 생성 dry-run 흔적 |
+| 5 | [Portfolio case study](docs/portfolio-case-study.md) | 공공데이터 서비스로서의 문제 정의와 판단 흐름 |
+
+## Reliability Snapshot
+
+| Layer | What was designed |
 | --- | --- |
-| Primary production source | Vercel `/api/notices`가 data.go.kr 구조동물 공고 API를 server-side에서 먼저 조회 |
-| Freshness boundary | KST 기준 최근 30일 조회 후 `noticeEdt`가 오늘보다 이전이거나 누락된 행을 current/urgent에서 제외 |
-| 탐색 구조 | `current`, `urgent`, `protected`, `archive` view와 server-side 지역 필터 |
-| 대량 결과 처리 | 기본 `limit=20`, 최대 `100`, `page` 기반 pagination과 `공고 더 보기` |
-| Cache | 정규화된 live dataset을 기본 5분간 server-side instance cache에 보관 |
-| Fallback | live API 실패 또는 unusable response일 때만 PostgreSQL → static JSON → mock 순서로 사용 |
-| 신뢰 상태 | `source`, cache metadata, pagination metadata, `fallbackReason`을 API와 UI에서 구분 |
-| Secret boundary | service key와 `DATABASE_URL`은 server-side 환경 변수로만 사용 |
+| **Live source** | Vercel `/api/notices`가 data.go.kr 구조동물 공고 API를 server-side에서 먼저 조회 |
+| **Freshness** | KST 기준 최근 30일 조회 후 `noticeEdt`가 만료되었거나 누락된 행을 current/urgent에서 제외 |
+| **Views** | `current`, `urgent`, `protected`, `archive` view로 공고 상태를 분리 |
+| **Pagination** | 기본 `limit=20`, 최대 `100`, `page` 기반 pagination과 `공고 더 보기` |
+| **Cache** | 정규화된 live dataset을 기본 300초 동안 server-side instance cache에 보관 |
+| **Fallback** | live API 실패 또는 unusable response일 때만 PostgreSQL → static JSON → mock 순서로 사용 |
+| **Observability** | `source`, cache metadata, pagination metadata, `fallbackReason`으로 신뢰 상태를 구분 |
+| **Secret boundary** | service key와 `DATABASE_URL`은 server-side 환경 변수로만 사용하고 frontend에 노출하지 않음 |
 
 ## Current Production Architecture
 
@@ -202,8 +212,7 @@ Shelter Signal V2 is a local preview and dry-run track for alert candidate and d
 
 - [V2 dry-run evidence · 2026-06-19](docs/evidence/v2-dry-run-2026-06-19.md)
 
-This does not claim Production notification delivery.  
-Real email, SMS, push delivery, real recipients, subscription management, Production schedules, monitoring, and delivery SLA are out of scope.
+This does not claim Production notification delivery. Real email, SMS, push delivery, real recipients, subscription management, Production schedules, monitoring, and delivery SLA are out of scope.
 
 ## Screenshots
 
