@@ -11,6 +11,7 @@
 - Production: https://shelter-signal-ebon.vercel.app/
 - Portfolio case study: [docs/portfolio-case-study.md](docs/portfolio-case-study.md)
 - Verification guide: [VERIFY.md](VERIFY.md)
+- Monthly snapshot workflow: [Monthly Notice Snapshot](.github/workflows/monthly-notice-snapshot.yml)
 - Current Production evidence: [docs/evidence/production-verification-2026-06-15.md](docs/evidence/production-verification-2026-06-15.md)
 
 Shelter Signal은 실제 보호소 운영 서비스가 아니라 public-data service 포트폴리오 프로젝트입니다. 사용자 계정, 저장 persistence, 실제 알림 전송, 운영 SLA는 포함하지 않습니다.
@@ -211,6 +212,25 @@ fallbackReason = absent for live/cache response
 - [Live-first Production UI screenshot](docs/screenshots/10-live-first-production-ui-2026-06-15.png)
 
 이 evidence는 UI와 `/api/notices`의 live operating status, freshness 누수 검사, secret-free CI 통과를 확인합니다. 전체 upstream dataset의 완전성·정확성, 기관별 갱신 주기, 운영 SLA 또는 실제 구조 성과를 증명하지 않습니다. API evidence에는 notice rows가 없고, screenshot과 CI snapshot에도 service key, 환경 변수, full upstream URL을 포함하지 않습니다.
+
+## Monthly Public-Data Snapshot Workflow
+
+Shelter Signal now includes a manual GitHub Actions workflow for monthly public-data snapshot generation.
+
+The workflow is designed in two modes:
+
+- `dry_run=true`: checks the snapshot script path without calling the public API or writing snapshot files.
+- `dry_run=false`: uses the server-side `DATA_GO_KR_SERVICE_KEY` secret to generate public-safe monthly snapshot artifacts.
+
+Planned generated artifacts:
+
+- `app/public/data/latest-notices.json`
+- `app/public/data/latest-notices.meta.json`
+- `app/public/data/monthly-notices/YYYY-MM.json`
+- `app/public/data/monthly-notices/YYYY-MM.meta.json`
+
+The monthly snapshot is not presented as real-time shelter operation data. It is portfolio evidence for public-data freshness context, fallback-boundary documentation, and workflow-monitored maintenance.
+
 
 ## V2 Dry-run Evidence
 

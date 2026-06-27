@@ -52,6 +52,30 @@ npm run build
 
 The workflow must remain secret-free. Live API calls and Production credentials do not belong in repository CI.
 
+### Monthly Notice Snapshot Workflow
+
+`.github/workflows/monthly-notice-snapshot.yml` is a separate maintenance workflow for monthly public-data snapshot generation.
+
+It is manually triggered with `workflow_dispatch`.
+
+Default safe check:
+
+- `dry_run=true`
+- does not call the public API
+- does not require `DATA_GO_KR_SERVICE_KEY`
+- does not write snapshot files
+- verifies that the snapshot script can run and resolve the intended output paths
+
+Snapshot generation mode:
+
+- `dry_run=false`
+- requires the repository secret `DATA_GO_KR_SERVICE_KEY`
+- writes public-safe JSON artifacts under `app/public/data/`
+- commits generated snapshot files only when there are actual changes
+
+This workflow does not prove complete upstream-data freshness, public API completeness, shelter operation status, adoption outcomes, or real-time notice delivery.
+
+
 ## Manual Production UI Smoke Test
 
 Open:
