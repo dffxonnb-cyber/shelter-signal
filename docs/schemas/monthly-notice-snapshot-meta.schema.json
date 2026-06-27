@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shelter-signal.local/schemas/monthly-notice-snapshot-meta.schema.json",
+  "title": "Shelter Signal Monthly Notice Snapshot Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "snapshotId",
+    "generatedAt",
+    "generatedAtKst",
+    "period",
+    "source",
+    "dataBoundary",
+    "collection",
+    "counts",
+    "freshnessRules",
+    "files",
+    "warnings",
+    "claimBoundary"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "snapshotId": {
+      "type": "string",
+      "description": "Stable monthly snapshot id, for example 2026-06."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp in UTC."
+    },
+    "generatedAtKst": {
+      "type": "string",
+      "description": "Human-readable generated time in Asia/Seoul."
+    },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startDate", "endDate", "timezone"],
+      "properties": {
+        "startDate": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "endDate": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "timezone": {
+          "type": "string",
+          "const": "Asia/Seoul"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "apiName", "sourceType"],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "const": "data.go.kr"
+        },
+        "apiName": {
+          "type": "string",
+          "const": "abandonmentPublicService_v2"
+        },
+        "sourceType": {
+          "type": "string",
+          "const": "public-data-api"
+        }
+      }
+    },
+    "dataBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["isLiveData", "isPublicSafe", "containsSecrets", "containsFullUpstreamUrl"],
+      "properties": {
+        "isLiveData": {
+          "type": "boolean",
+          "const": false
+        },
+        "isPublicSafe": {
+          "type": "boolean",
+          "const": true
+        },
+        "containsSecrets": {
+          "type": "boolean",
+          "const": false
+        },
+        "containsFullUpstreamUrl": {
+          "type": "boolean",
+          "const": false
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "numOfRows",
+        "maxPages",
+        "pagesFetched",
+        "upstreamTotalCount",
+        "truncated",
+        "responseFormat"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "const": "notice"
+        },
+        "numOfRows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxPages": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pagesFetched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "upstreamTotalCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "responseFormat": {
+          "type": "string",
+          "enum": ["json", "xml", "empty", "error"]
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemCount",
+        "normalizedItemCount",
+        "currentCount",
+        "urgentCount",
+        "protectedCount",
+        "archiveCount"
+      ],
+      "properties": {
+        "itemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "normalizedItemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currentCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "urgentCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "protectedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "archiveCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "freshnessRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dateField", "currentRule", "urgentRule", "timezone"],
+      "properties": {
+        "dateField": {
+          "type": "string",
+          "const": "noticeEdt"
+        },
+        "currentRule": {
+          "type": "string",
+          "const": "noticeEdt is valid and not expired at Asia/Seoul date"
+        },
+        "urgentRule": {
+          "type": "string",
+          "const": "days_left is between 0 and 3"
+        },
+        "timezone": {
+          "type": "string",
+          "const": "Asia/Seoul"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshotJson", "snapshotMetaJson", "latestJson", "latestMetaJson"],
+      "properties": {
+        "snapshotJson": {
+          "type": "string"
+        },
+        "snapshotMetaJson": {
+          "type": "string"
+        },
+        "latestJson": {
+          "type": "string"
+        },
+        "latestMetaJson": {
+          "type": "string"
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claimBoundary": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "monthly public-data snapshot",
+          "not real-time notice service",
+          "not complete upstream-data guarantee",
+          "not shelter operation data",
+          "not adoption outcome tracking"
+        ]
+      }
+    }
+  }
+}
