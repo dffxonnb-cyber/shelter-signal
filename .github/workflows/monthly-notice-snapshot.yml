@@ -1,0 +1,76 @@
+name: Monthly Notice Snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Snapshot month in YYYY-MM format. Leave empty to use the current Seoul month."
+        required: false
+        type: string
+      dry_run:
+        description: "Run without calling the public API or writing snapshot files."
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check snapshot script syntax
+        run: npm run snapshot:check
+
+      - name: Run dry-run snapshot
+        if: ${{ inputs.dry_run == 'true' }}
+        env:
+          SNAPSHOT_MONTH: ${{ inputs.month }}
+        run: |
+          if [ -n "$SNAPSHOT_MONTH" ]; then
+            node scripts/fetch-monthly-notices.mjs --month="$SNAPSHOT_MONTH" --dry-run
+          else
+            npm run snapshot:dry-run
+          fi
+
+      - name: Generate monthly snapshot
+        if: ${{ inputs.dry_run == 'false' }}
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          SNAPSHOT_MONTH: ${{ inputs.month }}
+        run: |
+          if [ -n "$SNAPSHOT_MONTH" ]; then
+            node scripts/fetch-monthly-notices.mjs --month="$SNAPSHOT_MONTH"
+          else
+            npm run snapshot:monthly
+          fi
+
+      - name: Commit generated snapshot
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add app/public/data/latest-notices.json
+          git add app/public/data/latest-notices.meta.json
+          git add app/public/data/monthly-notices/*.json
+
+          if git diff --cached --quiet; then
+            echo "No snapshot changes to commit."
+          else
+            git commit -m "Update monthly notice snapshot"
+            git push
+          fi
