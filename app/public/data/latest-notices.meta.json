@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0.0",
+  "snapshotId": "2026-06",
+  "generatedAt": "2026-06-29T11:56:40.663Z",
+  "generatedAtKst": "2026. 6. 29. PM 8:56:40",
+  "period": {
+    "startDate": "2026-06-01",
+    "endDate": "2026-06-30",
+    "timezone": "Asia/Seoul"
+  },
+  "source": {
+    "provider": "data.go.kr",
+    "apiName": "abandonmentPublicService_v2",
+    "sourceType": "public-data-api"
+  },
+  "dataBoundary": {
+    "isLiveData": false,
+    "isPublicSafe": true,
+    "containsSecrets": false,
+    "containsFullUpstreamUrl": false
+  },
+  "collection": {
+    "state": "notice",
+    "numOfRows": 1000,
+    "maxPages": 10,
+    "pagesFetched": 3,
+    "upstreamTotalCount": 2818,
+    "truncated": true,
+    "responseFormat": "json"
+  },
+  "counts": {
+    "itemCount": 2817,
+    "normalizedItemCount": 2817,
+    "currentCount": 2817,
+    "urgentCount": 1208,
+    "protectedCount": 2817,
+    "archiveCount": 0
+  },
+  "freshnessRules": {
+    "dateField": "noticeEdt",
+    "currentRule": "noticeEdt is valid and not expired at Asia/Seoul date",
+    "urgentRule": "days_left is between 0 and 3",
+    "timezone": "Asia/Seoul"
+  },
+  "files": {
+    "snapshotJson": "app/public/data/monthly-notices/2026-06.json",
+    "snapshotMetaJson": "app/public/data/monthly-notices/2026-06.meta.json",
+    "latestJson": "app/public/data/latest-notices.json",
+    "latestMetaJson": "app/public/data/latest-notices.meta.json"
+  },
+  "warnings": [],
+  "claimBoundary": [
+    "monthly public-data snapshot",
+    "not real-time notice service",
+    "not complete upstream-data guarantee",
+    "not shelter operation data",
+    "not adoption outcome tracking"
+  ],
+  "runtime": {
+    "durationMs": 19314
+  }
+}
