@@ -82,3 +82,23 @@ It does not claim real email, SMS, push delivery, real recipients, subscription 
 ## Historical Evidence
 
 과거 PostgreSQL-primary 검증 캡처는 [screenshots README](../screenshots/README.md)의 Historical Operational DB Evidence에 별도로 분류되어 있습니다. 해당 자료는 현재 Production architecture evidence가 아닙니다.
+
+## Monthly Snapshot Live Run Evidence
+
+Evidence date: 2026-06-29 KST
+
+* [Monthly snapshot live run](monthly-snapshot-live-2026-06-29.md)
+
+This evidence documents a successful GitHub Actions workflow_dispatch run with dry_run=false.
+
+Verified path:
+
+* Monthly Notice Snapshot workflow
+* workflow_dispatch trigger
+* dry_run=false
+* snapshot script syntax check
+* live monthly snapshot generation step
+* generated snapshot commit step
+* successful workflow completion
+
+This evidence does not claim real-time notice delivery, complete upstream-data availability, shelter operation status, adoption outcomes, or production SLA.
