@@ -237,6 +237,7 @@ The monthly snapshot is not presented as real-time shelter operation data. It is
 Shelter Signal V2 is a local preview and dry-run track for alert candidate and digest generation.
 
 - [V2 dry-run evidence · 2026-06-19](docs/evidence/v2-dry-run-2026-06-19.md)
+- [Public-safe V2 digest preview sample](docs/evidence/samples/v2-digest-preview-sample.json)
 
 This does not claim Production notification delivery. Real email, SMS, push delivery, real recipients, subscription management, Production schedules, monitoring, and delivery SLA are out of scope.
 
