@@ -1,84 +1,86 @@
 # Shelter Signal Production Evidence
 
-이 폴더는 현재 Shelter Signal Production의 live-first 운영 상태를 확인한 public-safe evidence를 보관합니다.
+이 폴더는 Shelter Signal의 현재 live-first V1과 history-aware V2 상태를 확인한 public-safe evidence를 보관합니다.
 
 ## Current Evidence
 
+Evidence date: 2026-07-14 KST
+
+- [V2 Production verification](v2-production-verification-2026-07-14.md)
+- Generated public-safe snapshot metadata: `app/public/data/latest-notices.meta.json`
+- Daily change events: `app/public/data/daily-events/2026-07-14.json`
+- Cumulative notice timelines: `app/public/data/notice-timelines.json`
+
+Verified current path:
+
+- live public API snapshot collection
+- scheduled workflow configuration and manual recovery path
+- previous/current comparison
+- daily event preservation
+- missing-state boundary
+- cumulative timeline bootstrap and deduplication
+- today-change dashboard
+- deadline briefing
+- repository CI and Vercel deployment
+
+The first next-day automatic schedule execution remains a follow-up operational check.
+
+## Historical Live-first Evidence
+
 Evidence date: 2026-06-15 KST
 
-* [Production verification summary](production-verification-2026-06-15.md)
-* [Safe Production API metadata](production-api-metadata-2026-06-15.json)
-* [GitHub Actions Verify result](github-actions-verify-2026-06-15.json)
-* [Production UI screenshot](../screenshots/10-live-first-production-ui-2026-06-15.png)
+- [Production verification summary](production-verification-2026-06-15.md)
+- [Safe Production API metadata](production-api-metadata-2026-06-15.json)
+- [GitHub Actions Verify result](github-actions-verify-2026-06-15.json)
+- [Production UI screenshot](../screenshots/10-live-first-production-ui-2026-06-15.png)
 
-## Monthly Snapshot Workflow Dry-run Evidence
+This evidence covers the V1 live-first API, freshness, cache, fallback, and secret boundary before the V2 history layer was added.
+
+## Historical Snapshot Dry-run Evidence
 
 Evidence date: 2026-06-27 KST
 
-* [Monthly snapshot workflow dry-run](monthly-snapshot-dry-run-2026-06-27.md)
+- [Monthly snapshot workflow dry-run](monthly-snapshot-dry-run-2026-06-27.md)
 
-This evidence documents the manual GitHub Actions dry-run path for monthly public-data snapshot generation.
+This earlier evidence documents the manual dry-run path before live daily preservation was activated. It is retained as implementation history, not current snapshot capability.
 
-Verified path:
-
-* Monthly Notice Snapshot workflow
-* workflow_dispatch trigger
-* dry_run=true
-* snapshot script syntax check
-* planned output path resolution
-* no public API request
-* no snapshot JSON write
-* no DATA_GO_KR_SERVICE_KEY requirement
-
-This is not actual public API collection evidence.
-
-It does not claim complete upstream-data freshness, public API completeness, real-time notice delivery, shelter operation status, adoption outcomes, or successful live public API collection.
-
-## V2 Dry-run Evidence
+## Historical V2 Digest Dry-run
 
 Evidence date: 2026-06-19 KST
 
-* [V2 dry-run evidence](v2-dry-run-2026-06-19.md)
+- [Local V2 digest dry-run](v2-dry-run-2026-06-19.md)
 
-This evidence documents the local preview path for alert candidate and digest generation.
+This evidence documents local alert candidate and digest preview generation. It is not Production notification evidence and is not required for the current V2 product baseline.
 
-Verified path:
+## Current Evidence Boundary
 
-* mart.alert_candidates
-* daily digest JSON/HTML preview
-* local dry-run validation
+Current evidence confirms:
 
-This is not Production notification evidence.
+- Production V1 can expose live/cache/fallback state
+- public API snapshot collection completed successfully
+- generated snapshot and metadata are public-safe
+- same-day recovery runs do not erase earlier events
+- `NOT_OBSERVED` and `DISAPPEARED` remain observation states
+- cumulative notice timeline generation and deduplication work
+- V2 change dashboard and deadline briefing compile and deploy
+- GitHub Actions Verify passes without Production secrets
 
-It does not claim real email, SMS, push delivery, real recipients, subscription management, Production schedules, monitoring, or delivery SLA.
+Current evidence does not confirm:
 
-## Evidence Boundary
-
-현재 evidence는 다음을 확인합니다.
-
-* Production UI가 Live API 상태를 표시함
-* fallback warning이 live 응답에서 표시되지 않음
-* /api/notices가 source: api와 safe metadata를 반환함
-* current/urgent view에 expired 또는 missing-deadline 행이 누수되지 않음
-* urgent 결과가 days_left 오름차순이며 0~3 범위임
-* GitHub Actions Verify가 secrets 없이 통과함
-* Monthly Notice Snapshot workflow가 dry-run 모드에서 수동 실행 가능함
-
-현재 evidence는 다음을 증명하지 않습니다.
-
-* 전체 upstream dataset의 완전성 또는 정확성
-* 공공기관별 갱신 주기와 실제 현장 상태의 일치
-* 모든 지역·날짜·fallback 조합의 전수 검증
-* 실제 월간 snapshot 생성 완료
-* 운영 SLA, 사용자 성과, 구조·입양 결과
+- complete upstream dataset history or perfect accuracy
+- exact agreement with every shelter's field state
+- a final outcome for a missing notice
+- all region, date, page-cap, and fallback combinations
+- the first next-day automatic schedule execution
+- real email, SMS, push, recipient, subscription, monitoring, or SLA
 
 ## Public-safe Policy
 
-* API evidence에는 notice rows를 포함하지 않고 safe metadata와 집계 검사 결과만 기록합니다.
-* UI screenshot에는 service key, 환경 변수, raw API URL, 동물 연락처를 포함하지 않습니다.
-* GitHub Actions evidence에는 공개 run 상태와 step 결과만 기록합니다.
-* .env, DATABASE_URL, service key, connection string, full upstream URL은 저장하지 않습니다.
+- Evidence documents may include aggregate counts, timestamps, file paths, CI results, and public repository links.
+- Do not include service keys, `.env`, `DATABASE_URL`, tokens, SMTP credentials, real recipients, or full secret-bearing upstream URLs.
+- A missing public notice must not be described as proof of adoption, return, transfer, euthanasia, or closure.
+- Deadline briefing must be described as an explainable review order, not an official danger score or outcome prediction.
 
-## Historical Evidence
+## Historical Operational DB Evidence
 
 과거 PostgreSQL-primary 검증 캡처는 [screenshots README](../screenshots/README.md)의 Historical Operational DB Evidence에 별도로 분류되어 있습니다. 해당 자료는 현재 Production architecture evidence가 아닙니다.
