@@ -29,13 +29,27 @@ Rows without either identifier are excluded from event comparison and reported i
 app/public/data/latest-events.json
 app/public/data/daily-events/YYYY-MM-DD.json
 app/public/data/missing-notices.json
+app/public/data/notice-timelines.json
 ```
 
 - `latest-events.json` contains events from the most recent collector run.
 - `daily-events/YYYY-MM-DD.json` merges all unique events generated on that Seoul date, so a second manual run does not erase earlier events.
 - `missing-notices.json` is a compact state file used to distinguish a first missing observation, repeated disappearance, and return.
+- `notice-timelines.json` groups unique events by stable notice key and accumulates them across successful runs. The V2 UI uses this file for the individual notice timeline screen.
 
-The monthly and latest snapshot metadata files also include event counts, missing-record counts, file paths, and comparison diagnostics.
+The monthly and latest snapshot metadata files also include event counts, missing-record counts, timeline counts, file paths, and comparison diagnostics.
+
+## Notice timeline record
+
+Each notice timeline contains:
+
+- stable `noticeKey`
+- latest public-safe notice summary
+- first and latest observed event timestamps
+- event count and type counts
+- ordered unique events
+
+The timeline begins when Shelter Signal V2 starts preserving change events. It is not a reconstruction of the entire upstream history before that date.
 
 ## Observation-window boundary
 
@@ -44,9 +58,10 @@ The snapshot collector currently queries one calendar month at a time. When `sna
 ## Safety boundary
 
 - A missing notice is not treated as proof of a final outcome.
-- Event files contain public-safe normalized fields only.
+- Event and timeline files contain public-safe normalized fields only.
 - Service keys, database URLs, tokens, and full upstream request URLs are not written.
 - The first run without a previous snapshot is treated as a baseline and does not emit thousands of artificial `NEW` events.
+- Re-running the collector on the same day does not duplicate an event with the same `eventId`.
 
 ## Local validation
 
@@ -56,4 +71,4 @@ npm run snapshot:test
 npm run snapshot:dry-run
 ```
 
-The self-test covers all seven event types, same-day event merging, missing-state transitions, return detection, and month-window reset protection without calling the external API.
+The self-tests cover all seven event types, same-day event merging, missing-state transitions, return detection, month-window reset protection, per-notice timeline accumulation, and duplicate-safe timeline updates without calling the external API.
