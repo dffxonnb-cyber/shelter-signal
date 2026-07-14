@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "1.0.0",
+  "updatedAt": "2026-07-14T05:03:25.206Z",
+  "observationDate": "2026-07-14",
+  "recordCount": 4,
+  "records": {
+    "desertion:427343202600683": {
+      "noticeKey": "desertion:427343202600683",
+      "status": "NOT_OBSERVED",
+      "firstMissingAt": "2026-07-14T05:03:25.206Z",
+      "firstMissingDate": "2026-07-14",
+      "lastMissingAt": "2026-07-14T05:03:25.206Z",
+      "lastMissingDate": "2026-07-14",
+      "missingRuns": 1,
+      "lastSeenAt": "2026-07-14T04:24:41.102Z",
+      "lastSeenSnapshotId": "2026-07",
+      "notice": {
+        "desertion_no": "427343202600683",
+        "notice_no": "대구-서구-2026-00397",
+        "happen_dt": "2026-07-09",
+        "notice_sdt": "2026-07-09",
+        "notice_edt": "2026-07-20",
+        "kind_full_nm": "[고양이] 한국 고양이",
+        "process_state": "보호중",
+        "care_nm": "대구시수의사회(삼성)",
+        "org_nm": "대구광역시 서구",
+        "days_left": 6,
+        "deadline_status": "active"
+      }
+    },
+    "desertion:442420202600401": {
+      "noticeKey": "desertion:442420202600401",
+      "status": "NOT_OBSERVED",
+      "firstMissingAt": "2026-07-14T05:03:25.206Z",
+      "firstMissingDate": "2026-07-14",
+      "lastMissingAt": "2026-07-14T05:03:25.206Z",
+      "lastMissingDate": "2026-07-14",
+      "missingRuns": 1,
+      "lastSeenAt": "2026-07-14T04:24:41.102Z",
+      "lastSeenSnapshotId": "2026-07",
+      "notice": {
+        "desertion_no": "442420202600401",
+        "notice_no": "강원-강릉-2026-00204",
+        "happen_dt": "2026-07-09",
+        "notice_sdt": "2026-07-13",
+        "notice_edt": "2026-07-23",
+        "kind_full_nm": "[개] 스피츠",
+        "process_state": "보호중",
+        "care_nm": "강릉시 동물사랑센터",
+        "org_nm": "강원특별자치도 강릉시",
+        "days_left": 9,
+        "deadline_status": "active"
+      }
+    },
+    "desertion:444450202600545": {
+      "noticeKey": "desertion:444450202600545",
+      "status": "NOT_OBSERVED",
+      "firstMissingAt": "2026-07-14T05:03:25.206Z",
+      "firstMissingDate": "2026-07-14",
+      "lastMissingAt": "2026-07-14T05:03:25.206Z",
+      "lastMissingDate": "2026-07-14",
+      "missingRuns": 1,
+      "lastSeenAt": "2026-07-14T04:24:41.102Z",
+      "lastSeenSnapshotId": "2026-07",
+      "notice": {
+        "desertion_no": "444450202600545",
+        "notice_no": "충남-공주-2026-00177",
+        "happen_dt": "2026-07-13",
+        "notice_sdt": "2026-07-14",
+        "notice_edt": "2026-07-27",
+        "kind_full_nm": "[고양이] 한국 고양이",
+        "process_state": "보호중",
+        "care_nm": "공주시 동물보호센터",
+        "org_nm": "충청남도 공주시",
+        "days_left": 13,
+        "deadline_status": "active"
+      }
+    },
+    "desertion:444568202600357": {
+      "noticeKey": "desertion:444568202600357",
+      "status": "NOT_OBSERVED",
+      "firstMissingAt": "2026-07-14T05:03:25.206Z",
+      "firstMissingDate": "2026-07-14",
+      "lastMissingAt": "2026-07-14T05:03:25.206Z",
+      "lastMissingDate": "2026-07-14",
+      "missingRuns": 1,
+      "lastSeenAt": "2026-07-14T04:24:41.102Z",
+      "lastSeenSnapshotId": "2026-07",
+      "notice": {
+        "desertion_no": "444568202600357",
+        "notice_no": "충남-당진-2026-00357",
+        "happen_dt": "2026-07-13",
+        "notice_sdt": "2026-07-13",
+        "notice_edt": "2026-07-23",
+        "kind_full_nm": "[개] 믹스견",
+        "process_state": "보호중",
+        "care_nm": "당진시동물보호소",
+        "org_nm": "충청남도 당진시",
+        "days_left": 9,
+        "deadline_status": "active"
+      }
+    }
+  }
+}

@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "snapshotId": "2026-07",
-  "generatedAt": "2026-07-14T04:24:41.102Z",
-  "generatedAtKst": "2026. 7. 14. PM 1:24:41",
+  "generatedAt": "2026-07-14T05:03:25.206Z",
+  "generatedAtKst": "2026. 7. 14. PM 2:03:25",
   "period": {
     "startDate": "2026-07-01",
     "endDate": "2026-07-31",
@@ -24,17 +24,19 @@
     "numOfRows": 1000,
     "maxPages": 10,
     "pagesFetched": 3,
-    "upstreamTotalCount": 2161,
+    "upstreamTotalCount": 2172,
     "truncated": false,
     "responseFormat": "json"
   },
   "counts": {
-    "itemCount": 2161,
-    "normalizedItemCount": 2161,
-    "currentCount": 2161,
+    "itemCount": 2172,
+    "normalizedItemCount": 2172,
+    "currentCount": 2172,
     "urgentCount": 879,
-    "protectedCount": 2161,
-    "archiveCount": 0
+    "protectedCount": 2172,
+    "archiveCount": 0,
+    "eventCount": 19,
+    "missingRecordCount": 4
   },
   "freshnessRules": {
     "dateField": "noticeEdt",
@@ -46,7 +48,10 @@
     "snapshotJson": "app/public/data/monthly-notices/2026-07.json",
     "snapshotMetaJson": "app/public/data/monthly-notices/2026-07.meta.json",
     "latestJson": "app/public/data/latest-notices.json",
-    "latestMetaJson": "app/public/data/latest-notices.meta.json"
+    "latestMetaJson": "app/public/data/latest-notices.meta.json",
+    "dailyEventsJson": "app/public/data/daily-events/2026-07-14.json",
+    "latestEventsJson": "app/public/data/latest-events.json",
+    "missingNoticesJson": "app/public/data/missing-notices.json"
   },
   "warnings": [],
   "claimBoundary": [
@@ -54,9 +59,27 @@
     "not real-time notice service",
     "not complete upstream-data guarantee",
     "not shelter operation data",
-    "not adoption outcome tracking"
+    "not adoption outcome tracking",
+    "collector-observed change events",
+    "missing observations do not prove a final animal outcome"
   ],
   "runtime": {
-    "durationMs": 13785
+    "durationMs": 31864
+  },
+  "changeEvents": {
+    "schemaVersion": "1.0.0",
+    "observationDate": "2026-07-14",
+    "baseline": false,
+    "observationWindowChanged": false,
+    "summary": {
+      "NEW": 15,
+      "DEADLINE_CHANGED": 0,
+      "STATUS_CHANGED": 0,
+      "BECAME_URGENT": 0,
+      "NOT_OBSERVED": 4,
+      "DISAPPEARED": 0,
+      "RETURNED": 0,
+      "total": 19
+    }
   }
 }
