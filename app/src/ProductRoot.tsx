@@ -6,6 +6,7 @@ import NoticeTimelinePage from "./NoticeTimelinePage";
 import "./v2.css";
 import "./timeline.css";
 import "./briefing.css";
+import "./v2-nav.css";
 
 type ProductRoute =
   | { mode: "live" }
