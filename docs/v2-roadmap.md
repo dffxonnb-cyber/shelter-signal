@@ -37,19 +37,24 @@ V2 is not a Production notification service and does not claim complete upstream
 
 ## Delivery Phases
 
-### Phase 1 · Preservation baseline
+### Phase 1 · Preservation baseline — completed
 
-- run the public-safe snapshot collector automatically every day
-- retain manual dry-run and recovery execution
-- expose generated-at, counts, truncation, and warning metadata
-- keep the latest fallback snapshot and monthly archive files current
+- daily scheduled public-safe snapshot collection
+- manual dry-run and recovery execution
+- generated-at, counts, truncation, and warning metadata
+- latest fallback snapshot and monthly archive updates
 
-### Phase 2 · Observation history
+### Phase 2 · Observation history — pipeline implemented
 
-- identify notices with a stable public identifier
-- compare the latest observation with the previous observation
-- emit `NEW`, `DEADLINE_CHANGED`, `STATUS_CHANGED`, `BECAME_URGENT`, `DISAPPEARED`, and `RETURNED` events
-- avoid treating a single missing observation as a confirmed outcome
+- stable public notice keys based on `desertion_no` with `notice_no` fallback
+- comparison with the previous successful snapshot
+- `NEW`, `DEADLINE_CHANGED`, `STATUS_CHANGED`, `BECAME_URGENT`, `NOT_OBSERVED`, `DISAPPEARED`, and `RETURNED` events
+- two-date confirmation before promoting a missing record to `DISAPPEARED`
+- same-day event merging so recovery runs do not erase earlier observations
+- month-window reset protection against false mass disappearance
+- schema and safety boundary: [Notice Change Event Schema](change-event-schema.md)
+
+The remaining Phase 2 work is to run the pipeline against live snapshots and verify the generated event evidence over multiple collection dates.
 
 ### Phase 3 · V2 product surfaces
 
@@ -94,6 +99,7 @@ A scheduled data-preservation workflow is allowed. A scheduled external notifica
 
 ```powershell
 npm run snapshot:check
+npm run snapshot:test
 npm run snapshot:dry-run
 python scripts/validate_pipeline.py
 python scripts/run_daily_digest_dry_run.py
