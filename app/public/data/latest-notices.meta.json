@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "snapshotId": "2026-07",
-  "generatedAt": "2026-07-14T05:03:25.206Z",
-  "generatedAtKst": "2026. 7. 14. PM 2:03:25",
+  "generatedAt": "2026-07-14T05:45:47.904Z",
+  "generatedAtKst": "2026. 7. 14. PM 2:45:47",
   "period": {
     "startDate": "2026-07-01",
     "endDate": "2026-07-31",
@@ -35,8 +35,10 @@
     "urgentCount": 879,
     "protectedCount": 2172,
     "archiveCount": 0,
-    "eventCount": 19,
-    "missingRecordCount": 4
+    "eventCount": 0,
+    "missingRecordCount": 4,
+    "timelineNoticeCount": 19,
+    "timelineEventCount": 19
   },
   "freshnessRules": {
     "dateField": "noticeEdt",
@@ -51,7 +53,8 @@
     "latestMetaJson": "app/public/data/latest-notices.meta.json",
     "dailyEventsJson": "app/public/data/daily-events/2026-07-14.json",
     "latestEventsJson": "app/public/data/latest-events.json",
-    "missingNoticesJson": "app/public/data/missing-notices.json"
+    "missingNoticesJson": "app/public/data/missing-notices.json",
+    "noticeTimelinesJson": "app/public/data/notice-timelines.json"
   },
   "warnings": [],
   "claimBoundary": [
@@ -64,7 +67,7 @@
     "missing observations do not prove a final animal outcome"
   ],
   "runtime": {
-    "durationMs": 31864
+    "durationMs": 7185
   },
   "changeEvents": {
     "schemaVersion": "1.0.0",
@@ -72,14 +75,21 @@
     "baseline": false,
     "observationWindowChanged": false,
     "summary": {
-      "NEW": 15,
+      "NEW": 0,
       "DEADLINE_CHANGED": 0,
       "STATUS_CHANGED": 0,
       "BECAME_URGENT": 0,
-      "NOT_OBSERVED": 4,
+      "NOT_OBSERVED": 0,
       "DISAPPEARED": 0,
       "RETURNED": 0,
-      "total": 19
+      "total": 0
     }
+  },
+  "noticeTimelines": {
+    "schemaVersion": "1.0.0",
+    "updatedAt": "2026-07-14T05:45:47.904Z",
+    "latestObservationDate": "2026-07-14",
+    "noticeCount": 19,
+    "eventCount": 19
   }
 }

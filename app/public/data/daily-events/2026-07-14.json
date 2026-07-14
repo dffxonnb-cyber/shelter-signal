@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "observationDate": "2026-07-14",
-  "updatedAt": "2026-07-14T05:03:25.206Z",
-  "runCount": 1,
+  "updatedAt": "2026-07-14T05:45:47.904Z",
+  "runCount": 2,
   "summary": {
     "NEW": 15,
     "DEADLINE_CHANGED": 0,
@@ -31,6 +31,31 @@
       },
       "diagnostics": {
         "previousNoticeCount": 2161,
+        "currentNoticeCount": 2172,
+        "skippedPreviousNotices": 0,
+        "skippedCurrentNotices": 0,
+        "duplicatePreviousIdentifiers": 0,
+        "duplicateCurrentIdentifiers": 0,
+        "warnings": []
+      }
+    },
+    {
+      "generatedAt": "2026-07-14T05:45:47.904Z",
+      "snapshotId": "2026-07",
+      "baseline": false,
+      "observationWindowChanged": false,
+      "summary": {
+        "NEW": 0,
+        "DEADLINE_CHANGED": 0,
+        "STATUS_CHANGED": 0,
+        "BECAME_URGENT": 0,
+        "NOT_OBSERVED": 0,
+        "DISAPPEARED": 0,
+        "RETURNED": 0,
+        "total": 0
+      },
+      "diagnostics": {
+        "previousNoticeCount": 2172,
         "currentNoticeCount": 2172,
         "skippedPreviousNotices": 0,
         "skippedCurrentNotices": 0,
