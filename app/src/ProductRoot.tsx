@@ -1,34 +1,39 @@
 import { useEffect, useState } from "react";
 import App from "./App";
 import ChangeDashboard from "./ChangeDashboard";
+import NoticeTimelinePage from "./NoticeTimelinePage";
 import "./v2.css";
+import "./timeline.css";
 
-type ProductMode = "live" | "changes";
+type ProductRoute =
+  | { mode: "live" }
+  | { mode: "changes" }
+  | { mode: "timeline"; noticeKey: string };
 
 export default function ProductRoot() {
-  const [mode, setMode] = useState<ProductMode>(() => modeFromHash());
+  const [route, setRoute] = useState<ProductRoute>(() => routeFromHash());
 
   useEffect(() => {
-    const handleHashChange = () => setMode(modeFromHash());
+    const handleHashChange = () => setRoute(routeFromHash());
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  const changeMode = (nextMode: ProductMode) => {
-    const nextHash = nextMode === "changes" ? "#changes" : "#live";
-    window.history.replaceState(null, "", nextHash);
-    setMode(nextMode);
+  const changeMode = (mode: "live" | "changes") => {
+    window.location.hash = mode === "changes" ? "#changes" : "#live";
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const v2Active = route.mode === "changes" || route.mode === "timeline";
+
   return (
-    <div className={`product-root mode-${mode}`}>
+    <div className={`product-root mode-${route.mode}`}>
       <div className="mode-switch-shell">
         <nav className="mode-switch" aria-label="Shelter Signal 버전 선택">
           <button
             type="button"
-            className={mode === "live" ? "is-active" : ""}
-            aria-current={mode === "live" ? "page" : undefined}
+            className={route.mode === "live" ? "is-active" : ""}
+            aria-current={route.mode === "live" ? "page" : undefined}
             onClick={() => changeMode("live")}
           >
             <span>V1</span>
@@ -36,8 +41,8 @@ export default function ProductRoot() {
           </button>
           <button
             type="button"
-            className={mode === "changes" ? "is-active" : ""}
-            aria-current={mode === "changes" ? "page" : undefined}
+            className={v2Active ? "is-active" : ""}
+            aria-current={v2Active ? "page" : undefined}
             onClick={() => changeMode("changes")}
           >
             <span>V2</span>
@@ -46,11 +51,23 @@ export default function ProductRoot() {
         </nav>
       </div>
 
-      {mode === "live" ? <App /> : <ChangeDashboard />}
+      {route.mode === "live" && <App />}
+      {route.mode === "changes" && <ChangeDashboard />}
+      {route.mode === "timeline" && <NoticeTimelinePage noticeKey={route.noticeKey} />}
     </div>
   );
 }
 
-function modeFromHash(): ProductMode {
-  return window.location.hash.toLowerCase() === "#changes" ? "changes" : "live";
+function routeFromHash(): ProductRoute {
+  const hash = window.location.hash;
+  if (hash.startsWith("#timeline/")) {
+    const encodedKey = hash.slice("#timeline/".length);
+    try {
+      const noticeKey = decodeURIComponent(encodedKey);
+      if (noticeKey) return { mode: "timeline", noticeKey };
+    } catch {
+      return { mode: "changes" };
+    }
+  }
+  return hash.toLowerCase() === "#changes" ? { mode: "changes" } : { mode: "live" };
 }
