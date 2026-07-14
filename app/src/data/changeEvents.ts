@@ -68,10 +68,7 @@ export interface ChangeEventPayload {
   generatedAtKst: string;
   observationDate: string;
   snapshotId: string;
-  previousSnapshot: {
-    snapshotId: string;
-    generatedAt: string;
-  } | null;
+  previousSnapshot: { snapshotId: string; generatedAt: string } | null;
   baseline: boolean;
   observationWindowChanged: boolean;
   summary: ChangeEventSummary;
@@ -82,11 +79,7 @@ export interface ChangeEventPayload {
 export interface SnapshotHealthMeta {
   generatedAt: string;
   generatedAtKst: string;
-  period: {
-    startDate: string;
-    endDate: string;
-    timezone: string;
-  };
+  period: { startDate: string; endDate: string; timezone: string };
   collection: {
     pagesFetched: number;
     upstreamTotalCount: number;
@@ -128,11 +121,7 @@ async function fetchJson(path: string): Promise<unknown> {
     cache: "no-store",
     headers: { Accept: "application/json" },
   });
-
-  if (!response.ok) {
-    throw new Error(`${path} returned ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`${path} returned ${response.status}`);
   return response.json() as Promise<unknown>;
 }
 
@@ -234,9 +223,7 @@ function normalizeEvent(value: unknown, index: number): NoticeChangeEvent {
     snapshotId: text(event.snapshotId),
     noticeKey: text(event.noticeKey),
     notice: normalizeNotice(event.notice),
-    changes: Array.isArray(event.changes)
-      ? event.changes.map((change) => normalizeFieldChange(change))
-      : [],
+    changes: Array.isArray(event.changes) ? event.changes.map(normalizeFieldChange) : [],
   };
 }
 
@@ -261,8 +248,8 @@ function normalizeFieldChange(value: unknown): NoticeFieldChange {
   const change = isRecord(value) ? value : {};
   return {
     field: text(change.field),
-    before: primitive(change.before),
-    after: primitive(change.after),
+    before: primitive(change.previous ?? change.before),
+    after: primitive(change.current ?? change.after),
   };
 }
 
@@ -271,9 +258,7 @@ function isChangeEventType(value: string): value is ChangeEventType {
 }
 
 function requireRecord(value: unknown, label: string): Record<string, unknown> {
-  if (!isRecord(value)) {
-    throw new Error(`${label} did not return an object`);
-  }
+  if (!isRecord(value)) throw new Error(`${label} did not return an object`);
   return value;
 }
 
@@ -282,12 +267,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function text(value: unknown): string {
-  return typeof value === "string" ? value : value === null || value === undefined ? "" : String(value);
+  if (typeof value === "string") return value;
+  return value === null || value === undefined ? "" : String(value);
 }
 
 function nullableText(value: unknown): string | null {
   const result = text(value).trim();
-  return result ? result : null;
+  return result || null;
 }
 
 function numberValue(value: unknown): number {
