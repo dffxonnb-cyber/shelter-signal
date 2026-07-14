@@ -10,6 +10,27 @@ permissions:
   contents: read
 
 jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check snapshot scripts
+        run: npm run snapshot:check
+
+      - name: Test change-event rules
+        run: npm run snapshot:test
+
+      - name: Dry-run snapshot path
+        run: npm run snapshot:dry-run
+
   app:
     runs-on: ubuntu-latest
     defaults:

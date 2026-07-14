@@ -39,8 +39,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Check snapshot script syntax
+      - name: Check snapshot scripts
         run: npm run snapshot:check
+
+      - name: Test change-event rules
+        run: npm run snapshot:test
 
       - name: Run dry-run snapshot
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == 'true' }}
@@ -53,14 +56,14 @@ jobs:
             npm run snapshot:dry-run
           fi
 
-      - name: Generate scheduled snapshot
+      - name: Generate scheduled snapshot and change events
         if: ${{ github.event_name == 'schedule' || inputs.dry_run == 'false' }}
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
           SNAPSHOT_MONTH: ${{ inputs.month }}
         run: |
           if [ -n "$SNAPSHOT_MONTH" ]; then
-            node scripts/fetch-monthly-notices.mjs --month="$SNAPSHOT_MONTH"
+            node scripts/run-snapshot-with-events.mjs --month="$SNAPSHOT_MONTH"
           else
             npm run snapshot:monthly
           fi
@@ -74,6 +77,9 @@ jobs:
           git add app/public/data/latest-notices.json
           git add app/public/data/latest-notices.meta.json
           git add app/public/data/monthly-notices/*.json
+          git add app/public/data/daily-events/*.json
+          git add app/public/data/latest-events.json
+          git add app/public/data/missing-notices.json
 
           if git diff --cached --quiet; then
             echo "No snapshot changes to commit."

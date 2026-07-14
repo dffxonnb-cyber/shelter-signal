@@ -1,9 +1,10 @@
 {
   "private": true,
   "scripts": {
-    "snapshot:check": "node --check scripts/fetch-monthly-notices.mjs",
+    "snapshot:check": "node --check scripts/fetch-monthly-notices.mjs && node --check scripts/run-snapshot-with-events.mjs",
+    "snapshot:test": "node scripts/run-snapshot-with-events.mjs --self-test",
     "snapshot:dry-run": "node scripts/fetch-monthly-notices.mjs --dry-run",
     "snapshot:dry-run:2026-06": "node scripts/fetch-monthly-notices.mjs --month=2026-06 --dry-run",
-    "snapshot:monthly": "node scripts/fetch-monthly-notices.mjs"
+    "snapshot:monthly": "node scripts/run-snapshot-with-events.mjs"
   }
 }
