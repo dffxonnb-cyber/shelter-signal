@@ -68,6 +68,10 @@ jobs:
             npm run snapshot:monthly
           fi
 
+      - name: Update per-notice timelines
+        if: ${{ github.event_name == 'schedule' || inputs.dry_run == 'false' }}
+        run: node scripts/update-notice-timelines.mjs
+
       - name: Commit generated snapshot
         if: ${{ github.event_name == 'schedule' || inputs.dry_run == 'false' }}
         run: |
@@ -80,6 +84,7 @@ jobs:
           git add app/public/data/daily-events/*.json
           git add app/public/data/latest-events.json
           git add app/public/data/missing-notices.json
+          git add app/public/data/notice-timelines.json
 
           if git diff --cached --quiet; then
             echo "No snapshot changes to commit."
