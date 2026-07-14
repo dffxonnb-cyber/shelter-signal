@@ -24,8 +24,10 @@ if (args.get("self-test") === "true") {
 
 async function main() {
   const latestEvents = await readRequiredJson(LATEST_EVENTS_PATH);
+  const dailyEvents = await readJsonIfExists(dailyEventsPath(latestEvents.observationDate));
+  const eventSource = selectTimelineEventSource(latestEvents, dailyEvents);
   const existingTimelines = await readJsonIfExists(TIMELINES_PATH);
-  const nextTimelines = mergeNoticeTimelines(existingTimelines, latestEvents);
+  const nextTimelines = mergeNoticeTimelines(existingTimelines, eventSource);
 
   await writeJson(TIMELINES_PATH, nextTimelines);
   await enrichMetadata(LATEST_META_PATH, latestEvents.snapshotId, nextTimelines);
@@ -34,6 +36,7 @@ async function main() {
   console.log(
     JSON.stringify(
       {
+        source: eventSource.sourceLabel,
         noticeCount: nextTimelines.noticeCount,
         eventCount: nextTimelines.eventCount,
         latestObservationDate: nextTimelines.latestObservationDate,
@@ -44,9 +47,27 @@ async function main() {
   );
 }
 
+function selectTimelineEventSource(latestEvents, dailyEvents) {
+  const canUseDailyEvents =
+    dailyEvents &&
+    Array.isArray(dailyEvents.events) &&
+    nullableText(dailyEvents.observationDate) === nullableText(latestEvents?.observationDate);
+
+  if (!canUseDailyEvents) {
+    return { ...latestEvents, sourceLabel: "latest-events" };
+  }
+
+  return {
+    ...latestEvents,
+    generatedAt: dailyEvents.updatedAt || latestEvents.generatedAt,
+    events: dailyEvents.events,
+    sourceLabel: "daily-events",
+  };
+}
+
 function mergeNoticeTimelines(existing, latestRun) {
   if (!latestRun || !Array.isArray(latestRun.events)) {
-    throw new Error("latest-events.json must contain an events array");
+    throw new Error("timeline event source must contain an events array");
   }
 
   const records = normalizeTimelineRecords(existing?.timelines);
@@ -188,6 +209,11 @@ function sortObjectByKey(value) {
   );
 }
 
+function dailyEventsPath(observationDate) {
+  const normalizedDate = nullableText(observationDate);
+  return normalizedDate ? `app/public/data/daily-events/${normalizedDate}.json` : null;
+}
+
 async function readRequiredJson(path) {
   const value = await readJsonIfExists(path);
   if (value === null) throw new Error(`Required JSON file is missing: ${path}`);
@@ -195,6 +221,7 @@ async function readRequiredJson(path) {
 }
 
 async function readJsonIfExists(path) {
+  if (!path) return null;
   try {
     return JSON.parse(await readFile(path, "utf8"));
   } catch (error) {
@@ -270,9 +297,23 @@ function runSelfTest() {
     ],
   };
 
+  const sameDayLatestRun = {
+    generatedAt: "2026-07-15T02:00:00.000Z",
+    observationDate: "2026-07-15",
+    snapshotId: "2026-07",
+    events: [],
+  };
+  const accumulatedDailyRun = {
+    observationDate: "2026-07-15",
+    updatedAt: "2026-07-15T02:00:00.000Z",
+    events: secondRun.events,
+  };
+
   const initial = mergeNoticeTimelines(null, firstRun);
   const merged = mergeNoticeTimelines(initial, secondRun);
   const duplicateSafe = mergeNoticeTimelines(merged, secondRun);
+  const selectedSource = selectTimelineEventSource(sameDayLatestRun, accumulatedDailyRun);
+  const bootstrapSafe = mergeNoticeTimelines(null, selectedSource);
 
   assert.equal(initial.noticeCount, 1);
   assert.equal(initial.eventCount, 1);
@@ -286,6 +327,9 @@ function runSelfTest() {
     "보호중(입양가능)",
   );
   assert.equal(duplicateSafe.eventCount, 3);
+  assert.equal(selectedSource.sourceLabel, "daily-events");
+  assert.equal(bootstrapSafe.noticeCount, 2);
+  assert.equal(bootstrapSafe.eventCount, 2);
 
   console.log("[notice-timelines] self-test passed");
 }
