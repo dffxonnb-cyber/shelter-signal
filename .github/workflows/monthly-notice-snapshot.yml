@@ -1,6 +1,9 @@
-name: Monthly Notice Snapshot
+name: Notice Snapshot Archive
 
 on:
+  schedule:
+    # GitHub Actions uses UTC. 21:20 UTC is 06:20 KST on the following day.
+    - cron: "20 21 * * *"
   workflow_dispatch:
     inputs:
       month:
@@ -19,6 +22,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: notice-snapshot-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   snapshot:
     runs-on: ubuntu-latest
@@ -36,7 +43,7 @@ jobs:
         run: npm run snapshot:check
 
       - name: Run dry-run snapshot
-        if: ${{ inputs.dry_run == 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == 'true' }}
         env:
           SNAPSHOT_MONTH: ${{ inputs.month }}
         run: |
@@ -46,8 +53,8 @@ jobs:
             npm run snapshot:dry-run
           fi
 
-      - name: Generate monthly snapshot
-        if: ${{ inputs.dry_run == 'false' }}
+      - name: Generate scheduled snapshot
+        if: ${{ github.event_name == 'schedule' || inputs.dry_run == 'false' }}
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
           SNAPSHOT_MONTH: ${{ inputs.month }}
@@ -59,7 +66,7 @@ jobs:
           fi
 
       - name: Commit generated snapshot
-        if: ${{ inputs.dry_run == 'false' }}
+        if: ${{ github.event_name == 'schedule' || inputs.dry_run == 'false' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -71,6 +78,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No snapshot changes to commit."
           else
-            git commit -m "Update monthly notice snapshot"
-            git push
+            git commit -m "Update scheduled notice snapshot"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
           fi
