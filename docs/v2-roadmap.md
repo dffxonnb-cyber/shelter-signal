@@ -4,7 +4,7 @@
 
 Shelter Signal `main` currently uses the live-first Production architecture.
 
-Completed baseline:
+Completed V1 baseline:
 
 - live public notice API as the primary `/api/notices` source
 - KST rolling 30-day collection and freshness filtering
@@ -19,24 +19,63 @@ The older Neon operational DB primary path is archived in [neon-deployment.md](n
 
 ## V2 Definition
 
-V2 is a local preview and dry-run track for alert-candidate and digest generation. It is not a Production notification service.
+V1 answers **what notices exist now**. V2 is the history-aware track that answers **what changed, what is approaching its deadline, and why a notice became a review candidate**.
+
+V2 keeps the live-first `/api/notices` architecture intact and adds a separate preservation and decision layer.
 
 ```text
-Docker PostgreSQL
-→ SQL models
-→ mart.alert_candidates
+live public notice API
+→ scheduled public-safe snapshot archive
+→ observation history and change events
+→ today-change summary and notice timeline
+→ alert-candidate rules
 → daily digest JSON/HTML preview
 → optional local n8n or Mailpit validation
 ```
 
-## Allowed Scope
+V2 is not a Production notification service and does not claim complete upstream history. It records what the collector observed, when it observed it, and where collection quality may be incomplete.
+
+## Delivery Phases
+
+### Phase 1 · Preservation baseline
+
+- run the public-safe snapshot collector automatically every day
+- retain manual dry-run and recovery execution
+- expose generated-at, counts, truncation, and warning metadata
+- keep the latest fallback snapshot and monthly archive files current
+
+### Phase 2 · Observation history
+
+- identify notices with a stable public identifier
+- compare the latest observation with the previous observation
+- emit `NEW`, `DEADLINE_CHANGED`, `STATUS_CHANGED`, `BECAME_URGENT`, `DISAPPEARED`, and `RETURNED` events
+- avoid treating a single missing observation as a confirmed outcome
+
+### Phase 3 · V2 product surfaces
+
+- today-change dashboard
+- individual notice timeline
+- collection-health panel
+- evidence-backed deadline briefing
+
+### Phase 4 · Digest dry-run
 
 - `mart.alert_candidates` SQL view
-- daily digest preview export
-- local dry-run scripts
+- daily digest JSON/HTML preview
 - local n8n HTTP Request testing
 - local Mailpit rendering checks
 - generated preview verification
+
+## Allowed Scope
+
+- scheduled snapshot collection and public-safe archive commits
+- observation and change-event modeling
+- today-change summaries and notice timelines
+- collection-quality metadata and warnings
+- `mart.alert_candidates` SQL view
+- daily digest preview export
+- local dry-run scripts
+- local n8n and Mailpit validation
 
 ## Out Of Scope
 
@@ -44,13 +83,18 @@ Docker PostgreSQL
 - SMTP/Gmail credentials or OAuth
 - real recipients and subscription management
 - authentication
-- activated Production schedules
-- Production monitoring or delivery SLA
+- activated Production notification schedules
+- Production notification monitoring or delivery SLA
 - changing the live-first `/api/notices` architecture
+- claiming that a missing notice proves adoption, transfer, euthanasia, or another final outcome
+
+A scheduled data-preservation workflow is allowed. A scheduled external notification-delivery workflow remains out of scope.
 
 ## Local Revalidation
 
 ```powershell
+npm run snapshot:check
+npm run snapshot:dry-run
 python scripts/validate_pipeline.py
 python scripts/run_daily_digest_dry_run.py
 cd app
@@ -65,7 +109,9 @@ Generated preview files under `data/exports/` must remain uncommitted.
 
 - Do not commit or log database URLs, service keys, SMTP credentials, tokens, or real recipients.
 - Do not present local Mailpit or n8n dry-run as Production notification readiness.
-- Keep the current live-first notice pipeline unchanged while experimenting with local alert previews.
+- Keep the current live-first notice pipeline unchanged while adding the V2 history layer.
+- Preserve collection warnings such as truncation instead of presenting snapshots as complete upstream truth.
+- Describe `DISAPPEARED` as an observation state until repeated collection or a source state confirms otherwise.
 
 ## Future Candidates
 
