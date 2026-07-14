@@ -1,0 +1,42 @@
+.v2-section-nav {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.v2-section-nav button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.v2-section-nav button.is-active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+@media (max-width: 680px) {
+  .mode-switch-shell {
+    flex-wrap: wrap;
+  }
+
+  .v2-section-nav {
+    width: 100%;
+    margin: 8px 0 0;
+  }
+
+  .v2-section-nav button {
+    flex: 1;
+  }
+}
