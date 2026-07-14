@@ -14,9 +14,11 @@ type LoadState =
   | { status: "success"; data: ChangeDashboardData }
   | { status: "error"; message: string };
 
+type EventTone = "new" | "change" | "urgent" | "missing" | "return";
+
 const EVENT_COPY: Record<
   ChangeEventType,
-  { label: string; description: string; tone: "new" | "change" | "urgent" | "missing" | "return" }
+  { label: string; description: string; tone: EventTone }
 > = {
   NEW: {
     label: "새 공고",
@@ -63,30 +65,25 @@ export default function ChangeDashboard() {
   const [requestId, setRequestId] = useState(0);
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
     setLoadState({ status: "loading" });
-
     loadChangeDashboardData()
       .then((data) => {
-        if (isMounted) setLoadState({ status: "success", data });
+        if (mounted) setLoadState({ status: "success", data });
       })
       .catch((error: unknown) => {
-        if (!isMounted) return;
+        if (!mounted) return;
         setLoadState({
           status: "error",
           message: error instanceof Error ? error.message : "변화 이력을 불러오지 못했습니다.",
         });
       });
-
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, [requestId]);
 
-  if (loadState.status === "loading") {
-    return <DashboardLoading />;
-  }
-
+  if (loadState.status === "loading") return <DashboardLoading />;
   if (loadState.status === "error") {
     return (
       <DashboardError
@@ -117,7 +114,9 @@ function DashboardContent({
   const statusChanges = events.summary.STATUS_CHANGED + events.summary.RETURNED;
   const missingChanges = events.summary.NOT_OBSERVED + events.summary.DISAPPEARED;
   const collectionHealthy =
-    !health.collection.truncated && health.warnings.length === 0 && events.diagnostics.warnings.length === 0;
+    !health.collection.truncated &&
+    health.warnings.length === 0 &&
+    events.diagnostics.warnings.length === 0;
 
   return (
     <div className="v2-shell" data-testid="screen-changes">
@@ -139,7 +138,7 @@ function DashboardContent({
             <h2>현재 목록보다 먼저, 변화부터 확인합니다.</h2>
             <p>
               이전 성공 수집과 이번 수집을 비교해 새 공고, 마감 변화, 상태 변화와 미관측을
-              분리했습니다. 미관측은 실제 종료 결과로 단정하지 않습니다.
+              분리했습니다. 공고 카드를 누르면 해당 공고의 누적 변화 타임라인으로 이동합니다.
             </p>
           </div>
           <div className="v2-total-change">
@@ -156,10 +155,7 @@ function DashboardContent({
           <SummaryCard label="미관측" value={missingChanges} hint="결과 확정 아님" tone="missing" />
         </section>
 
-        <CollectionHealthPanel
-          data={data}
-          collectionHealthy={collectionHealthy}
-        />
+        <CollectionHealthPanel data={data} collectionHealthy={collectionHealthy} />
 
         <section className="v2-events-section">
           <div className="v2-section-heading">
@@ -302,9 +298,22 @@ function EventCard({ event }: { event: NoticeChangeEvent }) {
   const copy = EVENT_COPY[event.type];
   const title = event.notice.kind_full_nm || event.notice.notice_no || "공고 정보 확인 필요";
   const location = [event.notice.org_nm, event.notice.care_nm].filter(Boolean).join(" · ");
+  const open = () => openTimeline(event.noticeKey);
 
   return (
-    <article className={`v2-event-card tone-${copy.tone}`}>
+    <article
+      className={`v2-event-card tone-${copy.tone}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`${title} 누적 변화 타임라인 보기`}
+      onClick={open}
+      onKeyDown={(keyboardEvent) => {
+        if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+          keyboardEvent.preventDefault();
+          open();
+        }
+      }}
+    >
       <div className="v2-event-card-top">
         <span className="v2-event-type">{copy.label}</span>
         <time dateTime={event.observedAt}>{formatTime(event.observedAt)}</time>
@@ -333,6 +342,8 @@ function EventCard({ event }: { event: NoticeChangeEvent }) {
           ))}
         </dl>
       )}
+
+      <span className="v2-timeline-cue">누적 타임라인 보기</span>
     </article>
   );
 }
@@ -342,7 +353,6 @@ function DeadlineChip({ event }: { event: NoticeChangeEvent }) {
   const label =
     event.notice.deadline_status ||
     (daysLeft === null ? "일정 확인" : daysLeft === 0 ? "D-Day" : `D-${daysLeft}`);
-
   return <span className="v2-deadline-chip">{label}</span>;
 }
 
@@ -401,6 +411,11 @@ function DashboardError({ message, onRetry }: { message: string; onRetry: () => 
       </main>
     </div>
   );
+}
+
+function openTimeline(noticeKey: string) {
+  window.location.hash = `#timeline/${encodeURIComponent(noticeKey)}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function filterLabel(filter: EventFilter): string {
