@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "snapshotId": "2026-07",
-  "generatedAt": "2026-07-30T22:19:32.349Z",
-  "generatedAtKst": "2026. 7. 31. AM 7:19:32",
+  "snapshotId": "2026-08",
+  "generatedAt": "2026-07-31T22:16:08.641Z",
+  "generatedAtKst": "2026. 8. 1. AM 7:16:08",
   "period": {
-    "startDate": "2026-07-01",
-    "endDate": "2026-07-31",
+    "startDate": "2026-08-01",
+    "endDate": "2026-08-31",
     "timezone": "Asia/Seoul"
   },
   "source": {
@@ -23,22 +23,22 @@
     "state": "notice",
     "numOfRows": 1000,
     "maxPages": 10,
-    "pagesFetched": 3,
-    "upstreamTotalCount": 2382,
+    "pagesFetched": 1,
+    "upstreamTotalCount": 0,
     "truncated": false,
     "responseFormat": "json"
   },
   "counts": {
-    "itemCount": 2382,
-    "normalizedItemCount": 2382,
-    "currentCount": 2382,
-    "urgentCount": 1096,
-    "protectedCount": 2382,
+    "itemCount": 0,
+    "normalizedItemCount": 0,
+    "currentCount": 0,
+    "urgentCount": 0,
+    "protectedCount": 0,
     "archiveCount": 0,
-    "eventCount": 1485,
+    "eventCount": 355,
     "missingRecordCount": 3914,
     "timelineNoticeCount": 6295,
-    "timelineEventCount": 15238
+    "timelineEventCount": 15593
   },
   "freshnessRules": {
     "dateField": "noticeEdt",
@@ -47,11 +47,11 @@
     "timezone": "Asia/Seoul"
   },
   "files": {
-    "snapshotJson": "app/public/data/monthly-notices/2026-07.json",
-    "snapshotMetaJson": "app/public/data/monthly-notices/2026-07.meta.json",
+    "snapshotJson": "app/public/data/monthly-notices/2026-08.json",
+    "snapshotMetaJson": "app/public/data/monthly-notices/2026-08.meta.json",
     "latestJson": "app/public/data/latest-notices.json",
     "latestMetaJson": "app/public/data/latest-notices.meta.json",
-    "dailyEventsJson": "app/public/data/daily-events/2026-07-31.json",
+    "dailyEventsJson": "app/public/data/daily-events/2026-08-01.json",
     "latestEventsJson": "app/public/data/latest-events.json",
     "missingNoticesJson": "app/public/data/missing-notices.json",
     "noticeTimelinesJson": "app/public/data/notice-timelines.json"
@@ -67,29 +67,29 @@
     "missing observations do not prove a final animal outcome"
   ],
   "runtime": {
-    "durationMs": 19211
+    "durationMs": 1880
   },
   "changeEvents": {
     "schemaVersion": "1.0.0",
-    "observationDate": "2026-07-31",
+    "observationDate": "2026-08-01",
     "baseline": false,
-    "observationWindowChanged": false,
+    "observationWindowChanged": true,
     "summary": {
-      "NEW": 243,
+      "NEW": 0,
       "DEADLINE_CHANGED": 0,
       "STATUS_CHANGED": 0,
-      "BECAME_URGENT": 791,
-      "NOT_OBSERVED": 355,
-      "DISAPPEARED": 96,
+      "BECAME_URGENT": 0,
+      "NOT_OBSERVED": 0,
+      "DISAPPEARED": 355,
       "RETURNED": 0,
-      "total": 1485
+      "total": 355
     }
   },
   "noticeTimelines": {
     "schemaVersion": "1.0.0",
-    "updatedAt": "2026-07-30T22:19:32.349Z",
-    "latestObservationDate": "2026-07-31",
+    "updatedAt": "2026-07-31T22:16:08.641Z",
+    "latestObservationDate": "2026-08-01",
     "noticeCount": 6295,
-    "eventCount": 15238
+    "eventCount": 15593
   }
 }
