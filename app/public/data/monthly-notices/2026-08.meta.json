@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "snapshotId": "2026-08",
-  "generatedAt": "2026-07-31T22:16:08.641Z",
-  "generatedAtKst": "2026. 8. 1. AM 7:16:08",
+  "generatedAt": "2026-08-01T22:11:38.439Z",
+  "generatedAtKst": "2026. 8. 2. AM 7:11:38",
   "period": {
     "startDate": "2026-08-01",
     "endDate": "2026-08-31",
@@ -24,21 +24,21 @@
     "numOfRows": 1000,
     "maxPages": 10,
     "pagesFetched": 1,
-    "upstreamTotalCount": 0,
+    "upstreamTotalCount": 39,
     "truncated": false,
     "responseFormat": "json"
   },
   "counts": {
-    "itemCount": 0,
-    "normalizedItemCount": 0,
-    "currentCount": 0,
+    "itemCount": 39,
+    "normalizedItemCount": 39,
+    "currentCount": 39,
     "urgentCount": 0,
-    "protectedCount": 0,
+    "protectedCount": 39,
     "archiveCount": 0,
-    "eventCount": 355,
+    "eventCount": 39,
     "missingRecordCount": 3914,
-    "timelineNoticeCount": 6295,
-    "timelineEventCount": 15593
+    "timelineNoticeCount": 6334,
+    "timelineEventCount": 15632
   },
   "freshnessRules": {
     "dateField": "noticeEdt",
@@ -51,7 +51,7 @@
     "snapshotMetaJson": "app/public/data/monthly-notices/2026-08.meta.json",
     "latestJson": "app/public/data/latest-notices.json",
     "latestMetaJson": "app/public/data/latest-notices.meta.json",
-    "dailyEventsJson": "app/public/data/daily-events/2026-08-01.json",
+    "dailyEventsJson": "app/public/data/daily-events/2026-08-02.json",
     "latestEventsJson": "app/public/data/latest-events.json",
     "missingNoticesJson": "app/public/data/missing-notices.json",
     "noticeTimelinesJson": "app/public/data/notice-timelines.json"
@@ -67,29 +67,29 @@
     "missing observations do not prove a final animal outcome"
   ],
   "runtime": {
-    "durationMs": 1880
+    "durationMs": 6441
   },
   "changeEvents": {
     "schemaVersion": "1.0.0",
-    "observationDate": "2026-08-01",
+    "observationDate": "2026-08-02",
     "baseline": false,
-    "observationWindowChanged": true,
+    "observationWindowChanged": false,
     "summary": {
-      "NEW": 0,
+      "NEW": 39,
       "DEADLINE_CHANGED": 0,
       "STATUS_CHANGED": 0,
       "BECAME_URGENT": 0,
       "NOT_OBSERVED": 0,
-      "DISAPPEARED": 355,
+      "DISAPPEARED": 0,
       "RETURNED": 0,
-      "total": 355
+      "total": 39
     }
   },
   "noticeTimelines": {
     "schemaVersion": "1.0.0",
-    "updatedAt": "2026-07-31T22:16:08.641Z",
-    "latestObservationDate": "2026-08-01",
-    "noticeCount": 6295,
-    "eventCount": 15593
+    "updatedAt": "2026-08-01T22:11:38.439Z",
+    "latestObservationDate": "2026-08-02",
+    "noticeCount": 6334,
+    "eventCount": 15632
   }
 }
