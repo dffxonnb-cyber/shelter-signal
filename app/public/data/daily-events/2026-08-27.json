@@ -1,15 +1,8 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-08-27T00:48:19.634Z",
-  "generatedAtKst": "2026. 8. 27. AM 9:48:19",
   "observationDate": "2026-08-27",
-  "snapshotId": "2026-08",
-  "previousSnapshot": {
-    "snapshotId": "2026-08",
-    "generatedAt": "2026-08-25T21:44:39.803Z"
-  },
-  "baseline": false,
-  "observationWindowChanged": false,
+  "updatedAt": "2026-08-27T00:48:19.634Z",
+  "runCount": 1,
   "summary": {
     "NEW": 214,
     "DEADLINE_CHANGED": 0,
@@ -20,15 +13,33 @@
     "RETURNED": 0,
     "total": 438
   },
-  "diagnostics": {
-    "previousNoticeCount": 1956,
-    "currentNoticeCount": 2081,
-    "skippedPreviousNotices": 0,
-    "skippedCurrentNotices": 0,
-    "duplicatePreviousIdentifiers": 0,
-    "duplicateCurrentIdentifiers": 0,
-    "warnings": []
-  },
+  "runs": [
+    {
+      "generatedAt": "2026-08-27T00:48:19.634Z",
+      "snapshotId": "2026-08",
+      "baseline": false,
+      "observationWindowChanged": false,
+      "summary": {
+        "NEW": 214,
+        "DEADLINE_CHANGED": 0,
+        "STATUS_CHANGED": 0,
+        "BECAME_URGENT": 0,
+        "NOT_OBSERVED": 89,
+        "DISAPPEARED": 135,
+        "RETURNED": 0,
+        "total": 438
+      },
+      "diagnostics": {
+        "previousNoticeCount": 1956,
+        "currentNoticeCount": 2081,
+        "skippedPreviousNotices": 0,
+        "skippedCurrentNotices": 0,
+        "duplicatePreviousIdentifiers": 0,
+        "duplicateCurrentIdentifiers": 0,
+        "warnings": []
+      }
+    }
+  ],
   "events": [
     {
       "eventId": "e4a979f76389a7d63b87f397",
