@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "1.0.0",
+  "snapshotId": "2026-09",
+  "generatedAt": "2026-09-01T00:37:21.051Z",
+  "generatedAtKst": "2026. 9. 1. AM 9:37:21",
+  "period": {
+    "startDate": "2026-09-01",
+    "endDate": "2026-09-30",
+    "timezone": "Asia/Seoul"
+  },
+  "source": {
+    "provider": "data.go.kr",
+    "apiName": "abandonmentPublicService_v2",
+    "sourceType": "public-data-api"
+  },
+  "dataBoundary": {
+    "isLiveData": false,
+    "isPublicSafe": true,
+    "containsSecrets": false,
+    "containsFullUpstreamUrl": false
+  },
+  "collection": {
+    "state": "notice",
+    "numOfRows": 1000,
+    "maxPages": 10,
+    "pagesFetched": 1,
+    "upstreamTotalCount": 3,
+    "truncated": false,
+    "responseFormat": "json"
+  },
+  "counts": {
+    "itemCount": 3,
+    "normalizedItemCount": 3,
+    "currentCount": 3,
+    "urgentCount": 0,
+    "protectedCount": 3,
+    "archiveCount": 0,
+    "eventCount": 264,
+    "missingRecordCount": 7106,
+    "timelineNoticeCount": 11830,
+    "timelineEventCount": 31123
+  },
+  "freshnessRules": {
+    "dateField": "noticeEdt",
+    "currentRule": "noticeEdt is valid and not expired at Asia/Seoul date",
+    "urgentRule": "days_left is between 0 and 3",
+    "timezone": "Asia/Seoul"
+  },
+  "files": {
+    "snapshotJson": "app/public/data/monthly-notices/2026-09.json",
+    "snapshotMetaJson": "app/public/data/monthly-notices/2026-09.meta.json",
+    "latestJson": "app/public/data/latest-notices.json",
+    "latestMetaJson": "app/public/data/latest-notices.meta.json",
+    "dailyEventsJson": "app/public/data/daily-events/2026-09-01.json",
+    "latestEventsJson": "app/public/data/latest-events.json",
+    "missingNoticesJson": "app/public/data/missing-notices.json",
+    "noticeTimelinesJson": "app/public/data/notice-timelines.json"
+  },
+  "warnings": [],
+  "claimBoundary": [
+    "monthly public-data snapshot",
+    "not real-time notice service",
+    "not complete upstream-data guarantee",
+    "not shelter operation data",
+    "not adoption outcome tracking",
+    "collector-observed change events",
+    "missing observations do not prove a final animal outcome"
+  ],
+  "runtime": {
+    "durationMs": 2897
+  },
+  "changeEvents": {
+    "schemaVersion": "1.0.0",
+    "observationDate": "2026-09-01",
+    "baseline": false,
+    "observationWindowChanged": true,
+    "summary": {
+      "NEW": 3,
+      "DEADLINE_CHANGED": 0,
+      "STATUS_CHANGED": 0,
+      "BECAME_URGENT": 0,
+      "NOT_OBSERVED": 0,
+      "DISAPPEARED": 261,
+      "RETURNED": 0,
+      "total": 264
+    }
+  },
+  "noticeTimelines": {
+    "schemaVersion": "1.0.0",
+    "updatedAt": "2026-09-01T00:37:21.051Z",
+    "latestObservationDate": "2026-09-01",
+    "noticeCount": 11830,
+    "eventCount": 31123
+  }
+}
