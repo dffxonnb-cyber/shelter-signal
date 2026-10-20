@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "snapshotId": "2026-10",
-  "generatedAt": "2026-10-18T23:16:06.394Z",
-  "generatedAtKst": "2026. 10. 19. AM 8:16:06",
+  "generatedAt": "2026-10-20T00:21:04.457Z",
+  "generatedAtKst": "2026. 10. 20. AM 9:21:04",
   "period": {
     "startDate": "2026-10-01",
     "endDate": "2026-10-31",
@@ -23,22 +23,22 @@
     "state": "notice",
     "numOfRows": 1000,
     "maxPages": 10,
-    "pagesFetched": 2,
-    "upstreamTotalCount": 2301,
-    "truncated": true,
+    "pagesFetched": 3,
+    "upstreamTotalCount": 2167,
+    "truncated": false,
     "responseFormat": "json"
   },
   "counts": {
-    "itemCount": 2000,
-    "normalizedItemCount": 2000,
-    "currentCount": 2000,
-    "urgentCount": 741,
-    "protectedCount": 2000,
+    "itemCount": 2167,
+    "normalizedItemCount": 2167,
+    "currentCount": 2167,
+    "urgentCount": 815,
+    "protectedCount": 2167,
     "archiveCount": 0,
-    "eventCount": 642,
-    "missingRecordCount": 12761,
-    "timelineNoticeCount": 21346,
-    "timelineEventCount": 58661
+    "eventCount": 1467,
+    "missingRecordCount": 13054,
+    "timelineNoticeCount": 21806,
+    "timelineEventCount": 60128
   },
   "freshnessRules": {
     "dateField": "noticeEdt",
@@ -51,14 +51,12 @@
     "snapshotMetaJson": "app/public/data/monthly-notices/2026-10.meta.json",
     "latestJson": "app/public/data/latest-notices.json",
     "latestMetaJson": "app/public/data/latest-notices.meta.json",
-    "dailyEventsJson": "app/public/data/daily-events/2026-10-19.json",
+    "dailyEventsJson": "app/public/data/daily-events/2026-10-20.json",
     "latestEventsJson": "app/public/data/latest-events.json",
     "missingNoticesJson": "app/public/data/missing-notices.json",
     "noticeTimelinesJson": "app/public/data/notice-timelines.json"
   },
-  "warnings": [
-    "Stopped at page 3: Public data API returned 504"
-  ],
+  "warnings": [],
   "claimBoundary": [
     "monthly public-data snapshot",
     "not real-time notice service",
@@ -69,29 +67,29 @@
     "missing observations do not prove a final animal outcome"
   ],
   "runtime": {
-    "durationMs": 157124
+    "durationMs": 11142
   },
   "changeEvents": {
     "schemaVersion": "1.0.0",
-    "observationDate": "2026-10-19",
+    "observationDate": "2026-10-20",
     "baseline": false,
     "observationWindowChanged": false,
     "summary": {
-      "NEW": 26,
+      "NEW": 460,
       "DEADLINE_CHANGED": 0,
       "STATUS_CHANGED": 0,
-      "BECAME_URGENT": 274,
-      "NOT_OBSERVED": 324,
-      "DISAPPEARED": 18,
-      "RETURNED": 0,
-      "total": 642
+      "BECAME_URGENT": 337,
+      "NOT_OBSERVED": 346,
+      "DISAPPEARED": 271,
+      "RETURNED": 53,
+      "total": 1467
     }
   },
   "noticeTimelines": {
     "schemaVersion": "1.0.0",
-    "updatedAt": "2026-10-18T23:16:06.394Z",
-    "latestObservationDate": "2026-10-19",
-    "noticeCount": 21346,
-    "eventCount": 58661
+    "updatedAt": "2026-10-20T00:21:04.457Z",
+    "latestObservationDate": "2026-10-20",
+    "noticeCount": 21806,
+    "eventCount": 60128
   }
 }
