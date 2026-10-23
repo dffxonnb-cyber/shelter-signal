@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "snapshotId": "2026-10",
-  "generatedAt": "2026-10-23T00:01:31.586Z",
-  "generatedAtKst": "2026. 10. 23. AM 9:01:31",
+  "generatedAt": "2026-10-23T23:51:50.163Z",
+  "generatedAtKst": "2026. 10. 24. AM 8:51:50",
   "period": {
     "startDate": "2026-10-01",
     "endDate": "2026-10-31",
@@ -24,21 +24,21 @@
     "numOfRows": 1000,
     "maxPages": 10,
     "pagesFetched": 3,
-    "upstreamTotalCount": 2485,
+    "upstreamTotalCount": 2372,
     "truncated": false,
     "responseFormat": "json"
   },
   "counts": {
-    "itemCount": 2485,
-    "normalizedItemCount": 2485,
-    "currentCount": 2485,
-    "urgentCount": 1002,
-    "protectedCount": 2485,
+    "itemCount": 2372,
+    "normalizedItemCount": 2372,
+    "currentCount": 2372,
+    "urgentCount": 800,
+    "protectedCount": 2372,
     "archiveCount": 0,
-    "eventCount": 1437,
-    "missingRecordCount": 13635,
-    "timelineNoticeCount": 22705,
-    "timelineEventCount": 62904
+    "eventCount": 1065,
+    "missingRecordCount": 14002,
+    "timelineNoticeCount": 22959,
+    "timelineEventCount": 63969
   },
   "freshnessRules": {
     "dateField": "noticeEdt",
@@ -51,7 +51,7 @@
     "snapshotMetaJson": "app/public/data/monthly-notices/2026-10.meta.json",
     "latestJson": "app/public/data/latest-notices.json",
     "latestMetaJson": "app/public/data/latest-notices.meta.json",
-    "dailyEventsJson": "app/public/data/daily-events/2026-10-23.json",
+    "dailyEventsJson": "app/public/data/daily-events/2026-10-24.json",
     "latestEventsJson": "app/public/data/latest-events.json",
     "missingNoticesJson": "app/public/data/missing-notices.json",
     "noticeTimelinesJson": "app/public/data/notice-timelines.json"
@@ -67,29 +67,29 @@
     "missing observations do not prove a final animal outcome"
   ],
   "runtime": {
-    "durationMs": 129418
+    "durationMs": 12038
   },
   "changeEvents": {
     "schemaVersion": "1.0.0",
-    "observationDate": "2026-10-23",
+    "observationDate": "2026-10-24",
     "baseline": false,
     "observationWindowChanged": false,
     "summary": {
-      "NEW": 332,
+      "NEW": 254,
       "DEADLINE_CHANGED": 0,
       "STATUS_CHANGED": 0,
-      "BECAME_URGENT": 671,
-      "NOT_OBSERVED": 308,
-      "DISAPPEARED": 126,
+      "BECAME_URGENT": 136,
+      "NOT_OBSERVED": 367,
+      "DISAPPEARED": 308,
       "RETURNED": 0,
-      "total": 1437
+      "total": 1065
     }
   },
   "noticeTimelines": {
     "schemaVersion": "1.0.0",
-    "updatedAt": "2026-10-23T00:01:31.586Z",
-    "latestObservationDate": "2026-10-23",
-    "noticeCount": 22705,
-    "eventCount": 62904
+    "updatedAt": "2026-10-23T23:51:50.163Z",
+    "latestObservationDate": "2026-10-24",
+    "noticeCount": 22959,
+    "eventCount": 63969
   }
 }
